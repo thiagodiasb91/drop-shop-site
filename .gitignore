@@ -1,0 +1,62 @@
+# Python
+# Virtual environment
+venv/
+.venv/
+
+# Byte-code files
+*.pyc
+__pycache__/
+
+# Distribution / packaging
+.Python
+build/
+dist/
+wheels/
+*.egg-info/
+
+# Logs and miscellaneous
+*.log
+pip-log.txt
+.tox/
+
+# IDE specific files (optional, can be global)
+.vscode/
+.idea/
+
+# Terraform
+# Local .terraform directory (provider binaries, modules, etc.)
+.terraform/
+
+# .tfstate files and backups (contain infrastructure state)
+*.tfstate
+*.tfstate.*.backup
+*.tfstate.backup
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Exclude all .tfvars files (likely to contain sensitive data)
+*.tfvars
+*.tfvars.json
+
+# Ignore override files (usually used for local testing)
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Ignore transient lock files
+.terraform.tfstate.lock.info
+.terraform.lock.hcl
+
+# Optional: ignore CLI configuration files
+.terraformrc
+terraform.rc
+
+# Optional: ignore plan files (if you use -out=tfplan)
+# *tfplan*
+
+# Dependencies
+node_modules
+/node_modules
