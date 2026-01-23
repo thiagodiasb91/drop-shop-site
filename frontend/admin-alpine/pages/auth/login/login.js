@@ -1,6 +1,6 @@
-import { ENV } from "../../config/env.js"
+import { ENV } from "../../../config/env.js"
 
-export function login() {
+export function getData() {
   return {
     loading: false,
 

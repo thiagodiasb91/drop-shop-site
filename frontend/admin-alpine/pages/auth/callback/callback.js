@@ -1,8 +1,8 @@
-import { AuthService } from "../../services/auth.service.js"
+import { AuthService } from "../../../services/auth.service.js"
 
 console.log("CALLBACK MODULE LOADED");
 let alreadyCalled = false;
-export function callback() {
+export function getData() {
   return {    
     message: "Autenticando...",
 

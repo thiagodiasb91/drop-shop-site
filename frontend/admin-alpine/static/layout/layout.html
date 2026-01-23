@@ -1,0 +1,17 @@
+<div class="layout">
+  <aside>
+    <a href="/orders" onclick="spaNavigate(event)">Pedidos</a>
+  </aside>
+teste
+  <main id="content">
+    teste
+  </main>
+</div>
+
+
+<script>
+  function spaNavigate(e) {
+    e.preventDefault();
+    import("/src/router.js").then(m => m.navigate(e.target.getAttribute("href")));
+  }
+</script>

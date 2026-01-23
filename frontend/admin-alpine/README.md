@@ -1,5 +1,7 @@
 # Rodar front
-npx serve -p 5173
+npx serve -p 5173 -s
+
+python -m http.server 5173
 
 # Stack
 

@@ -1,0 +1,48 @@
+import { requireAuth } from "./auth/auth.guard.js";
+import { loadLayout } from "/static/layout/layout.js";
+
+const routes = {
+  "/login": {
+    html: "/src/pages/auth/login/index.html",
+    js: "/src/pages/auth/login/login.js",
+    public: true,
+  },
+  "/callback": {
+    html: "/src/pages/callback/index.html",
+    js: "/src/pages/callback/callback.js",
+    public: true,
+  },
+  "/orders": {
+    html: "/src/pages/orders/list/index.html",
+    js: "/src/pages/orders/list/list.js",
+  },
+};
+
+export async function initRouter() {
+  console.log("router.initRouter.request", location.pathname);
+  window.addEventListener("popstate", render);
+  await render();
+}
+
+export async function navigate(path) {
+  console.log("router.navigate.request", path);
+  history.pushState({}, "", path);
+  await render();
+}
+
+async function render() {
+  console.log("router.render.request", location.pathname);
+  const path = location.pathname;
+  const route = routes[path] || routes["/login"];
+
+  if (!route.public) {
+    console.log("Rota protegida, verificando autenticação...");
+    await requireAuth();
+  }
+
+  const app = document.getElementById("app");
+  app.innerHTML = "";
+
+  console.log("Carregando layout para a rota:", path, route);
+  await loadLayout(app, route);
+}
