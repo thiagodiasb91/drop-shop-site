@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Dashboard</title>
+</head>
+
+<body>
+  <h1>Dashboard</h1>
+  <div x-data="getData()" x-init="init()">
+
+    <h1 x-text="user?.name"></h1>
+
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js">
+    </script>
+
+    <script type="module" src="./dashboard.js"></script>
+
+  </div>
+</body>
+
+</html>

@@ -1,0 +1,12 @@
+<div class="layout centered">  
+  <main id="content" class="content">
+  </main>
+</div>
+
+
+<script>
+  function spaNavigate(e) {
+    e.preventDefault();
+    import("/src/router.js").then(m => m.navigate(e.target.getAttribute("href")));
+  }
+</script>

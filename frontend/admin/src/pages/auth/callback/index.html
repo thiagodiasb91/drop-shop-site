@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Autenticando</title>
+</head>
+
+<body>
+  <div style="text-align: center;">
+    <div x-data="getData" x-init="init()">
+      <div class="loader" x-show="executing"></div>
+      <h2 x-text="message"></h2>
+      <button class="btn-logout" @click="goToLogin()">Ir para o login</button>
+    </div>
+  </div>
+</body>
+
+</html>
