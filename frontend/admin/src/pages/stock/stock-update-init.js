@@ -1,7 +1,6 @@
 import { getStockUpdateData } from "./stock-update.js"
 
 Alpine.data('init', () => ({
-		message: 'Hello world',
 		init() {
 			const state = getStockUpdateData()
 
@@ -17,14 +16,14 @@ Alpine.data('init', () => ({
 
             // Event listeners para input
             supplierId.addEventListener("change", (e) =>
-            state.handleInputChange("supplierId", e.target.value)
+                state.handleInputChange("supplierId", e.target.value)
             )
             productId.addEventListener("change", (e) =>
-            state.handleInputChange("productId", e.target.value)
+                state.handleInputChange("productId", e.target.value)
             )
             sku.addEventListener("change", (e) => state.handleInputChange("sku", e.target.value))
-            quantity.addEventListener("change", (e) =>
-            state.handleInputChange("quantity", e.target.value)
+                quantity.addEventListener("change", (e) =>
+                state.handleInputChange("quantity", e.target.value)
             )
 
 
@@ -44,14 +43,14 @@ Alpine.data('init', () => ({
 
             try {
                 await state.updateStock()
-
+                
                 if (state.success) {
-                successMessage.textContent = state.success
-                successMessage.style.display = "block"
-                supplierId.value = ""
-                productId.value = ""
-                sku.value = ""
-                quantity.value = ""
+                    successMessage.textContent = state.success
+                    successMessage.style.display = "block"
+                    supplierId.value = ""
+                    productId.value = ""
+                    sku.value = ""
+                    quantity.value = ""
                 }
             } catch (error) {
                 if (state.error) {

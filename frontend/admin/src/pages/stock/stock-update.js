@@ -41,8 +41,14 @@ export function getStockUpdateData() {
         )
 
         this.success = `Estoque atualizado com sucesso! Quantidade: ${this.form.quantity}`
-        this.resetForm()
-        return result
+        this.form = {
+          supplierId: "",
+          productId: "",
+          sku: "",
+          quantity: "",
+        }
+        
+        return result;
       } catch (error) {
         this.error = error.message
         console.error("Erro ao atualizar estoque:", error)
