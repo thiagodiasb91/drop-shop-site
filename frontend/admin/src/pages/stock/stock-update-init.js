@@ -1,12 +1,22 @@
 import { getStockUpdateData } from "./stock-update.js"
+import { AuthService } from "../../services/auth.service.js"    
 
-Alpine.data('init', () => ({
-		init() {
-			const state = getStockUpdateData()
+export function getData() {
+    return {
+        user: null,
+        async init() {
+            const me = await AuthService.me()
+
+            if (!me) {
+                window.location.href = "/pages/auth/login.html";
+                return
+            }
+
+            this.user = me.user;
+            const state = getStockUpdateData()
 
             const form = document.getElementById("stockForm")
             const supplierId = document.getElementById("supplierId")
-            const productId = document.getElementById("productId")
             const sku = document.getElementById("sku")
             const quantity = document.getElementById("quantity")
             const submitBtn = document.getElementById("submitBtn")
@@ -18,9 +28,7 @@ Alpine.data('init', () => ({
             supplierId.addEventListener("change", (e) =>
                 state.handleInputChange("supplierId", e.target.value)
             )
-            productId.addEventListener("change", (e) =>
-                state.handleInputChange("productId", e.target.value)
-            )
+            
             sku.addEventListener("change", (e) => state.handleInputChange("sku", e.target.value))
                 quantity.addEventListener("change", (e) =>
                 state.handleInputChange("quantity", e.target.value)
@@ -29,38 +37,41 @@ Alpine.data('init', () => ({
 
             // Submit do formulário
             form.addEventListener("submit", async (e) => {
-            e.preventDefault()
+                e.preventDefault()
 
-            supplierId.value ? state.handleInputChange("supplierId", supplierId.value) : null
-            productId.value ? state.handleInputChange("productId", productId.value) : null
-            sku.value ? state.handleInputChange("sku", sku.value) : null
-            quantity.value ? state.handleInputChange("quantity", quantity.value) : null
+                supplierId.value ? state.handleInputChange("supplierId", supplierId.value) : null
+                sku.value ? state.handleInputChange("sku", sku.value) : null
+                quantity.value ? state.handleInputChange("quantity", quantity.value) : null
 
-            successMessage.style.display = "none"
-            errorMessage.style.display = "none"
-            loadingMessage.style.display = "block"
-            submitBtn.disabled = true
+                successMessage.style.display = "none"
+                errorMessage.style.display = "none"
+                loadingMessage.style.display = "block"
+                submitBtn.disabled = true
 
-            try {
-                await state.updateStock()
-                
-                if (state.success) {
-                    successMessage.textContent = state.success
-                    successMessage.style.display = "block"
-                    supplierId.value = ""
-                    productId.value = ""
-                    sku.value = ""
-                    quantity.value = ""
+                try {
+                    await state.updateStock()
+                    
+                    if (state.success) {
+                        successMessage.textContent = state.success;
+                        successMessage.style.display = "block";
+                        supplierId.value = "";
+                        sku.value = "";
+                        quantity.value = "";
+                    }
+                } catch (error) {
+                    if (state.error) {
+                        errorMessage.textContent = state.error;
+                        errorMessage.style.display = "block"
+                    }
+                } finally {
+                    loadingMessage.style.display = "none";
+                    submitBtn.disabled = false
                 }
-            } catch (error) {
-                if (state.error) {
-                errorMessage.textContent = state.error
-                errorMessage.style.display = "block"
-                }
-            } finally {
-                loadingMessage.style.display = "none"
-                submitBtn.disabled = false
-            }
-            })
-		}
-	}))
+            });
+        },
+        async logout() {
+            await AuthService.logout();
+            window.location.reload();
+        }
+    }
+} 

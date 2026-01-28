@@ -1,13 +1,13 @@
 import { ENV } from "../config/env.js"
 
 export const StockService = {
-  async updateStock(supplierId, productId, sku, quantity) {
+  async updateStock(supplierId, sku, quantity) {
     try {
-      if (!supplierId || !productId || !sku || quantity === undefined) {
-        throw new Error("Parâmetros obrigatórios: supplierId, productId, sku e quantity")
+      if (!supplierId || !sku || quantity === undefined) {
+        throw new Error("Parâmetros obrigatórios: supplierId, sku e quantity")
       }
 
-      const url = `${ENV.API_BASE_URL}/suppliers/${supplierId}/product/${productId}/sku/${sku}/stock`
+      const url = `${ENV.API_BASE_URL}/suppliers/${supplierId}/sku/${sku}/stock`
 
       const res = await fetch(url, {
         method: "PUT",

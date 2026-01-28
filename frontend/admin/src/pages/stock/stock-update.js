@@ -4,7 +4,6 @@ export function getStockUpdateData() {
   return {
     form: {
       supplierId: "",
-      productId: "",
       sku: "",
       quantity: "",
     },
@@ -15,7 +14,6 @@ export function getStockUpdateData() {
     resetForm() {
       this.form = {
         supplierId: "",
-        productId: "",
         sku: "",
         quantity: "",
       }
@@ -29,13 +27,12 @@ export function getStockUpdateData() {
       this.success = null
 
       try {
-        if (!this.form.supplierId || !this.form.productId || !this.form.sku || !this.form.quantity) {
+        if (!this.form.supplierId || !this.form.sku || !this.form.quantity) {
           throw new Error("Todos os campos são obrigatórios")
         }
 
         const result = await StockService.updateStock(
           this.form.supplierId,
-          this.form.productId,
           this.form.sku,
           this.form.quantity
         )
