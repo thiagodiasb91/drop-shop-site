@@ -2,6 +2,14 @@ import { requireAuth } from "./auth/auth.guard.js";
 import { loadLayout } from "./layout/layout.js";
 
 const routes = {
+  "/stock": {
+    html: "/src/pages/stock/index.html",
+    js: "/src/pages/stock/stock-update-init.js",
+  },
+  "/kardex": {
+    html: "/src/pages/kardex/index.html",
+    js: "/src/pages/kardex/kardex.js",
+  },
   "/login": {
     html: "/src/pages/auth/login/index.html",
     js: "/src/pages/auth/login/login.js",

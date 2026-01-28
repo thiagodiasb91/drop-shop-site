@@ -9,8 +9,8 @@ export function getData() {
     async init() {
       console.log("Iniciando callback authentication...");
       if (this.called) {
-        console.log("Callback já foi chamado, evitando chamada duplicada.");
         return;
+        console.log("Callback já foi chamado, evitando chamada duplicada.");
       }
 
       this.called = true;
