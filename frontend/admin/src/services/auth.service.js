@@ -1,5 +1,21 @@
 import { ENV } from "../config/env.js"
 
+const TOKEN_KEY = "auth.token"
+
+function setToken(token) {
+  if (token) localStorage.setItem(TOKEN_KEY, token)
+  else localStorage.removeItem(TOKEN_KEY)
+}
+
+function getToken() {
+  return localStorage.getItem(TOKEN_KEY)
+}
+
+function getAuthHeader() {
+  const t = getToken()
+  return t ? { Authorization: `Bearer ${t}` } : {}
+}
+
 export const AuthService = {
   async callback(code) {
     const res = await fetch(
@@ -16,13 +32,18 @@ export const AuthService = {
       throw new Error("Auth callback failed")
     }
 
-    return res.json()
+    const data = await res.json()
+    if (data && data.sessionToken) setToken(data.sessionToken)
+    return data
   },
 
   async me() {
     const res = await fetch(
-      `${ENV.API_BASE_URL}/bff/me`,
-      { credentials: "include" }
+      `${ENV.API_BASE_URL}/bff/auth/me`,
+      {
+        credentials: "include",
+        headers: { ...getAuthHeader() },
+      }
     )
 
     if (res.status === 401) return null
@@ -35,7 +56,13 @@ export const AuthService = {
       {
         method: "POST",
         credentials: "include",
+        headers: { ...getAuthHeader() },
       }
     )
+    setToken(null)
   },
+
+  getAuthHeader,
+  getToken,
+  setToken,
 }

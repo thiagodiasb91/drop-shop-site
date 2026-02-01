@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kardex por SKU</title>
+  <link rel="stylesheet" href="../../styles/site.css">
+  <style>
+    .kardex-wrapper {
+      padding: 40px 20px;
+      min-height: 100vh;
+    }
+
+    .kardex-container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .kardex-title {
+      text-align: center;
+      color: #e5e7eb;
+      margin-bottom: 32px;
+      font-size: 1.8rem;
+      font-weight: 700;
+    }
+
+    .kardex-search-box {
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 32px;
+      margin-bottom: 32px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .kardex-search-form {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    .kardex-form-group {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .kardex-label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #e5e7eb;
+      font-size: 0.95rem;
+    }
+
+    .kardex-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      font-size: 14px;
+      background: #0f172a;
+      color: #e5e7eb;
+      text-transform: uppercase;
+      transition: border-color 0.2s ease;
+    }
+
+    .kardex-input::placeholder {
+      color: #64748b;
+    }
+
+    .kardex-input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+    }
+
+    .kardex-btn-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .kardex-btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+      font-size: 14px;
+    }
+
+    .kardex-btn-search {
+      background-color: #3b82f6;
+      color: white;
+      flex: 1;
+      min-width: 120px;
+    }
+
+    .kardex-btn-search:hover:not(:disabled) {
+      background-color: #2563eb;
+    }
+
+    .kardex-btn-search:disabled {
+      background-color: #475569;
+      cursor: not-allowed;
+    }
+
+    .kardex-btn-clear {
+      background-color: #6366f1;
+      color: white;
+    }
+
+    .kardex-btn-clear:hover {
+      background-color: #4f46e5;
+    }
+
+    .kardex-alert {
+      padding: 16px 20px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+      font-weight: 500;
+      font-size: 0.95rem;
+      border-left: 4px solid;
+    }
+
+    .kardex-alert-success {
+      background-color: #064e3b;
+      color: #86efac;
+      border-left-color: #10b981;
+    }
+
+    .kardex-alert-error {
+      background-color: #7f1d1d;
+      color: #fca5a5;
+      border-left-color: #ef4444;
+    }
+
+    .kardex-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .kardex-stat-card {
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .kardex-stat-label {
+      color: #94a3b8;
+      font-size: 0.85rem;
+      margin-bottom: 8px;
+    }
+
+    .kardex-stat-value {
+      color: #e5e7eb;
+      font-size: 1.8rem;
+      font-weight: 700;
+    }
+
+    .kardex-stat-add {
+      border-left: 4px solid #10b981;
+    }
+
+    .kardex-stat-remove {
+      border-left: 4px solid #ef4444;
+    }
+
+    .kardex-stat-current {
+      border-left: 4px solid #3b82f6;
+    }
+
+    .kardex-table-container {
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .kardex-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .kardex-table thead {
+      background-color: #0f172a;
+      border-bottom: 2px solid #334155;
+    }
+
+    .kardex-table th {
+      padding: 16px;
+      text-align: left;
+      color: #cbd5e1;
+      font-weight: 600;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .kardex-table tbody tr {
+      border-bottom: 1px solid #334155;
+      transition: background-color 0.2s ease;
+    }
+
+    .kardex-table tbody tr:hover {
+      background-color: #1e293b;
+    }
+
+    .kardex-table td {
+      padding: 16px;
+      color: #e5e7eb;
+      font-size: 0.9rem;
+    }
+
+    .kardex-operation {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .kardex-operation-add {
+      background-color: rgba(16, 185, 129, 0.2);
+      color: #86efac;
+      border: 1px solid #10b981;
+    }
+
+    .kardex-operation-remove {
+      background-color: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+      border: 1px solid #ef4444;
+    }
+
+    .kardex-operation-unknown {
+      background-color: rgba(107, 114, 128, 0.2);
+      color: #cbd5e1;
+      border: 1px solid #6b7280;
+    }
+
+    .kardex-quantity {
+      text-align: right;
+      font-weight: 600;
+    }
+
+    .kardex-pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      padding: 20px;
+      border-top: 1px solid #334155;
+    }
+
+    .kardex-pagination-btn {
+      padding: 8px 12px;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      background: #0f172a;
+      color: #e5e7eb;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .kardex-pagination-btn:hover:not(:disabled) {
+      background-color: #334155;
+      border-color: #475569;
+    }
+
+    .kardex-pagination-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .kardex-pagination-info {
+      color: #94a3b8;
+      font-size: 0.9rem;
+      min-width: 150px;
+      text-align: center;
+    }
+
+    .kardex-empty {
+      padding: 60px 20px;
+      text-align: center;
+      color: #94a3b8;
+    }
+
+    .kardex-empty-icon {
+      font-size: 3rem;
+      margin-bottom: 16px;
+    }
+
+    .kardex-loading {
+      text-align: center;
+      padding: 40px 20px;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+  <div class="kardex-wrapper" x-data="kardexData" x-init="init()">
+    <div class="kardex-container">
+      <h1 class="kardex-title">Histórico de Kardex por SKU</h1>
+
+      <!-- Alertas -->
+      <div x-show="success" class="kardex-alert kardex-alert-success" x-text="success"></div>
+      <div x-show="error" class="kardex-alert kardex-alert-error" x-text="error"></div>
+
+      <!-- Caixa de Busca -->
+      <div class="kardex-search-box">
+        <form @submit.prevent="loadKardex()" class="kardex-search-form">
+          <div class="kardex-form-group" style="flex: 1; min-width: 250px;">
+            <label for="sku" class="kardex-label">Buscar por SKU</label>
+            <input
+              type="text"
+              id="sku"
+              class="kardex-input"
+              placeholder="ex: CROSS_P"
+              x-model="sku"
+              @keyup.enter="loadKardex()"
+              required
+            >
+          </div>
+
+          <div class="kardex-btn-group">
+            <button type="submit" class="kardex-btn kardex-btn-search" :disabled="loading">
+              <span x-show="!loading">Buscar</span>
+              <span x-show="loading">Buscando...</span>
+            </button>
+            <button type="button" class="kardex-btn kardex-btn-clear" @click="clearSearch()">Limpar</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Estatísticas -->
+      <template x-if="kardexItems.length > 0">
+        <div class="kardex-stats">
+          <div class="kardex-stat-card kardex-stat-add">
+            <div class="kardex-stat-label">Total Adicionado</div>
+            <div class="kardex-stat-value" x-text="getTotalQuantityAdded()"></div>
+          </div>
+
+          <div class="kardex-stat-card kardex-stat-remove">
+            <div class="kardex-stat-label">Total Removido</div>
+            <div class="kardex-stat-value" x-text="getTotalQuantityRemoved()"></div>
+          </div>
+
+          <div class="kardex-stat-card kardex-stat-current">
+            <div class="kardex-stat-label">Quantidade Atual</div>
+            <div class="kardex-stat-value" x-text="getCurrentQuantity()"></div>
+          </div>
+
+          <div class="kardex-stat-card">
+            <div class="kardex-stat-label">Total de Registros</div>
+            <div class="kardex-stat-value" x-text="kardexItems.length"></div>
+          </div>
+        </div>
+      </template>
+
+      <!-- Tabela -->
+      <template x-if="loading">
+        <div class="kardex-loading">
+          <p>⏳ Carregando dados...</p>
+        </div>
+      </template>
+
+      <template x-if="!loading && kardexItems.length === 0 && sku">
+        <div class="kardex-empty">
+          <div class="kardex-empty-icon">📭</div>
+          <p>Nenhum registro encontrado</p>
+        </div>
+      </template>
+
+      <template x-if="!loading && kardexItems.length > 0">
+        <div class="kardex-table-container">
+          <table class="kardex-table">
+            <thead>
+              <tr>
+                <th>Data/Hora</th>
+                <th>Operação</th>
+                <th>Quantidade</th>
+                <th>Detalhes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="item in paginatedItems" :key="item.SK">
+                <tr>
+                  <td x-text="formatDate(item.Date)"></td>
+                  <td>
+                    <span :class="getOperationClass(item.Operation)" x-text="item.Operation?.toUpperCase() || '-'"></span>
+                  </td>
+                  <td class="kardex-quantity" x-text="item.Quantity || 0"></td>
+                  <td x-text="item.Detail || '-'" style="max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" :title="item.Detail || ''"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+
+          <!-- Paginação -->
+          <template x-if="totalPages > 1">
+            <div class="kardex-pagination">
+              <button class="kardex-pagination-btn" @click="prevPage()" :disabled="currentPage === 1">← Anterior</button>
+              <div class="kardex-pagination-info">
+                Página <span x-text="currentPage"></span> de <span x-text="totalPages"></span>
+              </div>
+              <button class="kardex-pagination-btn" @click="nextPage()" :disabled="currentPage === totalPages">Próxima →</button>
+            </div>
+          </template>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script type="module">
+    import { getData } from "./kardex-sku.js"
+    
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('kardexData', getData)
+    })
+  </script>
+</body>
+</html>

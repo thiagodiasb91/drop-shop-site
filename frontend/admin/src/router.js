@@ -2,6 +2,10 @@ import { requireAuth } from "./auth/auth.guard.js";
 import { loadLayout } from "./layout/layout.js";
 
 const routes = {
+  "/kardex-sku": {
+    html: "/src/pages/kardex/kardex-sku.html",
+    js: "/src/pages/kardex/kardex-sku.js",
+  },
   "/stock": {
     html: "/src/pages/stock/index.html",
     js: "/src/pages/stock/stock-update-init.js",
@@ -9,6 +13,10 @@ const routes = {
   "/kardex": {
     html: "/src/pages/kardex/index.html",
     js: "/src/pages/kardex/kardex.js",
+  },
+  "/payments": {
+    html: "/src/pages/payments/index.html",
+    js: "/src/pages/payments/payments.js",
   },
   "/login": {
     html: "/src/pages/auth/login/index.html",

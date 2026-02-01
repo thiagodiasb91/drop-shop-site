@@ -1,0 +1,62 @@
+<link rel="stylesheet" href="/src/pages/payments/payments.css">
+
+<div class="payments-page" x-data="getData()" x-init="init()">
+  <div class="page-header">
+    <h2>Pagamentos Pendentes</h2>
+    <div class="actions">
+      <input type="text" x-model="sellerId" placeholder="Seller ID" class="seller-input">
+      <button class="btn refresh" @click="loadPayments">Atualizar</button>
+    </div>
+  </div>
+
+  <div class="status">
+    <template x-if="loading">
+      <div class="loading">Carregando...</div>
+    </template>
+
+    <template x-if="error">
+      <div class="error" x-text="error"></div>
+    </template>
+
+    <template x-if="success">
+      <div class="success" x-text="success"></div>
+    </template>
+  </div>
+
+  <div class="payments-list" x-show="payments.length > 0">
+    <table class="payments-table">
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>SKU</th>
+          <th>Pedido</th>
+          <th>Fornecedor</th>
+          <th>Qtd</th>
+          <th>Valor</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <template x-for="payment in payments" :key="payment.sk">
+          <tr>
+            <td x-text="formatDate(payment.createdAt)"></td>
+            <td x-text="payment.sku"></td>
+            <td x-text="payment.orderSn"></td>
+            <td x-text="payment.supplierId"></td>
+            <td x-text="payment.quantity"></td>
+            <td x-text="formatValue(payment.value)"></td>
+            <td x-text="payment.status"></td>
+            <td>
+              <button class="btn pay" @click.prevent="pay(payment)">Pagar</button>
+            </td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="empty" x-show="!loading && payments.length === 0 && !error">
+    Nenhum pagamento pendente encontrado.
+  </div>
+</div>

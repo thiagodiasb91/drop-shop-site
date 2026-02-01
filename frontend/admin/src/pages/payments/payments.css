@@ -1,0 +1,75 @@
+/* Pagamentos Pendentes */
+.payments-page {
+  padding: 12px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.page-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.actions .btn {
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background: #f7f7f7;
+  cursor: pointer;
+}
+
+.seller-input {
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  width: 120px;
+}
+
+.payments-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+}
+
+.payments-table th,
+.payments-table td {
+  border: 1px solid #e6e6e6;
+  padding: 8px;
+  text-align: left;
+}
+
+.payments-table th {
+  background: #f4f4f4;
+}
+
+.btn.pay {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.loading { color: #666; }
+.error { color: #b00020; margin: 8px 0; }
+.success { color: #0f6b18; margin: 8px 0; }
+
+@media (max-width: 800px) {
+  .payments-table th:nth-child(1),
+  .payments-table td:nth-child(1) {
+    display: none; /* esconder data em telas pequenas para simplificar */
+  }
+}
