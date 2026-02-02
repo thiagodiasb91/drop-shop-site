@@ -1,12 +1,12 @@
 import html from "./index.html?raw"
-import { AuthService } from "../../services/auth.service.js"
 
 export function getData() {
   return {
+    currentPageAccessed: window.location.pathname,
   }
 }
 
 export function render() {
-  console.log("page.dashboard.render.loaded");
+  console.log("page.not-found.render.loaded");
   return html;
 }

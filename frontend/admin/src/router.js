@@ -1,33 +1,45 @@
 import { requireAuth } from "./auth/auth.guard.js";
-import { loadLayout } from "./layout/layout.js";
+import { loadLayout } from "./layout.js";
 
 const routes = {
-  "/login": {
-    html: "/src/pages/auth/login/index.html",
-    js: "/src/pages/auth/login/login.js",
-    public: true,
+  "/": {
+    title: "Home",
+    js: () => import("./pages/home/home.js"),
   },
-  "/pages/auth/callback.html": {
-    html: "/src/pages/auth/callback/index.html",
-    js: "/src/pages/auth/callback/callback.js",
+  "/login": {
+    title: "Login",
+    js: () => import("./pages/auth/login/login.js"),
     public: true,
   },
   "/callback": {
-    html: "/src/pages/auth/callback/index.html",
-    js: "/src/pages/auth/callback/callback.js",
+    title: "Callback",
+    js: () => import("./pages/auth/callback/callback.js"),
     public: true,
   },
-  "/orders": {
-    html: "/src/pages/orders/list/index.html",
-    js: "/src/pages/orders/list/list.js",
+  "/products": {
+    title: "Produtos",
+    js: () => import("./pages/products/products.js"),
   },
-  "/pages/dashboard/dashboard.html": {
-    html: "/src/pages/dashboard/index.html",
-    js: "/src/pages/dashboard/dashboard.js",
+  "/settings": {
+    title: "Configurações",
+    js: () => import("./pages/settings/settings.js"),
+  },
+  "/orders": {
+    title: "Pedidos",
+    js: () => import("./pages/orders/list/list.js"),
+  },
+  "/dashboard": {
+    title: "Dashboard",
+    js: () => import("./pages/dashboard/dashboard.js"),
+  },
+  "*": {
+    title: "Página não encontrada",
+    js: () => import("./pages/not-found/not-found.js"),
   },
 };
 
 export async function initRouter() {
+  console.log("router.initRouter.app", document.getElementById("app"));
   console.log("router.initRouter.request", location.pathname);
   window.addEventListener("popstate", render);
   await render();
@@ -42,16 +54,16 @@ export async function navigate(path) {
 async function render() {
   console.log("router.render.request", location.pathname);
   const path = location.pathname;
-  const route = routes[path] || routes["/login"];
+  const route = routes[path] ?? routes["*"];
 
   if (!route.public) {
-    console.log("Rota protegida, verificando autenticação...");
+    console.log("router.render.requiringAuth");
     await requireAuth();
   }
 
   const app = document.getElementById("app");
   app.innerHTML = "";
 
-  console.log("Carregando layout para a rota:", path, route);
+  console.log("router.render.loadingLayoutForRoute", path, route);
   await loadLayout(app, route);
 }

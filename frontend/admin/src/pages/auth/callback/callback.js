@@ -1,3 +1,4 @@
+import html from "./index.html?raw";
 import { AuthService } from "../../../services/auth.service.js"
 
 export function getData() {
@@ -7,9 +8,9 @@ export function getData() {
     called: false,
 
     async init() {
-      console.log("Iniciando callback authentication...");
+      console.log("page.callback.init.executing");
       if (this.called) {
-        console.log("Callback já foi chamado, evitando chamada duplicada.");
+        console.log("page.callback.init.alreadyCalled");
         return;
       }
 
@@ -20,20 +21,20 @@ export function getData() {
           .get("code")
 
       if (!code) {
-        console.log("Código ausente");
+        console.log("page.callback.init.noCode");
         this.message = "Código ausente"
         this.executing = false
         return
       }
 
       try {
-        console.log("Chamando AuthService.callback...");
+        console.log("page.callback.init.callingAuthService");
         await AuthService.callback(code)
         this.message = "Login realizado"
-        console.log("Redirecionando para dashboard...");
-        window.location.href = "/pages/dashboard/dashboard.html"
+        console.log("page.callback.init.redirecting");
+        window.location.href = "/"
       } catch (e) {
-        console.error("callback.js: Erro ao autenticar", e);
+        console.error("page.callback.init.error", e);
         this.message = "Erro ao autenticar"
       }
       finally {
@@ -41,10 +42,14 @@ export function getData() {
       }
     },
     async goToLogin() {
-      console.log("Redirecionando para login...");
+      console.log("page.callback.goToLogin.redirecting");
       window.location.href = "/pages/auth/login.html"
       this.executing = false
     }
   }
 }
 
+export function render() {
+  console.log("page.callback.render.loaded");
+  return html;
+}

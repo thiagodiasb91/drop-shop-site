@@ -6,12 +6,20 @@ export default class Bootstrap {
   }
 
   init() {
-    this.Alpine.data("layout", () => ({
+    this.Alpine.data("bootstrap", () => ({
+      logged: null,
+      async init() {
+        console.log('bootstrap.init.called');
+        this.logged = await AuthService.me()
+        console.log('bootstrap.init.logged', this.logged);
+      },
       async logout() {
+        console.log('bootstrap.logout.called');
+        const confirm = window.confirm('Tem certeza que deseja sair?')
+        if (!confirm) return
         await AuthService.logout()
         window.location.reload()
       }
     }));
-
   }
 }

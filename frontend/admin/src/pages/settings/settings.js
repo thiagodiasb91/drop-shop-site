@@ -1,5 +1,4 @@
 import html from "./index.html?raw"
-import { AuthService } from "../../services/auth.service.js"
 
 export function getData() {
   return {
@@ -7,6 +6,6 @@ export function getData() {
 }
 
 export function render() {
-  console.log("page.dashboard.render.loaded");
+  console.log("page.settings.render.loaded");
   return html;
 }
