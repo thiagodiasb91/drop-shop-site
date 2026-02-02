@@ -82,8 +82,11 @@ export function getData() {
       return KardexService.formatDate(dateString)
     },
 
-    getOperationClass(operation) {
-      return `kardex-operation kardex-operation-${operation?.toLowerCase() || "unknown"}`
+    getOperationBadgeClass(operation) {
+      const op = operation?.toLowerCase()
+      if (op === "add") return "badge bg-success"
+      if (op === "remove") return "badge bg-danger"
+      return "badge bg-secondary"
     },
 
     getTotalQuantityAdded() {

@@ -1,62 +1,71 @@
-<link rel="stylesheet" href="/src/pages/payments/payments.css">
-
-<div class="payments-page" x-data="getData()" x-init="init()">
-  <div class="page-header">
-    <h2>Pagamentos Pendentes</h2>
-    <div class="actions">
-      <input type="text" x-model="sellerId" placeholder="Seller ID" class="seller-input">
-      <button class="btn refresh" @click="loadPayments">Atualizar</button>
+<div class="container-fluid" x-data="getData()" x-init="init()">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">Pagamentos Pendentes</h2>
+    <div class="d-flex gap-2">
+      <input type="text" x-model="sellerId" placeholder="Seller ID" class="form-control" style="width: 150px;">
+      <button class="btn btn-primary" @click="loadPayments">
+        <i class="fas fa-sync-alt me-1"></i>Atualizar
+      </button>
     </div>
   </div>
 
-  <div class="status">
+  <div class="mb-3">
     <template x-if="loading">
-      <div class="loading">Carregando...</div>
+      <div class="alert alert-info">
+        <i class="fas fa-spinner fa-spin me-2"></i>Carregando...
+      </div>
     </template>
 
     <template x-if="error">
-      <div class="error" x-text="error"></div>
+      <div class="alert alert-danger" x-text="error"></div>
     </template>
 
     <template x-if="success">
-      <div class="success" x-text="success"></div>
+      <div class="alert alert-success" x-text="success"></div>
     </template>
   </div>
 
-  <div class="payments-list" x-show="payments.length > 0">
-    <table class="payments-table">
-      <thead>
-        <tr>
-          <th>Data</th>
-          <th>SKU</th>
-          <th>Pedido</th>
-          <th>Fornecedor</th>
-          <th>Qtd</th>
-          <th>Valor</th>
-          <th>Status</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-        <template x-for="payment in payments" :key="payment.sk">
+  <div x-show="payments.length > 0">
+    <div class="table-responsive">
+      <table class="table table-striped table-hover">
+        <thead class="table-dark">
           <tr>
-            <td x-text="formatDate(payment.createdAt)"></td>
-            <td x-text="payment.sku"></td>
-            <td x-text="payment.orderSn"></td>
-            <td x-text="payment.supplierId"></td>
-            <td x-text="payment.quantity"></td>
-            <td x-text="formatValue(payment.value)"></td>
-            <td x-text="payment.status"></td>
-            <td>
-              <button class="btn pay" @click.prevent="pay(payment)">Pagar</button>
-            </td>
+            <th>Data</th>
+            <th>SKU</th>
+            <th>Pedido</th>
+            <th>Fornecedor</th>
+            <th>Qtd</th>
+            <th>Valor</th>
+            <th>Status</th>
+            <th>Ações</th>
           </tr>
-        </template>
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          <template x-for="payment in payments" :key="payment.sk">
+            <tr>
+              <td x-text="formatDate(payment.createdAt)"></td>
+              <td x-text="payment.sku"></td>
+              <td x-text="payment.orderSn"></td>
+              <td x-text="payment.supplierName"></td>
+              <td x-text="payment.quantity"></td>
+              <td x-text="formatValue(payment.value)"></td>
+              <td>
+                <span class="badge bg-warning" x-text="payment.status"></span>
+              </td>
+              <td>
+                <button class="btn btn-success btn-sm" @click.prevent="pay(payment)">
+                  <i class="fas fa-dollar-sign me-1"></i>Pagar
+                </button>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
   </div>
 
-  <div class="empty" x-show="!loading && payments.length === 0 && !error">
-    Nenhum pagamento pendente encontrado.
+  <div class="text-center text-muted" x-show="!loading && payments.length === 0 && !error">
+    <i class="fas fa-inbox fa-3x mb-3"></i>
+    <p>Nenhum pagamento pendente encontrado.</p>
   </div>
 </div>

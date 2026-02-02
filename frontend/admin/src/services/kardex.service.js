@@ -1,4 +1,5 @@
 import { ENV } from "../config/env.js"
+import { AuthService } from "./auth.service.js"
 
 export const KardexService = {
   async getKardex(filters = {}) {
@@ -16,7 +17,10 @@ export const KardexService = {
       const res = await fetch(url, {
         method: "GET",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...AuthService.getAuthHeader()
+        },
       })
 
       if (!res.ok) {
@@ -53,7 +57,10 @@ export const KardexService = {
       const res = await fetch(url, {
         method: "GET",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...AuthService.getAuthHeader()
+        },
       })
 
       if (!res.ok) {

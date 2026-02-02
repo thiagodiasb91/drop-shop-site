@@ -1,4 +1,5 @@
 import { ENV } from "../config/env.js"
+import { AuthService } from "./auth.service.js"
 
 export const StockService = {
   async updateStock(supplierId, sku, quantity) {
@@ -12,7 +13,10 @@ export const StockService = {
       const res = await fetch(url, {
         method: "PUT",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...AuthService.getAuthHeader()
+        },
         body: JSON.stringify({ quantity: Number(quantity) }),
       })
 
@@ -35,7 +39,6 @@ export const StockService = {
         try {
           const result = await this.updateStock(
             update.supplierId,
-            update.productId,
             update.sku,
             update.quantity
           )

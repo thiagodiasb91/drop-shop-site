@@ -1,36 +1,66 @@
-<body>
-  <div class="layout" x-data="{...layout(), sidebarOpen: true }">
-    <aside x-show="sidebarOpen" class="sidebar" :class="{ 'open': sidebarOpen }">
-      <h2>
-        Drop Shop Admin 
-                    <i class="fa-solid fa-gauge-high"></i>
-
-      </h2>
-      <hr>
-      
-      <ul class="menu">
-        <li><a href="#">Dashboard</a></li>
-        <li><a href="/stock" @click="spaNavigate">Estoque</a></li>
-        <li><a href="#">Pedidos</a></li>
-        <li><a href="#">Configurações</a></li>
-        <li><a href="/kardex" @click="spaNavigate">Kardex</a></li>
-        <li><a href="/payments" @click="spaNavigate">Pagamentos</a></li>
-      </ul>
-      <button class="btn-bottom btn-logout" @click="logout">
-         <i class="fa fa-sign-out"></i> Log Out
-      </button>
-    </aside>
-    <div class="content">
-      <header class="topbar">
-        <button class="hamburger" @click="sidebarOpen = !sidebarOpen">
-          ☰
+<body class="bg-light">
+  <div class="d-flex" x-data="{...layout(), sidebarOpen: true }">
+    <nav x-show="sidebarOpen" class="bg-white border-end shadow-sm" style="width: 250px; min-height: 100vh;">
+      <div class="p-3">
+        <h4 class="text-primary mb-3">
+          <i class="fas fa-tachometer-alt me-2"></i>
+          Drop Shop Admin
+        </h4>
+        <hr>
+        
+        <ul class="nav flex-column">
+          <li class="nav-item mb-1">
+            <a class="nav-link text-dark" href="#">
+              <i class="fas fa-home me-2"></i>Dashboard
+            </a>
+          </li>
+          <li class="nav-item mb-1">
+            <a class="nav-link text-dark" href="/stock" @click="spaNavigate">
+              <i class="fas fa-boxes me-2"></i>Estoque
+            </a>
+          </li>
+          <li class="nav-item mb-1">
+            <a class="nav-link text-dark" href="#">
+              <i class="fas fa-shopping-cart me-2"></i>Pedidos
+            </a>
+          </li>
+          <li class="nav-item mb-1">
+            <a class="nav-link text-dark" href="#">
+              <i class="fas fa-cog me-2"></i>Configurações
+            </a>
+          </li>
+          <li class="nav-item mb-1">
+            <a class="nav-link text-dark" href="/kardex" @click="spaNavigate">
+              <i class="fas fa-clipboard-list me-2"></i>Kardex
+            </a>
+          </li>
+          <li class="nav-item mb-1">
+            <a class="nav-link text-dark" href="/payments" @click="spaNavigate">
+              <i class="fas fa-credit-card me-2"></i>Pagamentos
+            </a>
+          </li>
+        </ul>
+        
+        <div class="position-absolute bottom-0 start-0 p-3">
+          <button class="btn btn-outline-danger btn-sm" @click="logout">
+            <i class="fas fa-sign-out-alt me-1"></i> Sair
+          </button>
+        </div>
+      </div>
+    </nav>
+    
+    <div class="flex-fill d-flex flex-column">
+      <header class="bg-white border-bottom p-3 d-flex align-items-center">
+        <button class="btn btn-outline-secondary me-3" @click="sidebarOpen = !sidebarOpen">
+          <i class="fas fa-bars"></i>
         </button>
-        <strong>Dashboard</strong>
+        <h5 class="mb-0">Dashboard</h5>
       </header>
 
-      <main id="content" class="main">
+      <main id="content" class="flex-fill p-4">
       </main>
     </div>
+  </div>
 </body>
 
 

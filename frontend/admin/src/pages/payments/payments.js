@@ -67,12 +67,23 @@ export function getData() {
       return Number(val).toLocaleString(undefined, { style: "currency", currency: "BRL" })
     },
 
-    pay(payment) {
-      // aqui ficará a integração com InfinityPay no futuro
-      // por enquanto apenas demonstração
-      console.log("Solicitação de pagamento:", payment)
-      // Exemplo: abrir nova janela ou redirecionar para fluxo de checkout
-      alert(`Iniciar pagamento para pedido ${payment.ordersn} — R$ ${payment.value}`)
+    async pay(payment) {
+      try {
+        this.loading = true
+        this.error = null
+        
+        await PaymentService.processPayment(payment.SK || payment.id, this.sellerId)
+        
+        this.success = `Pagamento processado com sucesso para pedido ${payment.ordersn}`
+        
+        // Recarrega a lista de pagamentos
+        await this.loadPayments()
+      } catch (err) {
+        console.error("Erro ao processar pagamento:", err)
+        this.error = err.message || "Erro ao processar pagamento"
+      } finally {
+        this.loading = false
+      }
     },
 
     async logout() {
