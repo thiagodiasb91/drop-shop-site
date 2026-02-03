@@ -20,17 +20,25 @@ const routes = {
     title: "Produtos",
     js: () => import("./pages/products/products.js"),
   },
-  "/settings": {
-    title: "Configurações",
-    js: () => import("./pages/settings/settings.js"),
-  },
   "/orders": {
     title: "Pedidos",
     js: () => import("./pages/orders/list/list.js"),
   },
+  "/orders-group": {
+    title: "Pedidos",
+    js: () => import("./pages/orders/list-group/index.js"),
+  },
   "/dashboard": {
     title: "Dashboard",
     js: () => import("./pages/dashboard/dashboard.js"),
+  },
+  "/admin/users": {
+    title: "Admin - Usuários",
+    js: () => import("./pages/users/index.js"),
+  },
+  "/settings": {
+    title: "Configurações",
+    js: () => import("./pages/settings/settings.js"),
   },
   "*": {
     title: "Página não encontrada",
@@ -48,6 +56,7 @@ export async function initRouter() {
 export async function navigate(path) {
   console.log("router.navigate.request", path);
   history.pushState({}, "", path);
+  window.location.reload();
   await render();
 }
 

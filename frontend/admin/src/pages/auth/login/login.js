@@ -19,9 +19,5 @@ export function getData() {
 export function render() {
   console.log("page.login.render.loaded");
 
-  if (AuthService.me())
-    window.location.href = "/";
-
-
   return html;
 }

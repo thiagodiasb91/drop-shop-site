@@ -4,13 +4,14 @@ import { navigate } from "../router.js";
 export async function requireAuth() {
   const user = await AuthService.me()
 
+  console.log("auth.requireAuth.user", user)
   if (!user) {
-    console.log("router.requireAuth.notAuthenticated");
+    console.log("auth.requireAuth.not-authenticated");
     navigate("/login");
-    throw new Error("Not authenticated");
+    // throw new Error("Not authenticated");
   }
 
-  console.log("router.requireAuth.authenticated", user);
+  console.log("auth.requireAuth.authenticated", user);
 
   return user
 }
