@@ -32,7 +32,9 @@ export const AuthService = {
 
     return response
   },
-
+  async getAuthHeader() {
+    return {"Authorization": `Bearer ${sessionStorage.getItem("session_token")}`}
+  },
   async me() {
     const res = await fetch(
       `${ENV.API_BASE_URL}/auth/me`,

@@ -47,7 +47,6 @@ const routes = {
   },
   "/admin/users": {
     title: "Admin - Usuários",
-    allowedRoles: ['admin'],
     js: () => import("./pages/users/users.js"),
   },
   "/settings": {

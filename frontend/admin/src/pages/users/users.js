@@ -1,53 +1,39 @@
 import html from "./users.html?raw"
 import {navigate} from "../../router.js"
+import { UserService } from "../../services/users.services.js"
+import { AuthService } from "../../services/auth.service.js"
 
 export function getData() {
   return {
     search: '',
     users: [],
+    loading: false,
+    error: null,
 
-    init() {
-      this.fetchUsers();
+    async init() {
+      const me = await AuthService.me()
+      if (!me) {
+        window.location.href = "/pages/auth/login.html"
+        return
+      }
+      
+      await this.fetchUsers()
     },
 
     async fetchUsers() {
-      this.users = [
-        {
-          id: 1,
-          name: 'João Silva',
-          cognitoId: '74e82498-2061-70e3-f44e-30f978854444',
-          email: 'joao.silva@example.com',
-          emailVerified: true,
-          role: 'supplier',
-          saving: false
-        },
-        {
-          id: 2,
-          name: 'Maria Souza',
-          cognitoId: '75e82498-2061-70e3-f44e-30f978854444',
-          email: 'maria.souza@example.com',
-          emailVerified: false,
-          role: 'seller',
-          saving: false
-        },
-        {
-          id: 3,
-          name: 'Carlos Pereira',
-          cognitoId: '99s82498-2061-70e3-f44e-30f978854444',
-          email: 'carlos.pereira@example.com',
-          emailVerified: true,
-          role: 'admin',
-          saving: false
-        },
-        {
-          id: 4,
-          name: 'Ana Lima',
-          cognitoId: '87s25846-2061-70e3-f44e-30f978854444',
-          email: 'ana.lima@example.com',
-          emailVerified: false,
-          role: 'supplier',
-          saving: false
-        },]
+      this.loading = true
+      this.error = null
+      
+      try {
+        const data = await UserService.getUsers()
+        this.users = data || []
+      } catch (error) {
+        console.error("Erro ao buscar usuários:", error)
+        this.error = error.message
+        this.users = []
+      } finally {
+        this.loading = false
+      }
     },
 
     get filteredUsers() {
@@ -74,13 +60,18 @@ export function getData() {
       this.save(user);
     },
 
-    save(user) {
-      user.saving = true;
-
-      console.log("users.save", user)
-      setTimeout(() => {
-        user.saving = false;
-      }, 600);
+    async save(user) {
+      user.saving = true
+      
+      try {
+        await UserService.updateUser(user.id, { role: user.role })
+        console.log("Usuário atualizado:", user)
+      } catch (error) {
+        console.error("Erro ao salvar usuário:", error)
+        this.error = error.message
+      } finally {
+        user.saving = false
+      }
     },
     copy(value, event) {
       navigator.clipboard.writeText(value);
