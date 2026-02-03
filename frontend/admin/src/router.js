@@ -79,8 +79,10 @@ export async function navigate(path) {
   await render();
 }
 
-function userHasAccessToRoute(route, userRole) {
+function userHasAccessToRoute(route, user) {
   if (!route.allowedRoles) return true;
+
+  const userRole = user.roles || null;
 
   if (userRole == 'admin') return true;
   
@@ -101,7 +103,7 @@ async function render() {
     await requireAuth(user);
   }
 
-  if (!userHasAccessToRoute(route, user.roles)) {
+  if (!userHasAccessToRoute(route, user)) {
     Alpine.store('toast').open(
       'Você não tem permissão para acessar essa página',
       'error'
