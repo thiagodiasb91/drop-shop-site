@@ -13,14 +13,14 @@ Execute os seguintes comandos a partir da pasta `infra` para fazer o deploy da l
     Este comando cria um plano de execução, que permite visualizar as alterações que o Terraform fará na sua infraestrutura.
 
     ```bash
-    terraform plan -var-file=./envs/dev.tfvars
+    terraform plan -var-file=../../envs/dev.tfvars
     ```
 
 3.  **Aplique as Alterações:**
     Este comando aplica as alterações planejadas na sua infraestrutura. Você precisará confirmar a aplicação digitando `yes`.
 
     ```bash
-    terraform apply -var-file=./envs/dev.tfvars -auto-approve
+    terraform apply -var-file=../../envs/dev.tfvars -auto-approve
     ```
 
 ### Pré-requisitos

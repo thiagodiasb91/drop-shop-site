@@ -2,13 +2,17 @@
 <html>
 
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-  <title>Admin</title>
+  <title>Admin Principal</title>
 </head>
 
 <body>
   <div id="app"></div>
-  <script type="module" src="./src/app.js"></script>
+  <script type="module" src="/src/app.js"></script>
+  <div x-data x-show="$store.toast.show" x-transition.opacity class="toast" :class="$store.toast.type">
+    <span x-text="$store.toast.message"></span>
+  </div>
 </body>
 
 </html>

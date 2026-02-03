@@ -1,0 +1,137 @@
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none;
+  }
+
+  .mobile-only {
+    display: block;
+  }
+
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    height: 100vh;
+    z-index: 1000;
+    transform: translateX(-100%);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 900;
+  }
+
+  .topbar {
+    flex-wrap: wrap;
+    row-gap: 6px;
+    height: auto;
+    padding: 10px 12px;
+  }
+
+  .topbar strong {
+    font-size: 0.95rem;
+    flex: 1 1 auto;
+  }
+
+  .topbar .right-allign {
+    width: 100%;
+    margin-left: 0;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .topbar .right-allign span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .list-toolbar {
+    flex-direction: column;
+  }
+
+  .modal {
+    margin: 16px;
+    max-height: 100vh;
+    border-radius: 12px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .truncate {
+    display: block;
+  }
+
+  .entity-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .entity-item-grid {
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+
+  .entity-actions {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+  }
+
+  .entity-actions button {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .entity-item-row strong {
+    font-size: 0.9rem;
+  }
+
+  .entity-item-grid span {
+    font-size: 0.85rem;
+  }
+
+  .toast {
+    top: 12px;
+    font-size: 0.85rem;
+  }
+
+  .mobile-actions {
+    margin-top: 12px;
+  }
+
+  .mobile-actions .full {
+    width: 100%;
+  }
+
+  /* Supplier products page */
+
+  .supplier-products-page .sku-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .supplier-products-page .sku-price input {
+    text-align: left;
+  }
+
+  .supplier-products-page .sku-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .supplier-products-page .sku-price input {
+    text-align: left;
+  }
+
+}

@@ -1,0 +1,57 @@
+<body>
+  <div class="layout" x-data="{...layout(), ...bootstrap()}">
+    <aside class="sidebar" :class="{ 'open': sidebarOpen }">
+      <h2>
+        <a href="/" @click="spaNavigate($event)">
+          Drop Shop Admin
+          <i class="fa-solid fa-gauge-high"></i>
+        </a>
+
+      </h2>
+      <hr>
+
+      <ul class="menu">
+        <li><a href="/dashboard">Dashboard</a></li>
+        <li><a href="/products">Produtos</a></li>
+        <li><a href="/orders">Pedidos</a></li>
+        <li><a href="/orders-group">Pedidos Agrupados</a></li>
+        <li><a href="/admin/users">Usuários</a></li>
+        <li><a href="/suppliers/me/products">Fornecedor x Produtos</a></li>
+        <li><a href="/settings">Configurações</a></li>
+      </ul>
+      <button class="btn-bottom btn-logout" @click="logout">
+        <i class="fa fa-sign-out"></i> Log Out
+      </button>
+    </aside>
+    <div class="sidebar-overlay" x-show="sidebarOpen" @click="sidebarOpen = false"></div>
+    <div class="content">
+      <header class="topbar">
+        <button class="hamburger" @click="sidebarOpen = !sidebarOpen">
+          ☰
+        </button>
+        <h2 x-text="pageTitle"></h2>
+        <span class="right-allign">
+          <span x-show="logged">
+            Usuário logado:
+            <span x-show="logged" x-text="logged?.user?.email"></span>
+            (<span x-show="logged" x-text="logged?.roles"></span>)
+          </span>
+        <div x-show="!logged" class="loader small"></div>
+
+        </span>
+      </header>
+
+      <main id="content" class="main">
+      </main>
+    </div>
+  </div>
+</body>
+
+
+<script>
+
+  function spaNavigate(e) {
+    e.preventDefault();
+    import("/src/router.js").then(m => m.navigate(e.target.getAttribute("href")));
+  }
+</script>

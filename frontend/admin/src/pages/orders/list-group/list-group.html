@@ -1,0 +1,155 @@
+<div x-data="getData" class="suppliers-page">
+
+  <h1 x-show="!loading">Fornecedores (<span x-text="suppliers.length"></span>)</h1>
+
+  <div x-show="loading" class="loader"></div>
+
+  <!-- Desktop -->
+  <table class="data-table desktop-only" x-show="!loading">
+    <thead>
+      <tr>
+        <th>Fornecedor</th>
+        <th>Produtos</th>
+        <th>Total devido</th>
+      </tr>
+    </thead>
+    <template x-for="supplier in suppliers" :key="supplier.id">
+      <tbody>
+        <!-- Linha do fornecedor -->
+        <tr class="entity-row clickable" @click="toggleSupplier(supplier.id)">
+          <td>
+            <span class="chevron" :class="{ open: openedSupplier === supplier.id }">              
+            </span>
+            <strong x-text="supplier.name"></strong>
+          </td>
+          <td x-text="supplier.productsCount"></td>
+          <td class="actions-cell">
+            <span x-text="currency(supplier.totalDue)"></span>
+            <div class="actions-wrapper" x-data="{ open: false }" @click.stop>
+              <button class="actions-btn" @click="open = !open">
+                ⋮
+              </button>
+
+              <!-- Dropdown -->
+              <div class="actions-menu" x-show="open" @click.outside="open = false" x-transition>
+                <button @click="paySupplier(supplier)">💰 Pagar</button>
+                <button @click="ignoreSupplier(supplier)">🚫 Desconsiderar</button>
+                <button @click="viewSupplier(supplier)">🔍 Ver detalhes</button>
+              </div>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Accordion -->
+        <tr x-show="openedSupplier === supplier.id">
+          <td colspan="3" class="accordion-cell">
+            <div class="accordion">
+              <table class="inner-table">
+                <thead>
+                  <tr>
+                    <th>SKU</th>
+                    <th>Qtd</th>
+                    <th>Valor</th>
+                    <th>Pedido</th>
+                    <th>Data</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="o in supplier.orders" :key="o.orderId + o.sku">
+                    <tr>
+                      <td x-text="o.sku"></td>
+                      <td x-text="o.qty"></td>
+                      <td x-text="currency(o.unitPrice)"></td>
+                      <td x-text="o.orderId"></td>
+                      <td x-text="o.date"></td>
+                      <td>
+                        <span class="badge" :class="o.status" x-text="statusLabel(o.status)">
+                        </span>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </template>
+  </table>
+
+  <!-- Mobile -->
+  <div class="mobile-only" x-show="!loading">
+    <template x-for="supplier in suppliers" :key="supplier.id">
+      <div class="entity-card">
+
+        <!-- HEADER DO FORNECEDOR -->
+        <div class="entity-header">
+          <div class="entity-main clickable" @click="toggleSupplier(supplier.id)">
+
+            <div class="entity-title">
+              <strong class="truncate" x-text="supplier.name"></strong>
+              <small>
+                <span x-text="supplier.productsCount"></span> produtos
+              </small>
+            </div>
+
+            <div class="entity-right">
+              <span class="amount truncate" x-text="currency(supplier.totalDue)"></span>
+              <i class="chevron" :class="{ open: openedSupplier === supplier.id }">
+              </i>
+            </div>
+          </div>
+
+          <!-- AÇÕES DO FORNECEDOR -->
+          <div class="entity-actions">
+            <button class="btn-primary" @click.stop="paySupplier(supplier)">
+              Pagar
+            </button>
+
+            <button class="btn-secondary" @click.stop="ignoreSupplier(supplier)">
+              Desconsiderar
+            </button>
+          </div>
+        </div>
+
+        <!-- ACCORDION DE PEDIDOS -->
+        <div x-show="openedSupplier === supplier.id" x-collapse class="accordion">
+
+          <template x-for="o in supplier.orders" :key="o.orderId + o.sku">
+
+            <div class="entity-item-card">
+              <div class="entity-item-row">
+                <strong class="truncate" x-text="o.sku"></strong>
+                <span class="badge" :class="o.status" x-text="statusLabel(o.status)">
+                </span>
+              </div>
+
+              <div class="entity-item-grid">
+                <div>
+                  <small>Qtd</small>
+                  <span x-text="o.qty"></span>
+                </div>
+
+                <div>
+                  <small>Valor</small>
+                  <span x-text="currency(o.unitPrice)"></span>
+                </div>
+
+                <div>
+                  <small>Pedido</small>
+                  <span x-text="o.orderId"></span>
+                </div>
+
+                <div>
+                  <small>Data</small>
+                  <span x-text="o.date"></span>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </template>
+  </div>
+</div>

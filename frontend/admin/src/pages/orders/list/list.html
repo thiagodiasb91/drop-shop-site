@@ -1,0 +1,96 @@
+<div x-data="getData" class="orders-page">
+
+  <!-- Toolbar -->
+  <div class="list-toolbar">
+    <input
+      type="text"
+      placeholder="Buscar pedido ou cliente..."
+      x-model="filter"
+      @keydown.enter="search"
+    >
+    <button class="btn" @click="search">Buscar</button>
+  </div>
+
+  <div x-show="loading" class="loader"></div>
+
+  <!-- Desktop -->
+  <table class="data-table desktop-only" x-show="!loading">
+    <thead>
+      <tr>
+        <th>Pedido</th>
+        <th>Cliente</th>
+        <th>Status</th>
+        <th>Total</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <template x-for="order in orders" :key="order.id">
+        <tr>
+          <td x-text="order.id"></td>
+          <td x-text="order.customer"></td>
+          <td>
+            <span class="badge" :class="order.status"
+              x-text="statusLabel(order.status)">
+            </span>
+          </td>
+          <td x-text="order.total"></td>
+          <td class="actions">
+            <button @click="edit(order)">✏️</button>
+            <button class="danger" @click="remove(order)">🗑</button>
+          </td>
+        </tr>
+      </template>
+
+      <tr x-show="orders.length === 0">
+        <td colspan="5" class="empty">Nenhum pedido encontrado</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Mobile -->
+  <div class="mobile-only" x-show="!loading">
+    <template x-for="order in orders" :key="order.id">
+      <div class="order-card">
+        <div class="row">
+          <strong x-text="order.id"></strong>
+          <span class="badge" :class="order.status"
+            x-text="statusLabel(order.status)">
+          </span>
+        </div>
+
+        <div class="row muted">
+          <span x-text="order.customer"></span>
+          <span x-text="order.total"></span>
+        </div>
+
+        <div class="actions">
+          <button @click="edit(order)">Editar</button>
+          <button class="danger" @click="remove(order)">Excluir</button>
+        </div>
+      </div>
+    </template>
+
+    <p x-show="orders.length === 0" class="empty">
+      Nenhum pedido encontrado
+    </p>
+  </div>
+
+  <div class="pagination" x-show="totalPages > 1">
+    <button @click="goToPage(1)" :disabled="page === 1">‹‹</button>  
+    
+    <button @click="goToPage(page - 1)" :disabled="page === 1">‹</button>
+
+    <template x-for="p in totalPages" :key="p">
+      <button
+        @click="goToPage(p)"
+        :class="{ active: p === page }"
+        x-text="p">
+      </button>
+    </template>
+
+    <button @click="goToPage(page + 1)" :disabled="page === totalPages">›</button>    
+    <button @click="goToPage(totalPages)" :disabled="page === totalPages">››</button>
+  </div>
+
+</div>
