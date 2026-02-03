@@ -1,4 +1,4 @@
-<div class="container-fluid" x-data="kardexData" x-init="init()">
+<div class="container-fluid" x-data="getData()" x-init="init()">
   <div class="row">
     <div class="col-12">
       <h2 class="mb-4">
@@ -104,18 +104,18 @@
                   <th>Data/Hora</th>
                   <th>Operação</th>
                   <th>Quantidade</th>
-                  <th>Detalhes</th>
+                  <th>Pedido</th>
                 </tr>
               </thead>
               <tbody>
-                <template x-for="item in paginatedItems" :key="item.SK">
+                <template x-for="item in paginatedItems" :key="item.sk">
                   <tr>
-                    <td x-text="formatDate(item.Date)"></td>
+                    <td x-text="formatDate(item.date)"></td>
                     <td>
-                      <span :class="getOperationBadgeClass(item.Operation)" x-text="item.Operation?.toUpperCase() || '-'"></span>
+                      <span :class="getOperationBadgeClass(item.operation)" x-text="item.operation?.toUpperCase() || '-'"></span>
                     </td>
-                    <td class="text-end fw-bold" x-text="item.Quantity || 0"></td>
-                    <td class="text-truncate" style="max-width: 300px;" x-text="item.Detail || '-'" :title="item.Detail || ''"></td>
+                    <td class="text-end fw-bold" x-text="item.quantity || 0"></td>
+                    <td class="text-truncate" style="max-width: 300px;" x-text="item.orderSn || '-'" :title="item.orderSn || ''"></td>
                   </tr>
                 </template>
               </tbody>

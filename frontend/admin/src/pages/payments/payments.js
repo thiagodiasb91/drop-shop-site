@@ -19,15 +19,7 @@ export function getData() {
         }
 
         this.user = me.user
-        // tenta encontrar seller id em várias propriedades comuns
-        this.sellerId =
-          me.user?.seller_id || me.user?.sellerId || me.user?.id || me.seller_id
-
-        if (!this.sellerId) {
-          this.error = "Não foi possível identificar o seller_id do usuário"
-          return
-        }
-
+     
         await this.loadPayments()
       } catch (err) {
         this.error = err.message

@@ -4,9 +4,8 @@ import { AuthService } from "./auth.service.js"
 export const PaymentService = {
   async getPaymentQueue(sellerId) {
     try {
-      if (!sellerId) throw new Error("sellerId é obrigatório")
-
-      const url = `${ENV.API_BASE_URL}/bff/payment/${sellerId}`
+      
+      const url = `${ENV.API_BASE_URL}/bff/payments`
 
       const res = await fetch(url, {
         credentials: "include",

@@ -4,9 +4,13 @@ import { KardexService } from "../../services/kardex.service.js"
 export function getData() {
   return {
     user: null,
-    kardexData: [],
+    sku: "",
+    kardexItems: [],
     loading: false,
     error: null,
+    success: null,
+    currentPage: 1,
+    itemsPerPage: 10,
 
     async init() {
       const me = await AuthService.me()
@@ -17,28 +21,96 @@ export function getData() {
       }
 
       this.user = me.user
-      await this.loadKardex()
     },
 
-    async loadKardex(filters = {}) {
+    async loadKardex() {
+      if (!this.sku) {
+        this.error = "Informe um SKU para buscar"
+        return
+      }
+
       this.loading = true
       this.error = null
+      this.success = null
 
       try {
-        const data = await KardexService.getKardex(filters)
-        this.kardexData = data.items || []
-        return this.kardexData
+        const data = await KardexService.getKardexBySku(this.sku, {
+          limit: 100,
+          offset: 0
+        })
+        
+        this.kardexItems = data || []
+        
+        if (this.kardexItems.length > 0) {
+          this.success = `${this.kardexItems.length} registros encontrados para ${this.sku}`
+        } else {
+          this.error = "Nenhum registro encontrado para este SKU"
+        }
       } catch (error) {
         this.error = error.message
-        console.error("Erro ao carregar kardex:", error)
-        throw error
+        this.kardexItems = []
+        console.error("Erro ao buscar kardex:", error)
       } finally {
         this.loading = false
+        this.currentPage = 1
       }
     },
 
-    async loadKardexByProduct(productId, filters = {}) {
-      return this.loadKardex({ productId, ...filters })
+    get paginatedItems() {
+      const start = (this.currentPage - 1) * this.itemsPerPage
+      const end = start + this.itemsPerPage
+      return this.kardexItems.slice(start, end)
+    },
+
+    get totalPages() {
+      return Math.ceil(this.kardexItems.length / this.itemsPerPage)
+    },
+
+    nextPage() {
+      if (this.currentPage < this.totalPages) {
+        this.currentPage++
+      }
+    },
+
+    prevPage() {
+      if (this.currentPage > 1) {
+        this.currentPage--
+      }
+    },
+
+    formatDate(dateString) {
+      return KardexService.formatDate(dateString)
+    },
+
+    getOperationBadgeClass(operation) {
+      const op = operation?.toLowerCase()
+      if (op === "add") return "badge bg-success"
+      if (op === "remove") return "badge bg-danger"
+      return "badge bg-secondary"
+    },
+
+    getTotalQuantityAdded() {
+      return this.kardexItems
+        .filter(item => item.operation?.toLowerCase() === "add")
+        .reduce((total, item) => total + (item.quantity || 0), 0)
+    },
+
+    getTotalQuantityRemoved() {
+      return this.kardexItems
+        .filter(item => item.operation?.toLowerCase() === "remove")
+        .reduce((total, item) => total + (item.quantity || 0), 0)
+    },
+
+    getCurrentQuantity() {
+      return this.getTotalQuantityAdded() - this.getTotalQuantityRemoved()
+    },
+
+    clearSearch() {
+      this.sku = ""
+      this.kardexItems = []
+      this.error = null
+      this.success = null
+      this.currentPage = 1
     },
 
     async logout() {
