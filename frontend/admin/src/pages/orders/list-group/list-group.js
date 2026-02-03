@@ -1,4 +1,4 @@
-import html from "./index.html?raw"
+import html from "./list-group.html?raw"
 import { currency } from "../../../utils/format.utils";
 
 

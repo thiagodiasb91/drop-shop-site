@@ -1,0 +1,62 @@
+
+/* ===== Card ===== */
+
+.card {
+  background: #020617;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  padding: 32px;
+  width: 100%;
+  max-width: 360px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .4);
+}
+
+.card h1 {
+  margin: 0 0 8px;
+  font-size: 1.4rem;
+  text-align: center;
+}
+
+.card p {
+  margin: 0 0 28px;
+  font-size: 0.9rem;
+  color: #94a3b8;
+  text-align: center;
+}
+
+
+/* ===== Cards (Mobile) ===== */
+
+.entity-item-card {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.entity-item-card .row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.entity-item-card .muted {
+  color: var(--text-muted);
+}
+
+.entity-item-card .actions {
+  display: flex;
+  gap: 8px;
+}
+
+.entity-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.entity-card .row {
+  display: flex;
+  justify-content: space-between;
+}

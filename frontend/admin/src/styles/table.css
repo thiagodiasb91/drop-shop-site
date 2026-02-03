@@ -1,0 +1,153 @@
+
+/* Table */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.data-table th {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.data-table td .truncate {
+  max-width: 260px;
+}
+
+.actions {
+  gap: 8px;
+}
+
+.actions button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-main);
+}
+
+.actions .danger {
+  color: #ef4444;
+}
+
+
+.entity-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.entity-item-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.entity-item-grid small {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.entity-item-grid>div {
+  min-width: 0;
+}
+
+
+/* Paginação */
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 20px;
+}
+
+.pagination button {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.pagination button.active {
+  background: var(--primary);
+}
+
+.pagination button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.inner-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.inner-table th,
+.inner-table td {
+  padding: 8px;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--border);
+}
+
+
+.entity-header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.entity-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.entity-row {
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.entity-title {
+  min-width: 0;
+}
+
+.entity-title strong {
+  font-size: 0.95rem;
+}
+
+.entity-title small {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.entity-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.entity-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.entity-row:hover {
+  background: rgba(37, 99, 235, 0.1);
+}
+
+.entity-row:active {
+  background: rgba(37, 99, 235, 0.2);
+}

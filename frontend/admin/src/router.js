@@ -1,5 +1,13 @@
 import { requireAuth } from "./auth/auth.guard.js";
+import { AuthService } from "./services/auth.service.js";
 import { loadLayout } from "./layout.js";
+
+export const router = {
+  current: {
+    path: '',
+    params: {}
+  }
+};
 
 const routes = {
   "/": {
@@ -26,15 +34,21 @@ const routes = {
   },
   "/orders-group": {
     title: "Pedidos",
-    js: () => import("./pages/orders/list-group/index.js"),
+    js: () => import("./pages/orders/list-group/list-group.js"),
   },
   "/dashboard": {
     title: "Dashboard",
     js: () => import("./pages/dashboard/dashboard.js"),
   },
+  "/suppliers/:supplierId/products": {
+    allowedRoles: ['supplier'],
+    title: "Fornecedor x Produtos",
+    js: () => import("./pages/supplier-products/supplier-products.js"),
+  },
   "/admin/users": {
     title: "Admin - Usuários",
-    js: () => import("./pages/users/index.js"),
+    allowedRoles: ['admin'],
+    js: () => import("./pages/users/users.js"),
   },
   "/settings": {
     title: "Configurações",
@@ -53,21 +67,47 @@ export async function initRouter() {
   await render();
 }
 
+export function back() {
+  history.back();
+}
+
 export async function navigate(path) {
   console.log("router.navigate.request", path);
   history.pushState({}, "", path);
-  window.location.reload();
+  // window.location.reload();
+
   await render();
+}
+
+function userHasAccessToRoute(route, userRole) {
+  if (!route.allowedRoles) return true;
+
+  if (userRole == 'admin') return true;
+  
+  return route.allowedRoles.includes(userRole);
 }
 
 async function render() {
   console.log("router.render.request", location.pathname);
   const path = location.pathname;
-  const route = routes[path] ?? routes["*"];
+  const {route, params} = matchRoute(path);
+  router.current.path = path;
+  router.current.params = params;
+
+  const user = await AuthService.me()
 
   if (!route.public) {
     console.log("router.render.requiringAuth");
-    await requireAuth();
+    await requireAuth(user);
+  }
+
+  if (!userHasAccessToRoute(route, user.roles)) {
+    Alpine.store('toast').open(
+      'Você não tem permissão para acessar essa página',
+      'error'
+    )
+    navigate('/')
+    return
   }
 
   const app = document.getElementById("app");
@@ -75,4 +115,37 @@ async function render() {
 
   console.log("router.render.loadingLayoutForRoute", path, route);
   await loadLayout(app, route);
+}
+
+function matchRoute(path) {
+  for (const routePath in routes) {
+    if (routePath === "*") continue;
+
+    const paramNames = [];
+    const regexPath = routePath
+      .replace(/:([^/]+)/g, (_, key) => {
+        paramNames.push(key);
+        return "([^/]+)";
+      });
+
+    const regex = new RegExp(`^${regexPath}$`);
+    const match = path.match(regex);
+
+    if (match) {
+      const params = {};
+      paramNames.forEach((name, i) => {
+        params[name] = match[i + 1];
+      });
+
+      return {
+        route: routes[routePath],
+        params,
+      };
+    }
+  }
+
+  return {
+    route: routes["*"],
+    params: {},
+  };
 }

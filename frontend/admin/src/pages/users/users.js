@@ -1,4 +1,5 @@
-import html from "./index.html?raw"
+import html from "./users.html?raw"
+import {navigate} from "../../router.js"
 
 export function getData() {
   return {
@@ -89,6 +90,10 @@ export function getData() {
 
       btn.classList.add('copied');
       setTimeout(() => btn.classList.remove('copied'), 600);
+    },
+    openProductLink(user) {
+      if (user.role !== 'supplier') return
+      navigate(`/suppliers/${user.id}/products`)
     }
   }
 }

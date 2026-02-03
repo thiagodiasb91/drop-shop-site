@@ -1,0 +1,106 @@
+
+/* ===== Sidebar (BASE / DESKTOP) ===== */
+
+.sidebar {
+  width: 240px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  padding: 16px;
+  position: relative;
+  transition: transform 0.3s ease;
+}
+
+.sidebar h2 {
+  font-size: 1.1rem;
+  margin: 0 0 28px;
+  text-align: center;
+}
+
+/* ===== Menu ===== */
+
+.menu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.menu li {
+  margin-bottom: 8px;
+}
+
+.menu a {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: var(--text-main);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.menu a:hover,
+.menu a.active {
+  background: var(--primary);
+}
+
+/* ===== Topbar ===== */
+
+.topbar {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-card);
+}
+
+.hamburger {
+  background: none;
+  border: none;
+  color: var(--text-main);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+
+/* ===== Topbar Responsive ===== */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  min-height: 56px;
+  flex-wrap: nowrap;
+}
+
+/* Título da página */
+.topbar strong {
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+/* Área do usuário */
+.topbar .right-allign {
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+
+/* Toolbar */
+.list-toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.list-toolbar input {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-main);
+}

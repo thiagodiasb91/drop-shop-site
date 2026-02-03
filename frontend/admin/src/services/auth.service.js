@@ -49,13 +49,6 @@ export const AuthService = {
   },
 
   async logout() {
-    // await fetch(
-    //   `${ENV.API_BASE_URL}/auth/logout`,
-    //   {
-    //     method: "POST",
-    //     credentials: "include",
-    //   }
-    // )
     sessionStorage.removeItem("session_token")
   },
 }

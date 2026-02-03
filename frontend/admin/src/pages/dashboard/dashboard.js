@@ -1,4 +1,4 @@
-import html from "./index.html?raw"
+import html from "./dashboard.html?raw"
 import { AuthService } from "../../services/auth.service.js"
 
 export function getData() {

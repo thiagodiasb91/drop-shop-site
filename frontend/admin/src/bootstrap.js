@@ -23,3 +23,25 @@ export default class Bootstrap {
     }));
   }
 }
+
+document.addEventListener('alpine:init', () => {
+  if (!Alpine.store('toast')) {
+    Alpine.store('toast', {
+      show: false,
+      message: '',
+      type: 'info',
+      _timer: null,
+
+      open(message, type = 'info') {
+        this.message = message;
+        this.type = type;
+        this.show = true;
+
+        clearTimeout(this._timer);
+        this._timer = setTimeout(() => {
+          this.show = false;
+        }, 2500);
+      }
+    });
+  }
+});

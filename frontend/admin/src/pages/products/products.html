@@ -1,0 +1,171 @@
+<div x-data="getData" class="products-page">
+
+  <div class="list-toolbar">
+    <input type="text" placeholder="Buscar por nome ou SKU" x-model="search" />
+
+    <button class="btn-primary" @click="openCreate()">
+      + Novo Produto
+    </button>
+  </div>
+  <div x-show="loading" class="loader"></div>
+
+  <!-- DESKTOP -->
+
+  <table class="data-table desktop-only" x-show="!loading">
+    <thead>
+      <tr>
+        <th>Produto</th>
+        <th>Variações</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+
+    <tbody>
+      <template x-for="product in products" :key="product.id">
+        <tr class="entity-row">
+          <td class="truncate" x-text="product.name"></td>
+          <td>
+            <div class="variation-preview">
+              <template x-for="v in product.variations" :key="v.name">
+                <span class="variation-chip">
+                  <strong x-text="v.name"></strong>:
+                  <span x-text="v.options.join(', ')"></span>
+                </span>
+              </template>
+
+              <span x-show="product.variations.length === 0" class="hint">
+                Sem variações
+              </span>
+            </div>
+          </td>
+          <td>
+            <span class="badge" :class="product.active ? 'green' : 'red'"
+              x-text="product.active ? 'Ativo' : 'Inativo'">
+            </span>
+          </td>
+          <td class="actions">
+            <button @click="openEdit(product)">✏️</button>
+            <button class="danger" @click="remove(product)">🗑</button>
+          </td>
+        </tr>
+      </template>
+    </tbody>
+  </table>
+  <!-- MOBILE -->
+  <div class="mobile-only" x-show="!loading">
+    <template x-for="product in products" :key="product.id">
+      <div class="entity-card">
+
+        <div class="entity-item-row">
+          <strong class="truncate" x-text="product.name"></strong>
+          <span class="badge" :class="product.active ? 'green' : 'red'"
+            x-text="product.active ? 'Ativo' : 'Inativo'">
+          </span>
+        </div>
+
+        <div class="entity-item-grid">
+          <div>
+            <small>Variações</small>
+
+            <template x-for="v in product.variations" :key="v.name">
+              <div class="text-secondary">
+                <strong x-text="v.name"></strong>:
+                <span x-text="v.options.join(', ')"></span>
+              </div>
+            </template>
+
+            <span x-show="product.variations.length === 0" class="text-secondary">
+              Sem variações
+            </span>
+          </div>
+        </div>
+
+
+        <div class="entity-actions">
+          <button class="btn-primary" @click="openEdit(product)">
+            Editar
+          </button>
+          <button class="btn-secondary" @click="remove(product)">
+            Excluir
+          </button>
+        </div>
+
+      </div>
+    </template>
+  </div>
+
+
+  <!-- MODAL PRODUTO -->
+  <div x-show="modal.open" x-transition.opacity class="modal-overlay">
+
+    <div class="modal" @click.outside="closeModal()" x-transition>
+      <h2 x-text="modal.editing ? 'Editar Produto' : 'Novo Produto'"></h2>
+      <form @submit.prevent="saveProduct()">
+
+        <div class="form-group">
+          <label>Nome do produto</label>
+          <input type="text" x-model="modal.form.name" required />
+        </div>
+
+        <!-- Variações -->
+        <div class="form-group">
+          <label>Variações</label>
+
+          <template x-for="(variation, vIndex) in modal.form.variations" :key="vIndex">
+            <div class="variation-box" :class="{ 'invalid': !variation.name || !variation.options.length }">
+
+              <div class="variation-header">
+                <input type="text" placeholder="Nome da variação (ex: Cor)" x-model="variation.name" />
+
+                <button type="button" class="actions-btn" @click="removeVariation(vIndex)">
+                  ✕
+                </button>
+              </div>
+
+              <!-- Opções -->
+              <div class="variation-options">
+                <template x-for="(opt, oIndex) in variation.options" :key="oIndex">
+                  <span class="chip">
+                    <span x-text="opt"></span>
+                    <button type="button" @click="removeOption(vIndex, oIndex)">
+                      ✕
+                    </button>
+                  </span>
+                </template>
+
+                <input type="text" placeholder="Adicionar opção e Enter" x-model="variation._newOption"
+                  @keydown.enter.prevent="addOption(vIndex)" />
+              </div>
+
+            </div>
+          </template>
+
+          <button type="button" class="btn-secondary" style="margin-top: 10px" @click="addVariation()">
+            + Nova variação
+          </button>
+        </div>
+
+        <!-- Status -->
+        <div class="form-group checkbox">
+          <label>
+            <input type="checkbox" x-model="modal.form.active" />
+            Produto ativo
+          </label>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" @click="closeModal()">
+            Cancelar
+          </button>
+
+          <button type="submit" class="btn-primary">
+            Salvar
+          </button>
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+</div>

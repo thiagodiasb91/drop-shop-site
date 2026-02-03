@@ -1,4 +1,4 @@
-import html from "./index.html?raw"
+import html from "./list.html?raw"
 
 
 export function getData() {
