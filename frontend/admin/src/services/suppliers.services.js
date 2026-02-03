@@ -1,3 +1,29 @@
+import { ENV } from "../config/env.js"
+import { AuthService } from "./auth.service.js"
+
+export const SupplierService = {
+  async getPayments() {
+    try {
+      const res = await fetch(`${ENV.API_BASE_URL}/bff/payments`, {
+        credentials: "include",
+        headers: {
+          ...await AuthService.getAuthHeader()
+        },
+      })
+
+      if (!res.ok) {
+        throw new Error(`Erro ao buscar pagamentos aos fornecedores: ${res.statusText}`)
+      }
+
+      return res.json()
+    } catch (error) {
+      console.error("SupplierService.getPayments error:", error)
+      throw error
+    }
+  } 
+
+}
+
 const get = (supplierId) => {
   const supplierList = [
     {
