@@ -1,14 +1,13 @@
-import layoutAuthHtml from './layout/layout-authenticated.html?raw';
-import layoutHtml from './layout/layout-public.html?raw';
+import layoutAuthHtml from '../layout/layout-authenticated.html?raw';
+import layoutHtml from '../layout/layout-public.html?raw';
 
 console.log("layout.module.loaded");
 
 export async function loadLayout(app, route) {
   console.log("layout.loadLayout.request", route);
 
-  Alpine.data("layout", () => ({
-    sidebarOpen: window.innerWidth >= 769,
-    pageTitle: route.title ?? ""
+  Alpine.data("setPageTitle", () => ({
+    pageTitle: route.title ?? "Nada"
   }));
 
   if (route.public) {
@@ -24,6 +23,7 @@ export async function loadLayout(app, route) {
 
   if (!route.js)
     return;
+
   console.log("layout.loadLayout.importing", route.js);
   try {
     const module = await route.js();
@@ -40,7 +40,6 @@ export async function loadLayout(app, route) {
     }
 
     console.log("layout.loadLayout.initializingLayout");
-
 
     Alpine.initTree(content);
   }
