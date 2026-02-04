@@ -1,5 +1,5 @@
 import { AuthService } from "../services/auth.service.js"
-import { navigate } from "../router.js";
+import { navigate } from "../core/router.js";
 
 export async function requireAuth(user) {
   console.log("auth.requireAuth.user", user)

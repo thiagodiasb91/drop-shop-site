@@ -1,5 +1,5 @@
 import html from "./users.html?raw"
-import {navigate} from "../../router.js"
+import {navigate} from "../../core/router.js"
 
 export function getData() {
   return {

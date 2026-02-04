@@ -1,5 +1,5 @@
 import html from "./supplier-products.html?raw"
-import { router, back, navigate } from "../../router.js"
+import { router, back, navigate } from "../../core/router.js"
 import SupplierService from "../../services/suppliers.services.js"
 import productService from "../../services/products.services.js"
 import { AuthService } from "../../services/auth.service.js"
