@@ -3,15 +3,19 @@ import { ENV } from "../config/env.js"
 console.log("AuthService.loaded");
 console.log("ENV.API_BASE_URL", ENV.API_BASE_URL);
 
+let cachedMe = null;
+let cacheExpiresAt = 0;
+
 export const AuthService = {
+  basePath: `${ENV.API_BASE_URL}/auth`,
   async login() {
     console.log("AuthService.login.request")
-    window.location.href = ENV.API_BASE_URL + "/auth/login";
+    window.location.href = `${this.basePath}/login`
   },
   async callback(code) {
     console.log("AuthService.callback.request", code)
     const res = await fetch(
-      `${ENV.API_BASE_URL}/auth/callback`,
+      `${this.basePath}/callback`,
       {
         method: "POST",
         credentials: "include",
@@ -33,9 +37,16 @@ export const AuthService = {
     return response
   },
 
-  async me() {
+  async me(force  = false) {
+    const now = Date.now()
+
+    if (!force && cachedMe && now < cacheExpiresAt) {
+      console.log("AuthService.me.cached")
+      return cachedMe
+    }
+
     const res = await fetch(
-      `${ENV.API_BASE_URL}/auth/me`,
+      `${this.basePath}/me`,
       { 
         headers: { 
           "Content-Type": "application/json",
@@ -44,8 +55,24 @@ export const AuthService = {
        }
     )
 
-    if (res.status === 401) return null
-    return res.json()
+    if (res.status === 401) {
+      console.log("AuthService.me.unauthorized")
+      cachedMe = null
+      cacheExpiresAt = 0
+      return null
+    }
+
+    const response = await res.json()
+    // Simula resposta da API
+    response.user.roles = 'seller';
+    response.expires_at = 15 * 60 * 1000;
+
+    cachedMe = response
+    cacheExpiresAt = now + response.expires_at
+
+    console.log("AuthService.me.new-session", response)
+
+    return response
   },
 
   async logout() {

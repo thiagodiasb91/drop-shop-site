@@ -1,7 +1,14 @@
 import layoutAuthHtml from '../layout/layout-authenticated.html?raw';
 import layoutHtml from '../layout/layout-public.html?raw';
+import layoutCleanHtml  from '../layout/layout-clean.html?raw';
 
 console.log("layout.module.loaded");
+
+const layouts = {
+  "authenticaded": layoutAuthHtml,
+  "public": layoutHtml,
+  "clean": layoutCleanHtml
+}
 
 export async function loadLayout(app, route) {
   console.log("layout.loadLayout.request", route);
@@ -10,7 +17,11 @@ export async function loadLayout(app, route) {
     pageTitle: route.title ?? "Nada"
   }));
 
-  if (route.public) {
+
+  if (route.layout) {
+    app.innerHTML = layouts[route.layout];
+  }
+  else if (route.public) {
     app.innerHTML = layoutHtml;
     console.log("layout.loadLayout.public");
   } else {
