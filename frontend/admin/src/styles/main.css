@@ -1,0 +1,13 @@
+/* Tailwind */
+/* @import "tailwindcss"; */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS legado */
+@import "./site.css";
+@import "./buttons.css";
+@import "./cards.css";
+@import "./layout.css";
+@import "./mobile.css";
+@import "./table.css";

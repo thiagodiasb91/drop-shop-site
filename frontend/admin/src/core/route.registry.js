@@ -1,4 +1,3 @@
-
 export const routes = {
   "/": {
     title: "Home",
@@ -35,6 +34,13 @@ export const routes = {
     title: "Fornecedor x Produtos",
     js: () => import("../pages/supplier-products/supplier-products.js"),
   },
+  "/sellers/:sellerId/store-setup": {
+    allowedRoles: ['seller'],
+    title: "Configuração de Código de Loja",
+    layout: "clean",
+    js: () => import("../pages/sellers/store-setup/store-setup.js"),
+    skipStoreValidation: true,
+  },
   "/admin/users": {
     title: "Admin - Usuários",
     allowedRoles: ['admin'],
@@ -47,5 +53,7 @@ export const routes = {
   "*": {
     title: "Página não encontrada",
     js: () => import("../pages/not-found/not-found.js"),
+    skipAuth: true,
+    layout: "clean",
   },
 };

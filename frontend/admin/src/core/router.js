@@ -1,8 +1,10 @@
-import { requireAuth } from "../auth/auth.guard.js";
 import { AuthService } from "../services/auth.service.js";
 import { loadLayout } from "./layout.js";
 import { routes } from "./route.registry.js";
-import { canAccessRoute } from "./router.control.js";
+import {
+  canAccessRoute,
+  sellerHasStoreId
+} from "./route.control.js";
 
 export const router = {
   current: {
@@ -23,18 +25,34 @@ export function back() {
   history.back();
 }
 
-export async function navigate(path) {
-  console.log("router.navigate.request", path);
-  history.pushState({}, "", path);
-  // window.location.reload();
+let isRedirecting = false;
 
+export async function navigate(path) {
+  console.log("router.navigate.request", path, isRedirecting);
+
+  if (location.pathname === path) {
+    console.log("router.navigate.isAlreadyOnRoute");
+    return;
+  }
+
+  if (isRedirecting) {
+    console.log("router.navigate.isAlreadyRedirecting");
+    return;
+  }
+  isRedirecting = true;
+
+  history.pushState({}, "", path);
+  isRedirecting = false;
   await render();
+  
+  console.log("router.navigate.completed");
 }
 
 async function render() {
   console.log("router.render.request", location.pathname);
   const path = location.pathname;
-  const {route, params} = matchRoute(path);
+  const { route, params } = matchRoute(path);
+  console.log("router.render.route", route, params);
 
   router.current = {
     path,
@@ -42,14 +60,28 @@ async function render() {
     params
   }
 
-  const user = await AuthService.me()
+  const logged = await AuthService.me()
 
-  if (!route.public) {
+  const requiresAuth = !route.public && !route.skipAuth;
+
+  if (requiresAuth) {
     console.log("router.render.requiringAuth");
-    await requireAuth(user);
 
-    if (user && user.role === 'seller'){
-      checkSellerStoreId(user)
+    if (!logged) {
+      console.log("router.render.not-authenticated");
+      navigate("/login");
+      return;
+    }
+
+    const user = logged.user
+
+    if (user.roles === 'seller' && !route.skipStoreValidation) {
+      console.log("router.render.is-seller",);
+      if (!sellerHasStoreId(user, path)) {
+        console.log("router.render.seller-has-no-store");
+        navigate(`/sellers/${user.id}/store-setup`)
+        return
+      }
     }
 
     if (!canAccessRoute(route, user)) {

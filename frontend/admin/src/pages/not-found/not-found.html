@@ -7,7 +7,17 @@
 
 <body>
   <div x-data="getData()">
-    <h1>Página não encontrada (<span x-text="currentPageAccessed"></span>)</h1>
+    <div class="text-center max-w-md">
+      <h1 class="text-5xl font-bold text-gray-800 mb-4">404</h1>
+      <p class="text-gray-500 mb-6">
+        A página que você tentou acessar não existe ou foi movida. (<span x-text="currentPageAccessed"></span>)
+      </p>
+
+      <a href="/" @click.prevent="spaNavigate('/')"
+        class="inline-flex items-center px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
+        Voltar para o início
+      </a>
+    </div>
   </div>
 </body>
 
