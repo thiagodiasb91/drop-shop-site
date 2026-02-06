@@ -1,0 +1,115 @@
+{
+  "info": {
+    "name": "Dropship Shopee Authorization",
+    "description": "Coleção para testar o fluxo de autorização Shopee",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Gerar URL de Autorização",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/shopee/webhook/auth-url",
+          "host": ["{{base_url}}"],
+          "path": ["shopee", "webhook", "auth-url"]
+        },
+        "description": "Gera a URL de autorização que será fornecida ao cliente.\nO cliente clicará nesta URL para autorizar a integração com Shopee."
+      },
+      "response": []
+    },
+    {
+      "name": "2. Receber Code e Trocar por Token",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/shopee/webhook/auth?code={{shopee_code}}&shopId={{shop_id}}&email={{user_email}}",
+          "host": ["{{base_url}}"],
+          "path": ["shopee", "webhook", "auth"],
+          "query": [
+            {
+              "key": "code",
+              "value": "{{shopee_code}}",
+              "description": "Authorization code recebido do Shopee após cliente autorizar"
+            },
+            {
+              "key": "shopId",
+              "value": "{{shop_id}}",
+              "description": "ID da loja Shopee"
+            },
+            {
+              "key": "email",
+              "value": "{{user_email}}",
+              "description": "Email do usuário que autoriza"
+            }
+          ]
+        },
+        "description": "Troca o authorization code por access_token.\nEste endpoint:\n1. Valida o usuário\n2. Chama API Shopee com o code\n3. Cria Seller\n4. Atualiza User com resource_id\n5. Armazena tokens em cache"
+      },
+      "response": []
+    },
+    {
+      "name": "3. Enviar Webhook de Pedido",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"msg_id\": \"85bb37f009e143af84852e17d50b572d\",\n  \"shop_id\": {{shop_id}},\n  \"code\": 3,\n  \"timestamp\": {{timestamp}},\n  \"data\": {\n    \"ordersn\": \"2501080NKAMXA8\",\n    \"status\": \"UNPAID\",\n    \"update_time\": {{update_time}},\n    \"completed_scenario\": \"\",\n    \"items\": []\n  }\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/shopee/webhook",
+          "host": ["{{base_url}}"],
+          "path": ["shopee", "webhook"]
+        },
+        "description": "Simula um webhook de novo pedido do Shopee.\nEste é um exemplo do payload que Shopee enviará quando houver um novo pedido."
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string",
+      "description": "URL base da API (mude para produção conforme necessário)"
+    },
+    {
+      "key": "shopee_code",
+      "value": "",
+      "type": "string",
+      "description": "Authorization code recebido do Shopee (preencher após cliente autorizar)"
+    },
+    {
+      "key": "shop_id",
+      "value": "226289035",
+      "type": "string",
+      "description": "ID da loja Shopee"
+    },
+    {
+      "key": "user_email",
+      "value": "user@example.com",
+      "type": "string",
+      "description": "Email do usuário que autoriza"
+    },
+    {
+      "key": "timestamp",
+      "value": "1736323998",
+      "type": "string",
+      "description": "Unix timestamp do evento"
+    },
+    {
+      "key": "update_time",
+      "value": "1736323997",
+      "type": "string",
+      "description": "Unix timestamp da atualização"
+    }
+  ]
+}

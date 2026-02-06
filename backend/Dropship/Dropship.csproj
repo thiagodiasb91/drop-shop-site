@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <AssemblyName>LambdaTest</AssemblyName>
+        <UserSecretsId>1b705ba2-7ccf-4c07-b26c-295b241a6019</UserSecretsId>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Amazon.Lambda.AspNetCoreServer.Hosting" Version="1.9.1" />
+      <PackageReference Include="Amazon.Lambda.RuntimeSupport" Version="1.14.1" />
+      <PackageReference Include="AWSSDK.CognitoIdentityProvider" Version="4.0.5.1" />
+      <PackageReference Include="AWSSDK.Core" Version="4.0.3.12" />
+      <PackageReference Include="AWSSDK.DynamoDBv2" Version="4.0.13" />
+      <PackageReference Include="AWSSDK.SQS" Version="4.0.2.14" />
+      <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+      <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="6.30.0" />
+      <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="6.30.0" />
+      <PackageReference Include="Ulid" Version="1.4.1" />
+      <PackageReference Include="Volo.Abp.AspNetCore.Authentication.JwtBearer" Version="6.0.3" />
+    </ItemGroup>
+
+</Project>
