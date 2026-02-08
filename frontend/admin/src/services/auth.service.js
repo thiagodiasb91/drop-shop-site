@@ -1,12 +1,13 @@
 import { ENV } from "../config/env.js"
+import CacheHelper from "../utils/cache.helper.js"
+import { responseHandler } from "../utils/response.handler.js"
 
 console.log("AuthService.loaded");
 console.log("ENV.API_BASE_URL", ENV.API_BASE_URL);
 
-let cachedMe = null;
-let cacheExpiresAt = 0;
 
-export const AuthService = {
+
+const AuthService = {
   basePath: `${ENV.API_BASE_URL}/auth`,
   async login() {
     console.log("AuthService.login.request")
@@ -24,58 +25,96 @@ export const AuthService = {
       }
     )
 
-    if (!res.ok) {
-      console.error("AuthService.callback.error", res)
-      throw new Error("Auth callback failed")
-    }
-
-    const response = await res.json()
-    console.log("AuthService.callback.response", response)
-
-    sessionStorage.setItem("session_token", response.sessionToken)
-
-    return response
+    return responseHandler(res)
   },
 
-  async me(force  = false) {
+  async me(force = false) {
     const now = Date.now()
+    console.log("AuthService.me.request", force, now)
+    const cachedMe = CacheHelper.get("me.data")
+    const expiresAt = CacheHelper.get("me.expiresAt")
+    const isValid = cachedMe && expiresAt && Date.now() < expiresAt * 1000
+    console.log("AuthService.me.cached", cachedMe, expiresAt, isValid)
 
-    if (!force && cachedMe && now < cacheExpiresAt) {
-      console.log("AuthService.me.cached")
+    if (!force && isValid) {
+      console.log("AuthService.me.returningCached", cachedMe)
       return cachedMe
     }
 
+    const sessionToken = CacheHelper.get("session_token")
+    console.log("AuthService.me.api.call", sessionToken)
+
     const res = await fetch(
       `${this.basePath}/me`,
-      { 
-        headers: { 
+      {
+        headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${sessionStorage.getItem("session_token")}`
+          "Authorization": `Bearer ${sessionToken}`
         },
-       }
+      }
     )
 
     if (res.status === 401) {
       console.log("AuthService.me.unauthorized")
-      cachedMe = null
-      cacheExpiresAt = 0
+      this.logout()
       return null
     }
 
-    const response = await res.json()
+    if(!res.ok){
+      throw new Error("Erro ao buscar usuário")
+    }
+
+    const data = (await res.json())
+    console.log("AuthService.me.api.response", data)
+
     // Simula resposta da API
-    response.user.roles = 'seller';
-    response.expires_at = 15 * 60 * 1000;
+    // data.role = 'supplier';
+    // data.role = 'seller';
 
-    cachedMe = response
-    cacheExpiresAt = now + response.expires_at
+    CacheHelper.set("me.data", data)
+    CacheHelper.set("me.expiresAt", data.session?.exp)
 
-    console.log("AuthService.me.new-session", response)
+    console.log("AuthService.me.new-session", data, data.session?.exp)
 
-    return response
+    return data
+  },
+
+  async confirmCode(code, shopId, email) {
+    console.log("AuthService.confirmCode.request", code, shopId, email)
+    const res = await fetch(
+      `${this.basePath}/confirm-shopee`,
+      {
+        method: "POST",
+        body: JSON.stringify({ code, shopId, email }),
+        headers: { "Content-Type": "application/json" },
+      }
+    )
+
+    return responseHandler(res)
+  },
+  
+  async renewToken() {
+    console.log("AuthService.renewToken.request")
+    const res = await fetch(
+      `${this.basePath}/renew`,
+      {
+        method: "POST",
+        headers: { 
+          "Authorization": `Bearer ${CacheHelper.get("session_token")}`,
+          "Content-Type": "application/json" 
+        },
+      }
+    )
+
+    return responseHandler(res)
   },
 
   async logout() {
-    sessionStorage.removeItem("session_token")
+    console.log("AuthService.logout.request")
+    CacheHelper.remove("session_token")
+    CacheHelper.remove("me.data")
+    CacheHelper.remove("me.expiresAt")
   },
 }
+
+export default AuthService

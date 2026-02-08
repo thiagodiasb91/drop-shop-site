@@ -17,4 +17,18 @@
   </div>
 </body>
 
+<footer>
+  
+<script>
+  function spaNavigate(e, path) {
+    e.preventDefault();
+    import("/src/core/router.js").then(m => {
+      console.log("======", e, path)
+      m.navigate(path)
+    }      
+    );
+  }
+</script>
+</footer>
+
 </html>

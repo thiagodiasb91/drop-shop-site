@@ -1,0 +1,149 @@
+<div x-data="getData" class="w-full min-h-[calc(100vh-5rem)] flex items-center justify-center px-4">
+
+  <!-- Card -->
+  <div class="
+      w-full max-w-md
+      bg-slate-800 border border-slate-700
+      rounded-xl shadow-xl
+      p-6 md:p-8
+    ">    
+    <div x-show="step.loading" class="items-center flex flex-col">
+      <div class="loader"></div>
+      <br>
+      <h2>Finalizando a configuração da sua loja ...</h2>
+    </div>
+    <div x-show="step.submit">
+      <div class="mb-6 text-center">
+        <!-- Nome da loja -->
+        <div class="mb-6 text-center" x-show="userEmail">
+          <p class="text-xs text-gray-400">
+            Configurando para o fornecedor
+          </p>
+          <p class="text-sm font-medium text-gray-200" x-text="userEmail"></p>
+        </div>
+        <h1 class="text-xl md:text-2xl font-semibold text-gray-100">
+          Configuração de Fornecedor
+        </h1>
+
+        <p class="mt-2 text-sm text-gray-400">
+          Para continuar, precisamos das informações abaixo.
+        </p>
+      </div>
+      <!-- Form -->
+      <form @submit.prevent="submit" class="space-y-4">
+        <div>
+          <label class="block text-sm mb-1 text-gray-300">
+            Nome do Fornecedor
+          </label>
+
+          <input x-model="form.name" type="text" placeholder="Ex: Fornecedor Carneiro's ltda"
+            class="w-full rounded-md bg-slate-900 border px-3 py-2 text-sm focus:outline-none focus:ring-2"
+            :class="errors?.name? 'border-red-500 focus:ring-red-500' : 'border-slate-700 focus:ring-indigo-500'" />
+
+          <template x-if="errors?.name">
+            <p class="mt-1 text-xs text-red-400" x-text="errors?.name"></p>
+          </template>
+        </div>
+        <div>
+          <label class="block text-sm mb-1 text-gray-300">
+            Nome legal
+          </label>
+
+          <input x-model="form.legalName" type="text" placeholder="Ex: Fornecedor Carneiro's ltda"
+            class="w-full rounded-md bg-slate-900 border px-3 py-2 text-sm focus:outline-none focus:ring-2"
+            :class="errors?.legalName? 'border-red-500 focus:ring-red-500' : 'border-slate-700 focus:ring-indigo-500'" />
+
+          <template x-if="errors?.legalName">
+            <p class="mt-1 text-xs text-red-400" x-text="errors?.legalName"></p>
+          </template>
+        </div>
+        <div>
+          <label class="block text-sm mb-1 text-gray-300">
+            CNPJ
+          </label>
+
+          <input x-model="form.cnpj" type="text" placeholder="Ex: XX.XXX.XXX/AAAA-DV"
+            class="w-full rounded-md bg-slate-900 border px-3 py-2 text-sm focus:outline-none focus:ring-2"
+            :class="errors?.cnpj? 'border-red-500 focus:ring-red-500' : 'border-slate-700 focus:ring-indigo-500'" />
+
+          <template x-if="errors?.cnpj">
+            <p class="mt-1 text-xs text-red-400" x-text="errors?.cnpj"></p>
+          </template>
+        </div>
+        <div>
+          <label class="block text-sm mb-1 text-gray-300">
+            ID e-Notas
+          </label>
+
+          <input x-model="form.enotasId" type="text" placeholder="ID do e-notas"
+            class="w-full rounded-md bg-slate-900 border px-3 py-2 text-sm focus:outline-none focus:ring-2"
+            :class="errors?.enotasId? 'border-red-500 focus:ring-red-500' : 'border-slate-700 focus:ring-indigo-500'" />
+
+          <template x-if="errors?.enotasId">
+            <p class="mt-1 text-xs text-red-400" x-text="errors?.enotasId"></p>
+          </template>
+        </div>
+        <div>
+          <label class="block text-sm mb-1 text-gray-300">
+            Telefone
+          </label>
+
+          <input x-model="form.phone" type="text" placeholder="ID do e-notas"
+            class="w-full rounded-md bg-slate-900 border px-3 py-2 text-sm focus:outline-none focus:ring-2"
+            :class="errors?.phone? 'border-red-500 focus:ring-red-500' : 'border-slate-700 focus:ring-indigo-500'" />
+
+          <template x-if="errors?.phone">
+            <p class="mt-1 text-xs text-red-400" x-text="errors?.phone"></p>
+          </template>
+        </div>
+        <div>
+          <label class="block text-sm mb-1 text-gray-300">
+            Estado
+          </label>
+
+          <input x-model="form.addressState" type="text" placeholder="ID do e-notas"
+            class="w-full rounded-md bg-slate-900 border px-3 py-2 text-sm focus:outline-none focus:ring-2"
+            :class="errors?.addressState? 'border-red-500 focus:ring-red-500' : 'border-slate-700 focus:ring-indigo-500'" />
+
+          <template x-if="errors?.addressState">
+            <p class="mt-1 text-xs text-red-400" x-text="errors?.addressState"></p>
+          </template>
+        </div>
+
+
+        <!-- Ação principal -->
+        <div class="pt-4">
+          <button type="submit" :disabled="step.loading"
+            class="w-full rounded-md bg-indigo-600 hover:bg-indigo-500 transition py-2.5 text-sm font-medium text-white ">
+            <span x-show="!step.loading">
+              Configurar fornecedor e continuar
+            </span>
+            <span x-show="step.loading" class="items-center gap-2">
+              <i class="fa fa-spinner fa-spin"></i>
+              Configurando...
+            </span>
+          </button>
+        </div>
+      </form>
+    </div>
+    <div class="pt-4 items-center flex flex-col text-center" x-show="step.redirect" >
+      <h1 class="md:text-2xl font-semibold ">
+        Configuração finalizada com sucesso!
+      </h1>
+      <br>
+      <span class="items-center gap-2">
+        <i class="fa fa-spinner fa-spin"></i>
+        Você será redirecionado em 5 segundos...
+      </span>
+    </div>
+
+    <!-- Divisor -->
+    <div class="my-6 border-t border-slate-700"></div>
+    <div x-data="bootstrap" class="items-center flex flex-col">
+      <a @click="logout" class="btn-logout">
+        Sair
+      </a>
+    </div>
+  </div>
+
+</div>

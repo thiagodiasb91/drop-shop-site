@@ -3,6 +3,13 @@ export const routes = {
     title: "Home",
     js: () => import("../pages/home/home.js"),
   },
+  "/new-user": {
+    title: "Usuário Novo",
+    js: () => import("../pages/new-user/new-user.js"),
+    layout: "clean",
+    hideMenu: true,
+    skipNewUserValidation: true
+  },
   "/login": {
     title: "Login",
     js: () => import("../pages/auth/login/login.js"),
@@ -19,6 +26,7 @@ export const routes = {
   },
   "/products": {
     title: "Produtos",
+    allowedRoles: ['admin'],
     js: () => import("../pages/products/products.js"),
   },
   "/orders": {
@@ -29,17 +37,54 @@ export const routes = {
     title: "Pedidos Agrupados",
     js: () => import("../pages/orders/list-group/list-group.js"),
   },
-  "/suppliers/:supplierId/products": {
+  "/suppliers/products": {
     allowedRoles: ['supplier'],
-    title: "Fornecedor x Produtos",
-    js: () => import("../pages/supplier-products/supplier-products.js"),
+    title: "Meus Produtos",
+    js: () => import("../pages/suppliers/link-products/link-products.js"),
   },
-  "/sellers/:sellerId/store-setup": {
+  "/suppliers/stock": {
+    allowedRoles: ['supplier'],
+    title: "Estoque",
+    js: () => import("../pages/suppliers/update-stock/update-stock.js"),
+  },
+  "/suppliers/orders": {
+    allowedRoles: ['supplier'],
+    title: "Pedidos para Envio",
+    js: () => import("../pages/suppliers/orders/orders.js"),
+  },
+  "/suppliers/setup": {
+    allowedRoles: ['supplier'],
+    title: "Configuração de Fornecedor",
+    layout: "clean",
+    js: () => import("../pages/suppliers/initial-setup/initial-setup.js"),
+    skipSupplierValidation: true,
+    hideMenu: true
+  },
+  "/sellers/store/setup": {
     allowedRoles: ['seller'],
     title: "Configuração de Código de Loja",
     layout: "clean",
     js: () => import("../pages/sellers/store-setup/store-setup.js"),
     skipStoreValidation: true,
+    hideMenu: true,
+  },
+  "/sellers/:email/store/code": {
+    allowedRoles: ['seller'],
+    title: "Retorno de Código de loja",
+    hideMenu: true,
+    layout: "clean",
+    js: () => import("../pages/sellers/store-code/store-code.js"),
+    skipStoreValidation: true,
+  },
+  "/sellers/stock": {
+    allowedRoles: ['seller'],
+    title: "Estoque",
+    js: () => import("../pages/sellers/view-stock/view-stock.js"),
+  },
+  "/sellers/products": {
+    allowedRoles: ['seller'],
+    title: "Meus Produtos",
+    js: () => import("../pages/sellers/link-products/link-products.js"),
   },
   "/admin/users": {
     title: "Admin - Usuários",

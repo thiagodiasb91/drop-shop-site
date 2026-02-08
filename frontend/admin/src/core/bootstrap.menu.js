@@ -1,7 +1,7 @@
 import { routes } from "./route.registry.js";
-import { AuthService } from "../services/auth.service.js";
+import AuthService from "../services/auth.service.js";
 
-const user = await AuthService.me();
+console.log("core.menu.load")
 
 export function menu() {
   return {    
@@ -9,10 +9,11 @@ export function menu() {
     menuItems: [],
     async init() {
       console.log("core.menu.init.called")
-      this.menuItems = this.buildMenu()
+      const user = await AuthService.me();
+      this.menuItems = this.buildMenu(user)
       console.log("core.menu.init.items", this.menuItems)
     },
-    buildMenu() {
+    buildMenu(user) {
       console.log("core.menu.buildMenu.called", routes)
       // converte registry em array para percorrer, filtrar e mapear para { path, title }
       const entries = Object.entries(routes).filter(([path, route]) => {
@@ -20,6 +21,11 @@ export function menu() {
         // ignora páginas públicas
         if (route.public) {
           console.log("core.menu.buildMenu.route.public")
+          return false;
+        }
+
+        if (route.hideMenu) {
+          console.log("core.menu.buildMenu.route.hideMenu")
           return false;
         }
 
@@ -42,8 +48,8 @@ export function menu() {
         }
 
         // se o userRole está na lista da rota
-        const included = route.allowedRoles.includes(user?.roles);
-        console.log("core.menu.buildMenu.route.userRole", included, route.allowedRoles, user?.roles)
+        const included = route.allowedRoles.includes(user?.role);
+        console.log("core.menu.buildMenu.route.userRole", included, route.allowedRoles, user?.role)
         return included;
       });
 

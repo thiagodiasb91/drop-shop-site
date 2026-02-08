@@ -1,5 +1,7 @@
 import html from "./callback.html?raw";
-import { AuthService } from "../../../services/auth.service.js"
+import AuthService from "../../../services/auth.service.js"
+import { navigate } from "../../../core/router.js"; 
+import CacheHelper from "../../../utils/cache.helper.js";
 
 export function getData() {
   return {
@@ -27,23 +29,28 @@ export function getData() {
         return
       }
 
-      try {
-        console.log("page.callback.init.callingAuthService");
-        await AuthService.callback(code)
-        this.message = "Login realizado"
-        console.log("page.callback.init.redirecting");
-        window.location.href = "/"
-      } catch (e) {
-        console.error("page.callback.init.error", e);
+      console.log("page.callback.init.callingAuthService");
+      const callbackResponse = await AuthService.callback(code)
+      console.log("page.callback.init.callbackResponse", callbackResponse);
+
+      if (!callbackResponse.ok) {
+        console.error("page.callback.init.error", callbackResponse.data);
+        CacheHelper.remove("session_token")
         this.message = "Erro ao autenticar"
-      }
-      finally {
         this.executing = false
+        return
       }
+
+      CacheHelper.set("session_token", callbackResponse.data.sessionToken)
+
+      this.message = "Login realizado"
+      console.log("page.callback.init.redirecting");
+      navigate("/")
+      this.executing = false
     },
     async goToLogin() {
       console.log("page.callback.goToLogin.redirecting");
-      window.location.href = "/pages/auth/login.html"
+      navigate("/login")
       this.executing = false
     }
   }

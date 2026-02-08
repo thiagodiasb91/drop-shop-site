@@ -9,6 +9,7 @@
   <div style="text-align: center;">
     <div x-data="getData">
       <div class="loader" x-show="executing"></div>
+      <br>
       <h2 x-text="message"></h2>
       <button x-show="!executing" class="btn-logout" @click="goToLogin()">Ir para o login</button>
     </div>

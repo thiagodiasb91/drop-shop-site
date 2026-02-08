@@ -1,9 +1,11 @@
-import { AuthService } from "../services/auth.service.js";
+import AuthService from "../services/auth.service.js";
 import { loadLayout } from "./layout.js";
 import { routes } from "./route.registry.js";
 import {
   canAccessRoute,
-  sellerHasStoreId
+  redirectToSellerSetup,
+  redirectToSupplierSetup,
+  redirectToNewUserPage
 } from "./route.control.js";
 
 export const router = {
@@ -32,6 +34,7 @@ export async function navigate(path) {
 
   if (location.pathname === path) {
     console.log("router.navigate.isAlreadyOnRoute");
+    isRedirecting = false;
     return;
   }
 
@@ -44,7 +47,7 @@ export async function navigate(path) {
   history.pushState({}, "", path);
   isRedirecting = false;
   await render();
-  
+
   console.log("router.navigate.completed");
 }
 
@@ -73,18 +76,26 @@ async function render() {
       return;
     }
 
-    const user = logged.user
-
-    if (user.roles === 'seller' && !route.skipStoreValidation) {
-      console.log("router.render.is-seller",);
-      if (!sellerHasStoreId(user, path)) {
-        console.log("router.render.seller-has-no-store");
-        navigate(`/sellers/${user.id}/store-setup`)
-        return
-      }
+    if(await redirectToNewUserPage(logged, route)){
+      console.log("router.render.redirectToNewUserPage");
+      navigate(`/new-user`)
+      return
     }
 
-    if (!canAccessRoute(route, user)) {
+    if (await redirectToSellerSetup(logged, route, path)) {
+      console.log("router.render.redirectToSellerSetup");
+      navigate(`/sellers/store/setup`)
+      return
+    }
+
+    if (await redirectToSupplierSetup(logged, route, path)) {
+      console.log("router.render.redirectToSupplierSetup");
+      navigate(`/suppliers/setup`)
+      return
+    }
+
+    if (!canAccessRoute(route, logged.role)) {
+      console.log("router.render.not-authorized");
       Alpine.store('toast').open(
         'Você não tem permissão para acessar essa página',
         'error'

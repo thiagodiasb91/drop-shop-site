@@ -56,7 +56,7 @@
                 Admin
               </button>
 
-              <button :class="{ active: user.role === null }" @click="setRole(user, null)">
+              <button :class="{ active: user.role === 'new-user' }" @click="setRole(user, 'new-user')">
                 Sem acesso
               </button>
             </div>

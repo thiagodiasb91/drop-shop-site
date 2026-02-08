@@ -4,3 +4,11 @@ export function currency(v) {
     currency: "BRL"
   });
 }
+
+export function roleName(roleName) {
+  return {
+    "supplier": "Fornecedor",
+    "seller": "Vendedor",
+    "admin": "Admin",
+  }[roleName] || "Indefinido"
+}

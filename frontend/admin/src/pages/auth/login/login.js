@@ -1,5 +1,5 @@
 import html from "./login.html?raw";
-import { AuthService } from "../../../services/auth.service.js";
+import AuthService from "../../../services/auth.service.js";
 
 console.log("page.login.module.loaded");
 

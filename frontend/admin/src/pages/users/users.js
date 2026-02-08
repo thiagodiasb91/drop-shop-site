@@ -1,5 +1,6 @@
 import html from "./users.html?raw"
 import {navigate} from "../../core/router.js"
+import UsersService from "../../services/users.services.js"
 
 export function getData() {
   return {
@@ -11,43 +12,16 @@ export function getData() {
     },
 
     async fetchUsers() {
-      this.users = [
-        {
-          id: 1,
-          name: 'João Silva',
-          cognitoId: '74e82498-2061-70e3-f44e-30f978854444',
-          email: 'joao.silva@example.com',
-          emailVerified: true,
-          role: 'supplier',
-          saving: false
-        },
-        {
-          id: 2,
-          name: 'Maria Souza',
-          cognitoId: '75e82498-2061-70e3-f44e-30f978854444',
-          email: 'maria.souza@example.com',
-          emailVerified: false,
-          role: 'seller',
-          saving: false
-        },
-        {
-          id: 3,
-          name: 'Carlos Pereira',
-          cognitoId: '99s82498-2061-70e3-f44e-30f978854444',
-          email: 'carlos.pereira@example.com',
-          emailVerified: true,
-          role: 'admin',
-          saving: false
-        },
-        {
-          id: 4,
-          name: 'Ana Lima',
-          cognitoId: '87s25846-2061-70e3-f44e-30f978854444',
-          email: 'ana.lima@example.com',
-          emailVerified: false,
-          role: 'supplier',
-          saving: false
-        },]
+      const users = await UsersService.getAllUsers()
+      console.log("pages.users.fetchUsers.getAllUsers", users)
+
+      if (!users.ok){
+        console.error("pages.users.fetchUsers.getAllUsers.error", users.data)
+        Alpine.store('toast').open('Erro ao consultar usuários.', 'error');
+        return
+      }
+
+      this.users = users.data
     },
 
     get filteredUsers() {
@@ -68,19 +42,24 @@ export function getData() {
       }[role];
     },
 
-    setRole(user, role) {
+    async setRole(user, role) {
       if (user.role === role) return;
       user.role = role;
-      this.save(user);
+      await this.save(user);
     },
 
-    save(user) {
+    async save(user) {
       user.saving = true;
 
       console.log("users.save", user)
-      setTimeout(() => {
-        user.saving = false;
-      }, 600);
+      const res = await UsersService.save(user)
+
+      if (!res.ok){
+        console.error("pages.users.save.error", res.data)
+        Alpine.store('toast').open('Erro ao salvar o usuário.', 'error');
+        return
+      }
+      user.saving = false;
     },
     copy(value, event) {
       navigator.clipboard.writeText(value);
