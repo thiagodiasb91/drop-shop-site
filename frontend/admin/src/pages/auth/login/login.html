@@ -1,25 +1,28 @@
-<!DOCTYPE html>
-<html>
+<body class="bg-slate-900 text-slate-100 flex items-center justify-center min-h-screen">
+  <div x-data="getData" class="w-full max-w-sm px-4">
+    <div class="bg-slate-800 rounded-xl shadow-xl p-8 space-y-6">
+      <!-- Logo -->
+      <div class="flex justify-center mb-4">
+        <img src="/public/logo.png" alt="Drop Shop Admin" class="h-16 w-auto">
+      </div>
 
-<head>
-    <title>Login</title>
-</head>
+      <!-- Header -->
+      <div class="text-center space-y-1">
+        <h1 class="text-2xl font-semibold">Bem-vindo</h1>
+        <p class="text-sm text-slate-400">Faça login para continuar</p>
+      </div>
 
-<body>
-    <div x-data="getData">
-        <div class="card">
-            <h1>Bem-vindo</h1>
-            <p>Faça login para continuar</p>
+      <!-- Login Button -->
+      <button @click="login"
+        class="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500 transition-colors flex items-center justify-center gap-2">
+        <i class="fa-brands fa-amazon"></i>
+        Entrar com Cognito
+      </button>
 
-            <button class="btn" @click="login">
-                Entrar com Cognito
-            </button>
-
-            <div class="footer">
-                © 2026 • Drop Shop Admin
-            </div>
-        </div>
+      <!-- Footer -->
+      <div class="text-center text-xs text-slate-500 mt-4">
+        © 2026 • Drop Shop Admin
+      </div>
     </div>
+  </div>
 </body>
-
-</html>

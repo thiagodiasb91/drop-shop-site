@@ -9,76 +9,34 @@
     ">
 
     <!-- Título -->
-    <div x-show="step.submit">
+    <div>
       <div class="mb-6 text-center">
         <!-- Nome da loja -->
-        <div class="mb-6 text-center" x-show="userEmail">
+        <div class="mb-6 text-center">
           <p class="text-xs text-gray-400">
             Configurando loja para
           </p>
           <p class="text-sm font-medium text-gray-200" x-text="userEmail"></p>
         </div>
-        <h1 class="text-xl md:text-2xl font-semibold text-gray-100">
-          Configure sua loja
-        </h1>
-
-        <p class="mt-2 text-sm text-gray-400">
-          Para continuar, precisamos criar sua loja no Drop Shop.
-        </p>
+        <div class="pt-4 items-center flex flex-col">
+          <h1 class="md:text-2xl font-semibold ">
+            Finalize a configuração
+          </h1>
+          <br>
+          <a :href="linkMarketplace" class="btn-logout">
+            Clique aqui para vincular a sua loja
+          </a>
+        </div>
       </div>
-      <!-- Form -->
-      <form @submit.prevent="submit" class="space-y-4">
-        <!-- Nome da loja -->
-        <div>
-          <label class="block text-sm mb-1 text-gray-300">
-            Nome da loja
-          </label>
-
-          <input x-model="form.name" type="text" placeholder="Ex: Loja do José" class="w-full rounded-md bg-slate-900 border px-3 py-2 text-sm
-      focus:outline-none focus:ring-2
-      " :class="form.errors.name
-      ? 'border-red-500 focus:ring-red-500'
-      : 'border-slate-700 focus:ring-indigo-500'" />
-
-          <template x-if="form.errors.name">
-            <p class="mt-1 text-xs text-red-400" x-text="form.errors.name"></p>
-          </template>
-        </div>
-
-        <!-- Ação principal -->
-        <div class="pt-4">
-          <button type="submit" :disabled="loading"
-            class="w-full rounded-md bg-indigo-600 hover:bg-indigo-500 transition py-2.5 text-sm font-medium text-white ">
-            <span x-show="!loading">
-              Configurar loja e continuar
-            </span>
-            <span x-show="loading" class="items-center gap-2">
-              <i class="fa fa-spinner fa-spin"></i>
-              Criando...
-            </span>
-          </button>
-        </div>
-      </form>
-    </div>
-    <div class="pt-4">
-      <a :href="linkMarketplace" x-show="step.link">
-        <span x-text="linkMarketplace"></span>
-      </a>
     </div>
 
     <!-- Divisor -->
     <div class="my-6 border-t border-slate-700"></div>
+    <div x-data="bootstrap" class="items-center flex flex-col">
+      <a @click="logout" class="btn-logout">
+        Sair
+      </a>
+    </div>
   </div>
 
 </div>
-
-
-
-<script>
-  function spaNavigate(e) {
-    e.preventDefault();
-    import("/src/core/router.js").then(m =>
-      m.navigate(e.currentTarget.getAttribute("href"))
-    );
-  }
-</script>
