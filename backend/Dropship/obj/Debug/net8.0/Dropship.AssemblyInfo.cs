@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("LambdaTest")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0957ea43b59244913ad17be6fdc1c9a37fc33483")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+eac12d0e020b99f55d348f9c741a5c23391b0be6")]
 [assembly: System.Reflection.AssemblyProductAttribute("LambdaTest")]
 [assembly: System.Reflection.AssemblyTitleAttribute("LambdaTest")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

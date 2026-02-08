@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Dropship.Responses;
@@ -22,13 +21,6 @@ public class ShopeeApiService
     private const string SandboxApiHost = "https://openplatform.sandbox.test-stable.shopee.sg";
     
     private const string DefaultApiHost = SandboxApiHost;
-    
-    // Path para autenticação legacy
-    private const string AuthPartnerLegacyPath = "/api/v2/shop/auth_partner";
-    
-    // Paths para chamadas de API (após ter o token)
-    private const string GetTokenPath = "/api/v2/auth/token/get";
-    private const string GetShopInfoPath = "/api/v2/shop/get_shop_info";
 
     public ShopeeApiService(
         HttpClient httpClient,
@@ -39,9 +31,9 @@ public class ShopeeApiService
         _cacheService = cacheService;
         _logger = logger;
 
-        // TODO: Obter credenciais de IConfiguration ou AWS Secrets Manager
+        // Obter credenciais de variáveis de ambiente (com fallback para valores de sandbox)
         _partnerId = Environment.GetEnvironmentVariable("SHOPEE_PARTNER_ID") ?? "1203628";
-        _partnerKey = "shpk4871546d53586b746b4c57614a4b5a577a4476726a4e6747765749665468";
+        _partnerKey = Environment.GetEnvironmentVariable("SHOPEE_PARTNER_KEY") ?? "shpk4871546d53586b746b4c57614a4b5a577a4476726a4e6747765749665468";
     }
 
     /// <summary>
@@ -73,25 +65,17 @@ public class ShopeeApiService
                 throw new InvalidOperationException("Partner Key is required");
             }
 
-            var path = AuthPartnerLegacyPath; // "/api/v2/shop/auth_partner"
+            var path = "/api/v2/shop/auth_partner";
             
             var timest = ShopeeApiHelper.GetCurrentTimestamp();
             
             // Construir redirect URI dinâmica com o email
             var redirectUrl = $"{requestUri}/sellers/{Uri.EscapeDataString(email)}/store/code";
             
-            // Base string para legacy API: {partner_id}{path}{timestamp}
-            var tmpBaseString = $"{_partnerId}{path}{timest}";
-            var baseString = Encoding.UTF8.GetBytes(tmpBaseString);
-            var partnerKey = Encoding.UTF8.GetBytes(_partnerKey);
+            _logger.LogDebug("HMAC Input - PartnerId: {PartnerId}, Path: {Path}, Timestamp: {Timestamp}", _partnerId, path, timest);
             
-            _logger.LogDebug("HMAC Input - PartnerId: {PartnerId}, Path: {Path}, Timestamp: {Timestamp}, BaseString: {BaseString}", _partnerId, path, timest, tmpBaseString);
-            _logger.LogDebug("HMAC PartnerKey length: {KeyLength} bytes", partnerKey.Length);
-            
-            // Calcular HMAC SHA256
-            using var hmac = new HMACSHA256(partnerKey);
-            var hashBytes = hmac.ComputeHash(baseString);
-            var sign = BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
+            // Gerar assinatura usando helper estático
+            var sign = ShopeeApiHelper.GenerateSign(_partnerId, _partnerKey, path, timest);
                 
             _logger.LogDebug("HMAC Sign generated: {Sign}", sign);
                 
@@ -119,8 +103,8 @@ public class ShopeeApiService
         try
         {
             var timestamp = ShopeeApiHelper.GetCurrentTimestamp();
-            var path = GetTokenPath;
-            var sign = GenerateSign(path, timestamp);
+            const string path = "/api/v2/auth/token/get";
+            var sign = ShopeeApiHelper.GenerateSign(_partnerId, _partnerKey, path, timestamp);
 
             // Usar API host para chamadas de token, não account host
             var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&sign={sign}";
@@ -284,7 +268,7 @@ public class ShopeeApiService
         {
             var timestamp = ShopeeApiHelper.GetCurrentTimestamp();
             var path = "/api/v2/auth/token/refresh"; 
-            var sign = GenerateSign(path, timestamp);
+            var sign = ShopeeApiHelper.GenerateSign(_partnerId, _partnerKey, path, timestamp);
 
             var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&sign={sign}";
 
@@ -348,55 +332,6 @@ public class ShopeeApiService
     }
 
     /// <summary>
-    /// Gera assinatura HMAC SHA256 para requisições à API (public endpoints)
-    /// Base string: {partner_id}{path}{timestamp}
-    /// </summary>
-    private string GenerateSign(string path, long timestamp)
-    {
-        try
-        {
-            var tmpBaseString = $"{_partnerId}{path}{timestamp}";
-            var baseString = Encoding.UTF8.GetBytes(tmpBaseString);
-            var key = Encoding.UTF8.GetBytes(_partnerKey);
-
-            using var hmac = new HMACSHA256(key);
-            var hash = hmac.ComputeHash(baseString);
-            return BitConverter.ToString(hash).Replace("-", "").ToLower();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error generating HMAC sign");
-            throw;
-        }
-    }
-
-    /// <summary>
-    /// Gera assinatura HMAC SHA256 para requisições à API (shop-level endpoints)
-    /// Base string: {partner_id}{path}{timestamp}{access_token}{shop_id}
-    /// Ref: https://open.shopee.com/documents/v2/v2.shop.get_shop_info
-    /// </summary>
-    private string GenerateSignWithShop(string path, long timestamp, string accessToken, long shopId)
-    {
-        try
-        {
-            var tmpBaseString = $"{_partnerId}{path}{timestamp}{accessToken}{shopId}";
-            _logger.LogDebug("GenerateSignWithShop - BaseString: {BaseString}", tmpBaseString);
-            
-            var baseString = Encoding.UTF8.GetBytes(tmpBaseString);
-            var key = Encoding.UTF8.GetBytes(_partnerKey);
-
-            using var hmac = new HMACSHA256(key);
-            var hash = hmac.ComputeHash(baseString);
-            return BitConverter.ToString(hash).Replace("-", "").ToLower();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error generating HMAC sign with shop");
-            throw;
-        }
-    }
-
-    /// <summary>
     /// Obtém informações detalhadas da loja Shopee
     /// Endpoint: GET /api/v2/shop/get_shop_info
     /// Obtém o access_token automaticamente do cache
@@ -420,11 +355,11 @@ public class ShopeeApiService
             }
 
             var timestamp = ShopeeApiHelper.GetCurrentTimestamp();
-            var path = GetShopInfoPath;
+            const string path = "/api/v2/shop/get_shop_info";
             
             // Para shop-level APIs, a assinatura inclui access_token e shop_id
             // Base string: {partner_id}{path}{timestamp}{access_token}{shop_id}
-            var sign = GenerateSignWithShop(path, timestamp, accessToken, shopId);
+            var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
 
             // URL da API com parâmetros de autenticação
             var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
@@ -478,4 +413,527 @@ public class ShopeeApiService
             throw;
         }
     }
+
+    #region Product Methods
+
+    /// <summary>
+    /// Obtém lista de itens/produtos da loja
+    /// Endpoint: GET /api/v2/product/get_item_list
+    /// Ref: https://open.shopee.com/documents/v2/v2.product.get_item_list
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="offset">Offset para paginação (default: 0)</param>
+    /// <param name="pageSize">Tamanho da página (default: 20, max: 100)</param>
+    /// <param name="itemStatus">Status dos itens: NORMAL, BANNED, DELETED, UNLIST (default: NORMAL)</param>
+    /// <returns>JSON response com lista de itens</returns>
+    public async Task<JsonDocument> GetItemListAsync(long shopId, int offset = 0, int pageSize = 20, string itemStatus = "NORMAL")
+    {
+        _logger.LogInformation("Getting item list - ShopId: {ShopId}, Offset: {Offset}, PageSize: {PageSize}, Status: {Status}",
+            shopId, offset, pageSize, itemStatus);
+
+        try
+        {
+            var accessToken = await GetCachedAccessTokenAsync(shopId);
+            var timestamp = ShopeeApiHelper.GetCurrentTimestamp();
+            const string path = "/api/v2/product/get_item_list";
+            var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
+
+            var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}&offset={offset}&page_size={pageSize}&item_status={itemStatus}";
+
+            _logger.LogDebug("GetItemList URL - ShopId: {ShopId}", shopId);
+
+            var response = await _httpClient.GetAsync(url);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            _logger.LogDebug("GetItemList Response - StatusCode: {StatusCode}, Content: {Content}",
+                response.StatusCode, responseContent);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Failed to get item list: {response.StatusCode} - {responseContent}");
+            }
+
+            return JsonDocument.Parse(responseContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting item list - ShopId: {ShopId}", shopId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Obtém informações básicas de um ou mais itens
+    /// Endpoint: GET /api/v2/product/get_item_base_info
+    /// Ref: https://open.shopee.com/documents/v2/v2.product.get_item_base_info
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="itemIds">Lista de IDs dos itens (max: 50)</param>
+    /// <returns>JSON response com informações dos itens</returns>
+    public async Task<JsonDocument> GetItemBaseInfoAsync(long shopId, params long[] itemIds)
+    {
+        _logger.LogInformation("Getting item base info - ShopId: {ShopId}, ItemIds: {ItemIds}",
+            shopId, string.Join(",", itemIds));
+
+        try
+        {
+            if (itemIds.Length == 0 || itemIds.Length > 50)
+            {
+                throw new ArgumentException("Item IDs must be between 1 and 50 items");
+            }
+
+            var accessToken = await GetCachedAccessTokenAsync(shopId);
+            var timestamp = ShopeeApiHelper.GetCurrentTimestamp();
+            const string path = "/api/v2/product/get_item_base_info";
+            var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
+
+            var itemIdList = string.Join(",", itemIds);
+            var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}&item_id_list={itemIdList}";
+
+            _logger.LogDebug("GetItemBaseInfo URL - ShopId: {ShopId}", shopId);
+
+            var response = await _httpClient.GetAsync(url);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            _logger.LogDebug("GetItemBaseInfo Response - StatusCode: {StatusCode}, Content: {Content}",
+                response.StatusCode, responseContent);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Failed to get item base info: {response.StatusCode} - {responseContent}");
+            }
+
+            return JsonDocument.Parse(responseContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting item base info - ShopId: {ShopId}", shopId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Adiciona um novo item/produto à loja
+    /// Endpoint: POST /api/v2/product/add_item
+    /// Ref: https://open.shopee.com/documents/v2/v2.product.add_item
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="itemData">Dados do item em formato de objeto (será serializado para JSON)</param>
+    /// <returns>JSON response com dados do item criado</returns>
+    public async Task<JsonDocument> AddItemAsync(long shopId, object itemData)
+    {
+        _logger.LogInformation("Adding item - ShopId: {ShopId}", shopId);
+
+        try
+        {
+            var accessToken = await GetCachedAccessTokenAsync(shopId);
+            var timestamp = ShopeeApiHelper.GetCurrentTimestamp();
+            const string path = "/api/v2/product/add_item";
+            var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
+
+            var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
+
+            var content = new StringContent(
+                JsonSerializer.Serialize(itemData),
+                Encoding.UTF8,
+                "application/json");
+
+            _logger.LogDebug("AddItem URL - ShopId: {ShopId}, Body: {Body}", shopId, JsonSerializer.Serialize(itemData));
+
+            var response = await _httpClient.PostAsync(url, content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            _logger.LogDebug("AddItem Response - StatusCode: {StatusCode}, Content: {Content}",
+                response.StatusCode, responseContent);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Failed to add item: {response.StatusCode} - {responseContent}");
+            }
+
+            return JsonDocument.Parse(responseContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding item - ShopId: {ShopId}", shopId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Atualiza um item/produto existente
+    /// Endpoint: POST /api/v2/product/update_item
+    /// Ref: https://open.shopee.com/documents/v2/v2.product.update_item
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="itemId">ID do item a ser atualizado</param>
+    /// <param name="itemData">Dados do item para atualização</param>
+    /// <returns>JSON response com dados do item atualizado</returns>
+    public async Task<JsonDocument> UpdateItemAsync(long shopId, long itemId, object itemData)
+    {
+        _logger.LogInformation("Updating item - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+
+        try
+        {
+            var accessToken = await GetCachedAccessTokenAsync(shopId);
+            var timestamp = ShopeeApiHelper.GetCurrentTimestamp();
+            const string path = "/api/v2/product/update_item";
+            var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
+
+            var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
+
+            // Adiciona item_id ao objeto de dados
+            var updateData = new Dictionary<string, object>
+            {
+                ["item_id"] = itemId
+            };
+
+            // Mescla itemData com updateData
+            var itemDataJson = JsonSerializer.Serialize(itemData);
+            var itemDataDict = JsonSerializer.Deserialize<Dictionary<string, object>>(itemDataJson);
+            if (itemDataDict != null)
+            {
+                foreach (var kvp in itemDataDict)
+                {
+                    updateData[kvp.Key] = kvp.Value;
+                }
+            }
+
+            var content = new StringContent(
+                JsonSerializer.Serialize(updateData),
+                Encoding.UTF8,
+                "application/json");
+
+            _logger.LogDebug("UpdateItem URL - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+
+            var response = await _httpClient.PostAsync(url, content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            _logger.LogDebug("UpdateItem Response - StatusCode: {StatusCode}, Content: {Content}",
+                response.StatusCode, responseContent);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Failed to update item: {response.StatusCode} - {responseContent}");
+            }
+
+            return JsonDocument.Parse(responseContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating item - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+            throw;
+        }
+    }
+
+    #endregion
+
+    #region Model/Variation Methods
+
+    /// <summary>
+    /// Obtém lista de modelos/variações de um item
+    /// Endpoint: GET /api/v2/product/get_model_list
+    /// Ref: https://open.shopee.com/documents/v2/v2.product.get_model_list
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="itemId">ID do item</param>
+    /// <returns>JSON response com lista de modelos</returns>
+    public async Task<JsonDocument> GetModelListAsync(long shopId, long itemId)
+    {
+        _logger.LogInformation("Getting model list - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+
+        try
+        {
+            var accessToken = await GetCachedAccessTokenAsync(shopId);
+            var timestamp = ShopeeApiHelper.GetCurrentTimestamp();
+            const string path = "/api/v2/product/get_model_list";
+            var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
+
+            var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}&item_id={itemId}";
+
+            _logger.LogDebug("GetModelList URL - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+
+            var response = await _httpClient.GetAsync(url);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            _logger.LogDebug("GetModelList Response - StatusCode: {StatusCode}, Content: {Content}",
+                response.StatusCode, responseContent);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Failed to get model list: {response.StatusCode} - {responseContent}");
+            }
+
+            return JsonDocument.Parse(responseContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting model list - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Adiciona modelos/variações a um item existente
+    /// Endpoint: POST /api/v2/product/add_model
+    /// Ref: https://open.shopee.com/documents/v2/v2.product.add_model
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="itemId">ID do item</param>
+    /// <param name="modelData">Dados dos modelos a serem adicionados</param>
+    /// <returns>JSON response com dados dos modelos criados</returns>
+    public async Task<JsonDocument> AddModelAsync(long shopId, long itemId, object modelData)
+    {
+        _logger.LogInformation("Adding model - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+
+        try
+        {
+            var accessToken = await GetCachedAccessTokenAsync(shopId);
+            var timestamp = ShopeeApiHelper.GetCurrentTimestamp();
+            const string path = "/api/v2/product/add_model";
+            var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
+
+            var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
+
+            // Adiciona item_id ao objeto de dados
+            var addData = new Dictionary<string, object>
+            {
+                ["item_id"] = itemId
+            };
+
+            // Mescla modelData com addData
+            var modelDataJson = JsonSerializer.Serialize(modelData);
+            var modelDataDict = JsonSerializer.Deserialize<Dictionary<string, object>>(modelDataJson);
+            if (modelDataDict != null)
+            {
+                foreach (var kvp in modelDataDict)
+                {
+                    addData[kvp.Key] = kvp.Value;
+                }
+            }
+
+            var content = new StringContent(
+                JsonSerializer.Serialize(addData),
+                Encoding.UTF8,
+                "application/json");
+
+            _logger.LogDebug("AddModel URL - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+
+            var response = await _httpClient.PostAsync(url, content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            _logger.LogDebug("AddModel Response - StatusCode: {StatusCode}, Content: {Content}",
+                response.StatusCode, responseContent);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Failed to add model: {response.StatusCode} - {responseContent}");
+            }
+
+            return JsonDocument.Parse(responseContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding model - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Atualiza modelos/variações de um item
+    /// Endpoint: POST /api/v2/product/update_model
+    /// Ref: https://open.shopee.com/documents/v2/v2.product.update_model
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="itemId">ID do item</param>
+    /// <param name="modelData">Dados dos modelos para atualização</param>
+    /// <returns>JSON response com dados dos modelos atualizados</returns>
+    public async Task<JsonDocument> UpdateModelAsync(long shopId, long itemId, object modelData)
+    {
+        _logger.LogInformation("Updating model - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+
+        try
+        {
+            var accessToken = await GetCachedAccessTokenAsync(shopId);
+            var timestamp = ShopeeApiHelper.GetCurrentTimestamp();
+            const string path = "/api/v2/product/update_model";
+            var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
+
+            var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
+
+            // Adiciona item_id ao objeto de dados
+            var updateData = new Dictionary<string, object>
+            {
+                ["item_id"] = itemId
+            };
+
+            // Mescla modelData com updateData
+            var modelDataJson = JsonSerializer.Serialize(modelData);
+            var modelDataDict = JsonSerializer.Deserialize<Dictionary<string, object>>(modelDataJson);
+            if (modelDataDict != null)
+            {
+                foreach (var kvp in modelDataDict)
+                {
+                    updateData[kvp.Key] = kvp.Value;
+                }
+            }
+
+            var content = new StringContent(
+                JsonSerializer.Serialize(updateData),
+                Encoding.UTF8,
+                "application/json");
+
+            _logger.LogDebug("UpdateModel URL - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+
+            var response = await _httpClient.PostAsync(url, content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            _logger.LogDebug("UpdateModel Response - StatusCode: {StatusCode}, Content: {Content}",
+                response.StatusCode, responseContent);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Failed to update model: {response.StatusCode} - {responseContent}");
+            }
+
+            return JsonDocument.Parse(responseContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating model - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+            throw;
+        }
+    }
+
+    #endregion
+
+    #region Order Methods
+
+    /// <summary>
+    /// Obtém lista de pedidos da loja
+    /// Endpoint: GET /api/v2/order/get_order_list
+    /// Ref: https://open.shopee.com/documents/v2/v2.order.get_order_list
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="timeRangeField">Campo de tempo para filtro: create_time, update_time</param>
+    /// <param name="timeFrom">Timestamp inicial do período</param>
+    /// <param name="timeTo">Timestamp final do período</param>
+    /// <param name="pageSize">Tamanho da página (default: 20, max: 100)</param>
+    /// <param name="cursor">Cursor para paginação</param>
+    /// <param name="orderStatus">Status do pedido: UNPAID, READY_TO_SHIP, PROCESSED, SHIPPED, COMPLETED, IN_CANCEL, CANCELLED, INVOICE_PENDING</param>
+    /// <returns>JSON response com lista de pedidos</returns>
+    public async Task<JsonDocument> GetOrderListAsync(
+        long shopId,
+        string timeRangeField,
+        long timeFrom,
+        long timeTo,
+        int pageSize = 20,
+        string? cursor = null,
+        string? orderStatus = null)
+    {
+        _logger.LogInformation("Getting order list - ShopId: {ShopId}, TimeRangeField: {TimeRangeField}, TimeFrom: {TimeFrom}, TimeTo: {TimeTo}",
+            shopId, timeRangeField, timeFrom, timeTo);
+
+        try
+        {
+            var accessToken = await GetCachedAccessTokenAsync(shopId);
+            var timestamp = ShopeeApiHelper.GetCurrentTimestamp();
+            const string path = "/api/v2/order/get_order_list";
+            var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
+
+            var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}&time_range_field={timeRangeField}&time_from={timeFrom}&time_to={timeTo}&page_size={pageSize}";
+
+            if (!string.IsNullOrEmpty(cursor))
+            {
+                url += $"&cursor={cursor}";
+            }
+
+            if (!string.IsNullOrEmpty(orderStatus))
+            {
+                url += $"&order_status={orderStatus}";
+            }
+
+            _logger.LogDebug("GetOrderList URL - ShopId: {ShopId}", shopId);
+
+            var response = await _httpClient.GetAsync(url);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            _logger.LogDebug("GetOrderList Response - StatusCode: {StatusCode}, Content: {Content}",
+                response.StatusCode, responseContent);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Failed to get order list: {response.StatusCode} - {responseContent}");
+            }
+
+            return JsonDocument.Parse(responseContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting order list - ShopId: {ShopId}", shopId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Obtém detalhes de um ou mais pedidos
+    /// Endpoint: GET /api/v2/order/get_order_detail
+    /// Ref: https://open.shopee.com/documents/v2/v2.order.get_order_detail
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="orderSnList">Lista de order_sn (números dos pedidos)</param>
+    /// <param name="responseOptionalFields">Campos opcionais a serem retornados (ex: buyer_user_id, buyer_username, etc)</param>
+    /// <returns>JSON response com detalhes dos pedidos</returns>
+    public async Task<JsonDocument> GetOrderDetailAsync(
+        long shopId,
+        string[] orderSnList,
+        string[]? responseOptionalFields = null)
+    {
+        _logger.LogInformation("Getting order detail - ShopId: {ShopId}, OrderSnList: {OrderSnList}",
+            shopId, string.Join(",", orderSnList));
+
+        try
+        {
+            if (orderSnList.Length == 0 || orderSnList.Length > 50)
+            {
+                throw new ArgumentException("Order SN list must be between 1 and 50 items");
+            }
+
+            var accessToken = await GetCachedAccessTokenAsync(shopId);
+            var timestamp = ShopeeApiHelper.GetCurrentTimestamp();
+            const string path = "/api/v2/order/get_order_detail";
+            var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
+
+            var orderSnListParam = string.Join(",", orderSnList);
+            var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}&order_sn_list={orderSnListParam}";
+
+            if (responseOptionalFields != null && responseOptionalFields.Length > 0)
+            {
+                var optionalFieldsParam = string.Join(",", responseOptionalFields);
+                url += $"&response_optional_fields={optionalFieldsParam}";
+            }
+
+            _logger.LogDebug("GetOrderDetail URL - ShopId: {ShopId}", shopId);
+
+            var response = await _httpClient.GetAsync(url);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            _logger.LogDebug("GetOrderDetail Response - StatusCode: {StatusCode}, Content: {Content}",
+                response.StatusCode, responseContent);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Failed to get order detail: {response.StatusCode} - {responseContent}");
+            }
+
+            return JsonDocument.Parse(responseContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting order detail - ShopId: {ShopId}", shopId);
+            throw;
+        }
+    }
+
+    #endregion
 }
