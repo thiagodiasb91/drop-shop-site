@@ -1,0 +1,15 @@
+<div x-data="getData" class="w-full min-h-[calc(100vh-5rem)] flex items-center justify-center px-4">
+  <!-- Loading -->
+  <div style="text-align: center;">
+    <div x-show="loading">
+      <div class="loader"></div>
+      <br>
+      <h2>Finalizando a configuração da sua loja ...</h2>
+    </div>
+    <div x-show="!loading">
+      <h2 x-text="message"></h2>
+      <br>
+      <button class="btn-logout" @click="spaNavigate($event, '/')">Tente novamente</button>
+    </div>
+  </div>
+</div>

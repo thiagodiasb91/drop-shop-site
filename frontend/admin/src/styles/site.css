@@ -706,3 +706,18 @@ span.right-allign {
   color: #fff;
   box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.4);
 }
+
+.form-control {
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  background: #0f172a;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: #e5e7eb;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: #6366f1;
+}

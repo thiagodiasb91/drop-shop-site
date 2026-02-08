@@ -1,47 +1,104 @@
-<body>
+<body class="bg-[#0f172a] text-slate-100">
   <div x-data="bootstrap">
-    <div class="layout" x-data="{...setPageTitle(), ...menu()}">
-      <aside class="sidebar" :class="{ 'open': sidebarOpen }">
-        <h2>
-          <a href="/" @click="spaNavigate($event, '/')">
-            Drop Shop Admin
-            <i class="fa-solid fa-gauge-high"></i>
-          </a>
-        </h2>
-        <hr>
-        <ul class="menu">
-          <template x-for="item in menuItems" :key="item.path">
-            <li>
-              <a href="" @click.prevent="spaNavigate($event, item.path)" x-text="item.title">
-              </a>
-            </li>
-          </template>
-        </ul>
 
-        <button class="btn-bottom btn-logout" @click="logout">
-          <i class="fa fa-sign-out"></i> Log Out
-        </button>
-      </aside>
-      <div class="sidebar-overlay" x-show="sidebarOpen" @click="sidebarOpen = false"></div>
-      <div class="content">
-        <header class="topbar">
-          <button class="hamburger" @click="sidebarOpen = !sidebarOpen">
-            ☰
+    <div
+      class="flex min-h-screen"
+      x-data="{ ...setPageTitle(), ...menu() }"
+    >
+
+      <!-- SIDEBAR -->
+      <aside
+        class="fixed inset-y-0 left-0 z-40 w-64 transform bg-slate-900 border-r border-slate-800
+               transition-transform duration-200 ease-in-out
+               md:relative md:translate-x-0"
+        :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
+      >
+
+        <!-- LOGO -->
+        <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-800">
+          <img src="/public/logo.png" alt="Drop Shop" class="h-8 w-auto" />
+          <span class="font-semibold text-lg">Drop Shop Admin</span>
+        </div>
+
+        <!-- MENU -->
+        <nav class="flex-1 overflow-y-auto px-4 py-4">
+          <ul class="space-y-1">
+            <template x-for="item in menuItems" :key="item.path">
+              <li>
+                <a
+                  href=""
+                  @click.prevent="spaNavigate($event, item.path); sidebarOpen = false"
+                  class="block rounded-md px-3 py-2 text-sm
+                         text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+                  x-text="item.title"
+                ></a>
+              </li>
+            </template>
+          </ul>
+        </nav>
+
+        <!-- LOGOUT -->
+        <div class="border-t border-slate-800 p-4">
+          <button
+            @click="logout"
+            class="flex w-full items-center gap-2 rounded-md px-3 py-2
+                   text-sm text-red-400 hover:bg-slate-800"
+          >
+            <i class="fa fa-sign-out"></i>
+            Log out
           </button>
-          <h2 x-text="pageTitle"></h2>
-          <span class="right-allign">
-            <span x-show="logged">
-              Usuário logado:
-              <span x-show="logged" x-text="logged?.user?.email"></span>
-              (<span x-show="logged" x-text="logged?.roles"></span>)
-            </span>
-            <div x-show="!logged" class="loader small"></div>
+        </div>
+      </aside>
 
-          </span>
+      <!-- OVERLAY MOBILE -->
+      <div
+        x-show="sidebarOpen"
+        x-transition.opacity
+        class="fixed inset-0 z-30 bg-black/50 md:hidden"
+        @click="sidebarOpen = false"
+      ></div>
+
+      <!-- CONTENT -->
+      <div class="flex flex-1 flex-col">
+
+        <!-- TOPBAR -->
+        <header
+          class="sticky top-0 z-20 flex h-14 items-center justify-between
+                 border-b border-slate-800 bg-slate-900 px-4 py-8 md:px-6"
+        >
+          <div class="flex items-center gap-3 py-9">
+            <!-- HAMBURGER -->
+            <button
+              class="md:hidden text-xl"
+              @click="sidebarOpen = !sidebarOpen"
+            >
+              ☰
+            </button>
+
+            <h1 class="text-lg font-bold text-slate-200" x-text="pageTitle"></h1>
+          </div>
+
+          <!-- USER INFO -->
+          <div class="text-xs text-slate-400 flex items-center gap-2">
+            <template x-if="logged">
+              <span>
+                <span x-text="logged.user.email"></span>
+                (<span x-text="logged.roleName"></span>)
+              </span>
+            </template>
+
+            <div x-show="!logged" class="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-slate-300"></div>
+          </div>
         </header>
 
-        <main id="content" class="main">
+        <!-- MAIN CONTENT -->
+        <main
+          id="content"
+          class="flex-1 overflow-y-auto px-4 py-6 md:px-8"
+        >
+          <!-- páginas renderizadas aqui -->
         </main>
+
       </div>
     </div>
   </div>

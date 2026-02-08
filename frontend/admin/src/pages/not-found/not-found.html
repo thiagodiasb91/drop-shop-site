@@ -13,7 +13,7 @@
         A página que você tentou acessar não existe ou foi movida. (<span x-text="currentPageAccessed"></span>)
       </p>
 
-      <a href="/" @click.prevent="spaNavigate('/')"
+      <a href="/" @click.prevent="spaNavigate($event, '/')"
         class="inline-flex items-center px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
         Voltar para o início
       </a>

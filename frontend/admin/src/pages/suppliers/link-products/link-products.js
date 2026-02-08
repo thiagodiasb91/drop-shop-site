@@ -1,18 +1,13 @@
-import html from "./supplier-products.html?raw"
-import { router, back, navigate } from "../../core/router.js"
-import SupplierService from "../../services/suppliers.services.js"
-import productService from "../../services/products.services.js"
-import { AuthService } from "../../services/auth.service.js"
-
-
+import html from "./link-products.html?raw"
+import { router, back, navigate } from "../../../core/router.js"
+import SupplierService from "../../../services/suppliers.services.js"
+import productService from "../../../services/products.services.js"
+import AuthService from "../../../services/auth.service.js"
 
 export function getData() {
   return {
     supplierId: null,
-    supplier: {
-      id: null,
-      email: null
-    },
+    supplierEmail: null,
     products: [],
     linkedProducts: [],
     search: '',
@@ -32,43 +27,38 @@ export function getData() {
       const log_prefix = 'page.supplier-products.resolveSupplier'
       console.log(`${log_prefix}.call`);
 
-      const params = router.current?.params ?? {}
+      const params = new URLSearchParams(location.search);
       console.log(`${log_prefix}.params`, params)
 
-      if (!params.supplierId) {
+      const loggedInfo = await AuthService.me()
+      console.log(`${log_prefix}.loggedInfo`, loggedInfo)
+
+
+      if (loggedInfo.role === 'supplier') {
+        this.supplierId = loggedInfo.resourceId
+        this.supplierEmail = loggedInfo.user.email
+      }
+      else if (loggedInfo.role == 'admin') {
+        const supplierId = params.get("supplierId")
+        if (!supplierId) {
+          console.log(`${log_prefix}.loggedInfo.admin.supplierIdNotFound`)
+          Alpine.store('toast').open(
+            'Supplier ID não informado',
+            'error'
+          )
+          return
+        }
+        this.supplierId = supplierId
+      }
+      else {
+        console.log(`${log_prefix}.loggedInfo.roleNotAllowed`, loggedInfo.role)
         Alpine.store('toast').open(
-          'ID do fornecedor não informado',
+          'Você não tem permissão para acessar essa página',
           'error'
         )
         navigate('/')
       }
 
-      const loggedUser = await AuthService.me()
-      console.log(`${log_prefix}.loggedUser`, loggedUser)
-
-      if (params.supplierId === 'me') {
-        if (loggedUser.roles != 'supplier') {
-          console.log(`${log_prefix}.loggedUser.supplier.not.allowed`, loggedUser.roles)
-          Alpine.store('toast').open(
-            'Você não tem permissão para acessar essa página',
-            'error'
-          )
-          navigate('/')
-        }
-        this.supplierId = loggedUser.id
-      }
-      else {
-        if (loggedUser.roles != 'admin') {
-          console.log(`${log_prefix}.loggedUser.admin.not.allowed`, loggedUser.roles)
-          Alpine.store('toast').open(
-            'Você não tem permissão para acessar essa página',
-            'error'
-          )
-          navigate('/')
-        }
-
-        this.supplierId = params.supplierId
-      }
       console.log(`${log_prefix}.supplierId`, this.supplierId)
       await this.fetchSupplier()
       return
