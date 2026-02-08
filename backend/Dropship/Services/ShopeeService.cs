@@ -56,7 +56,7 @@ public class ShopeeService
             }
 
             // Obter tokens da API Shopee
-            var (accessToken, refreshToken, expiresIn) = await _shopeeApiService.GetTokenShopLevelAsync(code, shopId);
+            var accessToken = await _shopeeApiService.GetCachedAccessTokenAsync(shopId, code);
             
             var existingSeller = await _sellerRepository.GetSellerByShopIdAsync(shopId);
             
@@ -91,9 +91,6 @@ public class ShopeeService
             await _userRepository.UpdateUserAsync(user);
             _logger.LogInformation("User updated with resource_id - Email: {Email}, ResourceId: {ResourceId}", 
                 email, seller.SellerId);
-
-            // Armazenar tokens no cache
-            await CacheTokensAsync(shopId.ToString(), accessToken, refreshToken, expiresIn);
 
             _logger.LogInformation("Shop authenticated successfully - ShopId: {ShopId}, Email: {Email}, SellerId: {SellerId}", 
                 shopId, email, seller.SellerId);

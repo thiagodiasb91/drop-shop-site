@@ -1,5 +1,7 @@
 using System.Text;
 using System.IdentityModel.Tokens.Jwt;
+using System.Net;
+using System.Net.Security;
 using Amazon.CognitoIdentityProvider;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
@@ -163,7 +165,40 @@ builder.Services.AddScoped<IAmazonSQS>(_ => new AmazonSQSClient(
     Amazon.RegionEndpoint.USEast1)
 );
 
-builder.Services.AddHttpClient();
+
+ServicePointManager.ServerCertificateValidationCallback += (sender, certificate, chain, errors) =>
+{
+    // local dev, just approve all certs
+    return true;
+};
+// Configure HttpClient with SSL certificate validation bypass for development (macOS compatibility)
+builder.Services.AddHttpClient("default")
+    .ConfigurePrimaryHttpMessageHandler(() =>
+    {
+        return new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => true
+        };
+    });
+
+// Registrar HttpClient factory
+builder.Services.AddTransient(sp =>
+{
+    var factory = sp.GetRequiredService<IHttpClientFactory>();
+    return factory.CreateClient("default");
+});
+
+// Registrar CacheService baseado no ambiente
+// Em desenvolvimento usa cache em memória, em produção usa API AWS
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddScoped<ICacheService, MemoryCacheService>();
+}
+else
+{
+    builder.Services.AddScoped<ICacheService, ApiCacheService>();
+}
+
 builder.Services.AddScoped<ShopeeApiService>();
 builder.Services.AddScoped<DynamoDbRepository>();
 builder.Services.AddScoped<SupplierRepository>();
@@ -172,6 +207,7 @@ builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<KardexRepository>();
 builder.Services.AddScoped<StockRepository>();
 builder.Services.AddScoped<ProductRepository>();
+builder.Services.AddScoped<SkuRepository>();
 builder.Services.AddScoped<KardexService>();
 builder.Services.AddScoped<PaymentService>();
 builder.Services.AddScoped<AuthenticationService>();

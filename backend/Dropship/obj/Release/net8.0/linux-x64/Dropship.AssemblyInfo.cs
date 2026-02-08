@@ -10,10 +10,11 @@
 using System;
 using System.Reflection;
 
+[assembly: Microsoft.Extensions.Configuration.UserSecrets.UserSecretsIdAttribute("1b705ba2-7ccf-4c07-b26c-295b241a6019")]
 [assembly: System.Reflection.AssemblyCompanyAttribute("LambdaTest")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+709d5311a8d5d80275cb59acb3b3cb4d39b8cb6e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0957ea43b59244913ad17be6fdc1c9a37fc33483")]
 [assembly: System.Reflection.AssemblyProductAttribute("LambdaTest")]
 [assembly: System.Reflection.AssemblyTitleAttribute("LambdaTest")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

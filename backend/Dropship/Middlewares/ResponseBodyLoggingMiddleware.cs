@@ -19,24 +19,19 @@ public class ResponseBodyLoggingMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
-        // Armazenar o stream original
         var originalBodyStream = context.Response.Body;
 
         try
         {
-            // Criar um stream em memória para capturar a resposta
             using var memoryStream = new MemoryStream();
             context.Response.Body = memoryStream;
 
-            // Chamar o próximo middleware/controller
             await _next(context);
 
-            // Ler a resposta do stream
             memoryStream.Position = 0;
             var responseBody = await new StreamReader(memoryStream, Encoding.UTF8).ReadToEndAsync();
 
-            // Logar a resposta
-            if (!string.IsNullOrEmpty(responseBody) && context.Response.ContentLength > 0)
+            if (!string.IsNullOrEmpty(responseBody))
             {
                 _logger.LogInformation(
                     "Response Body - Method: {Method}, Path: {Path}, StatusCode: {StatusCode}, ContentType: {ContentType}, Body: {Body}",
@@ -65,13 +60,11 @@ public class ResponseBodyLoggingMiddleware
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error logging response body - Path: {Path}", context.Request.Path);
-            // Garantir que o stream original seja restaurado mesmo em caso de erro
             context.Response.Body = originalBodyStream;
             throw;
         }
         finally
         {
-            // Restaurar o stream original
             context.Response.Body = originalBodyStream;
         }
     }
