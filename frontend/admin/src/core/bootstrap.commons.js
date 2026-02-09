@@ -1,6 +1,6 @@
 import AuthService from "../services/auth.service";
 import { navigate } from "../core/router"
-import {roleName} from "./../utils/format.utils"
+import { roleName } from "./../utils/format.utils"
 
 export function commons() {
   console.log('bootstrap.module.loaded');
@@ -20,6 +20,10 @@ export function commons() {
       if (!confirm) return
       await AuthService.logout()
       navigate("/login")
+    },
+    spaNavigate(e, path) {
+      e.preventDefault();
+      navigate(path)
     }
   }
 }

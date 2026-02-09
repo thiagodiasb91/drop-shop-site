@@ -11,6 +11,9 @@ export function menu() {
       console.log("core.menu.init.called")
       const user = await AuthService.me();
       this.menuItems = this.buildMenu(user)
+      window.addEventListener('popstate', () => {
+        this.currentPath = window.location.pathname;
+      });
       console.log("core.menu.init.items", this.menuItems)
     },
     buildMenu(user) {
@@ -42,10 +45,10 @@ export function menu() {
         }
 
         // admin vê tudo
-        if (user?.role === "admin") {
-          console.log("core.menu.buildMenu.route.admin")
-          return true;
-        }
+        // if (user?.role === "admin") {
+        //   console.log("core.menu.buildMenu.route.admin")
+        //   return true;
+        // }
 
         // se o userRole está na lista da rota
         const included = route.allowedRoles.includes(user?.role);

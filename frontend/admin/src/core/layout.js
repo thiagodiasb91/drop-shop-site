@@ -1,13 +1,15 @@
-import layoutAuthHtml from '../layout/layout-authenticated.html?raw';
-import layoutHtml from '../layout/layout-public.html?raw';
-import layoutCleanHtml  from '../layout/layout-clean.html?raw';
-
 console.log("layout.module.loaded");
 
 const layouts = {
-  "authenticaded": layoutAuthHtml,
-  "public": layoutHtml,
-  "clean": layoutCleanHtml
+  "authenticaded": () => import('../layout/layout-authenticated.html?raw'),
+  "public": () => import('../layout/layout-public.html?raw'),
+  // "clean": () => import('../layout/layout-clean.html?raw')
+}
+
+async function getLayout(layout) {
+  const l = (await layouts[layout]()).default;
+  console.log("layout.getLayout.response", layout);
+  return l
 }
 
 export async function loadLayout(app, route) {
@@ -19,13 +21,13 @@ export async function loadLayout(app, route) {
 
 
   if (route.layout) {
-    app.innerHTML = layouts[route.layout];
+    app.innerHTML = await getLayout(route.layout);
   }
   else if (route.public) {
-    app.innerHTML = layoutHtml;
+    app.innerHTML = await getLayout('public');
     console.log("layout.loadLayout.public");
   } else {
-    app.innerHTML = layoutAuthHtml;
+    app.innerHTML = await getLayout('authenticaded');
     console.log("layout.loadLayout.authenticated");
   }
 
@@ -38,7 +40,7 @@ export async function loadLayout(app, route) {
   console.log("layout.loadLayout.importing", route.js);
   try {
     const module = await route.js();
-    console.log("layout.loadLayout.getData", module.getData);
+    console.log("layout.loadLayout.getData", module?.getData);
 
     if (module.render) {
       console.log("layout.loadLayout.initializingAlpineForContent");

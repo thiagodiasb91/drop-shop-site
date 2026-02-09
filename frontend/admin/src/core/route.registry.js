@@ -1,12 +1,13 @@
 export const routes = {
   "/": {
     title: "Home",
-    js: () => import("../pages/home/home.js"),
+    hideMenu: true,
+    js: () => import("../pages/dashboard/dashboard.js"),
   },
   "/new-user": {
     title: "Usuário Novo",
     js: () => import("../pages/new-user/new-user.js"),
-    layout: "clean",
+    layout: "public",
     hideMenu: true,
     skipNewUserValidation: true
   },
@@ -15,27 +16,30 @@ export const routes = {
     js: () => import("../pages/auth/login/login.js"),
     public: true,
   },
-  "/dashboard": {
-    title: "Dashboard",
-    js: () => import("../pages/dashboard/dashboard.js"),
-  },
   "/callback": {
     title: "Callback",
     js: () => import("../pages/auth/callback/callback.js"),
     public: true,
   },
-  "/products": {
+  "/admin/dashboard": {
+    allowedRoles: ['admin'],
+    title: "Painel do Admin",
+    js: () => import("../pages/admin/dashboard/dashboard.js"),
+  },
+  "/admin/products": {
     title: "Produtos",
     allowedRoles: ['admin'],
     js: () => import("../pages/products/products.js"),
   },
-  "/orders": {
-    title: "Pedidos",
-    js: () => import("../pages/orders/list/list.js"),
+  "/admin/users": {
+    title: "Admin - Usuários",
+    allowedRoles: ['admin'],
+    js: () => import("../pages/admin/users/users.js"),
   },
-  "/orders-group": {
-    title: "Pedidos Agrupados",
-    js: () => import("../pages/orders/list-group/list-group.js"),
+  "/suppliers/dashboard": {
+    allowedRoles: ['supplier'],
+    title: "Painel do Fornecedor",
+    js: () => import("../pages/suppliers/dashboard/dashboard.js"),
   },
   "/suppliers/products": {
     allowedRoles: ['supplier'],
@@ -55,15 +59,20 @@ export const routes = {
   "/suppliers/setup": {
     allowedRoles: ['supplier'],
     title: "Configuração de Fornecedor",
-    layout: "clean",
+    layout: "public",
     js: () => import("../pages/suppliers/initial-setup/initial-setup.js"),
     skipSupplierValidation: true,
     hideMenu: true
   },
+  "/sellers/dashboard": {
+    allowedRoles: ['seller'],
+    title: "Painel do Vendedor",
+    js: () => import("../pages/sellers/dashboard/dashboard.js"),
+  },
   "/sellers/store/setup": {
     allowedRoles: ['seller'],
     title: "Configuração de Código de Loja",
-    layout: "clean",
+    layout: "public",
     js: () => import("../pages/sellers/store-setup/store-setup.js"),
     skipStoreValidation: true,
     hideMenu: true,
@@ -72,7 +81,7 @@ export const routes = {
     allowedRoles: ['seller'],
     title: "Retorno de Código de loja",
     hideMenu: true,
-    layout: "clean",
+    layout: "public",
     js: () => import("../pages/sellers/store-code/store-code.js"),
     skipStoreValidation: true,
   },
@@ -86,10 +95,13 @@ export const routes = {
     title: "Meus Produtos",
     js: () => import("../pages/sellers/link-products/link-products.js"),
   },
-  "/admin/users": {
-    title: "Admin - Usuários",
-    allowedRoles: ['admin'],
-    js: () => import("../pages/users/users.js"),
+  "/orders": {
+    title: "Pedidos",
+    js: () => import("../pages/orders/list/list.js"),
+  },
+  "/orders-group": {
+    title: "Pedidos Agrupados",
+    js: () => import("../pages/orders/list-group/list-group.js"),
   },
   "/settings": {
     title: "Configurações",
@@ -99,6 +111,6 @@ export const routes = {
     title: "Página não encontrada",
     js: () => import("../pages/not-found/not-found.js"),
     skipAuth: true,
-    layout: "clean",
+    layout: "public",
   },
 };
