@@ -127,6 +127,415 @@ public class ShopeeInterfaceController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
         }
     }
+
+    #region Product Endpoints
+
+    /// <summary>
+    /// Obtém lista de categorias disponíveis na Shopee
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="language">Idioma das categorias: pt, en, zh-Hans (default: pt)</param>
+    /// <returns>Lista de categorias com IDs para uso no AddItem</returns>
+    /// <remarks>
+    /// Use este endpoint para obter os category_id válidos para criar produtos.
+    /// 
+    /// Exemplo de resposta:
+    /// 
+    ///     {
+    ///         "error": "",
+    ///         "message": "",
+    ///         "response": {
+    ///             "category_list": [
+    ///                 {
+    ///                     "category_id": 100629,
+    ///                     "parent_category_id": 100017,
+    ///                     "original_category_name": "Camisetas",
+    ///                     "display_category_name": "Camisetas",
+    ///                     "has_children": false
+    ///                 }
+    ///             ]
+    ///         }
+    ///     }
+    /// </remarks>
+    [HttpGet("categories")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetCategories(
+        [FromQuery] long shopId,
+        [FromQuery] string language = "pt")
+    {
+        _logger.LogInformation("[SHOPEE-TEST] GetCategories - ShopId: {ShopId}, Language: {Language}", shopId, language);
+
+        try
+        {
+            if (shopId <= 0)
+            {
+                return BadRequest(new { error = "Valid shopId is required" });
+            }
+
+            var result = await _shopeeApiService.GetCategoryListAsync(shopId, language);
+            return Ok(result.RootElement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error getting categories - ShopId: {ShopId}", shopId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Obtém lista de itens/produtos da loja
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="offset">Offset para paginação (default: 0)</param>
+    /// <param name="pageSize">Tamanho da página (default: 20, max: 100)</param>
+    /// <param name="itemStatus">Status dos itens: NORMAL, BANNED, DELETED, UNLIST (default: NORMAL)</param>
+    [HttpGet("items")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetItemList(
+        [FromQuery] long shopId,
+        [FromQuery] int offset = 0,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string itemStatus = "NORMAL")
+    {
+        _logger.LogInformation("[SHOPEE-TEST] GetItemList - ShopId: {ShopId}, Offset: {Offset}, PageSize: {PageSize}, Status: {Status}",
+            shopId, offset, pageSize, itemStatus);
+
+        try
+        {
+            if (shopId <= 0)
+            {
+                return BadRequest(new { error = "Valid shopId is required" });
+            }
+
+            var result = await _shopeeApiService.GetItemListAsync(shopId, offset, pageSize, itemStatus);
+            return Ok(result.RootElement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error getting item list - ShopId: {ShopId}", shopId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Obtém informações básicas de um ou mais itens
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="itemIds">Lista de IDs dos itens (separados por vírgula, max: 50)</param>
+    [HttpGet("items/base-info")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetItemBaseInfo(
+        [FromQuery] long shopId,
+        [FromQuery] string itemIds)
+    {
+        _logger.LogInformation("[SHOPEE-TEST] GetItemBaseInfo - ShopId: {ShopId}, ItemIds: {ItemIds}", shopId, itemIds);
+
+        try
+        {
+            if (shopId <= 0)
+            {
+                return BadRequest(new { error = "Valid shopId is required" });
+            }
+
+            if (string.IsNullOrWhiteSpace(itemIds))
+            {
+                return BadRequest(new { error = "itemIds is required" });
+            }
+
+            var itemIdArray = itemIds.Split(',').Select(id => long.Parse(id.Trim())).ToArray();
+            var result = await _shopeeApiService.GetItemBaseInfoAsync(shopId, itemIdArray);
+            return Ok(result.RootElement);
+        }
+        catch (FormatException)
+        {
+            return BadRequest(new { error = "itemIds must be a comma-separated list of numbers" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error getting item base info - ShopId: {ShopId}", shopId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Adiciona um novo item/produto à loja
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="itemData">Dados do item em formato JSON</param>
+    [HttpPost("items")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> AddItem(
+        [FromQuery] long shopId,
+        [FromBody] object itemData)
+    {
+        _logger.LogInformation("[SHOPEE-TEST] AddItem - ShopId: {ShopId}", shopId);
+
+        try
+        {
+            if (shopId <= 0)
+            {
+                return BadRequest(new { error = "Valid shopId is required" });
+            }
+
+            if (itemData == null)
+            {
+                return BadRequest(new { error = "itemData is required" });
+            }
+
+            var result = await _shopeeApiService.AddItemAsync(shopId, itemData);
+            return Ok(result.RootElement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error adding item - ShopId: {ShopId}", shopId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Atualiza um item/produto existente
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="itemId">ID do item a ser atualizado</param>
+    /// <param name="itemData">Dados do item para atualização</param>
+    [HttpPut("items/{itemId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UpdateItem(
+        [FromQuery] long shopId,
+        [FromRoute] long itemId,
+        [FromBody] object itemData)
+    {
+        _logger.LogInformation("[SHOPEE-TEST] UpdateItem - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+
+        try
+        {
+            if (shopId <= 0)
+            {
+                return BadRequest(new { error = "Valid shopId is required" });
+            }
+
+            if (itemData == null)
+            {
+                return BadRequest(new { error = "itemData is required" });
+            }
+
+            var result = await _shopeeApiService.UpdateItemAsync(shopId, itemId, itemData);
+            return Ok(result.RootElement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error updating item - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
+    #endregion
+
+    #region Model/Variation Endpoints
+
+    /// <summary>
+    /// Obtém lista de modelos/variações de um item
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="itemId">ID do item</param>
+    [HttpGet("items/{itemId}/models")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetModelList(
+        [FromQuery] long shopId,
+        [FromRoute] long itemId)
+    {
+        _logger.LogInformation("[SHOPEE-TEST] GetModelList - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+
+        try
+        {
+            if (shopId <= 0)
+            {
+                return BadRequest(new { error = "Valid shopId is required" });
+            }
+
+            var result = await _shopeeApiService.GetModelListAsync(shopId, itemId);
+            return Ok(result.RootElement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error getting model list - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Adiciona modelos/variações a um item existente
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="itemId">ID do item</param>
+    /// <param name="modelData">Dados dos modelos a serem adicionados</param>
+    [HttpPost("items/{itemId}/models")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> AddModel(
+        [FromQuery] long shopId,
+        [FromRoute] long itemId,
+        [FromBody] object modelData)
+    {
+        _logger.LogInformation("[SHOPEE-TEST] AddModel - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+
+        try
+        {
+            if (shopId <= 0)
+            {
+                return BadRequest(new { error = "Valid shopId is required" });
+            }
+
+            if (modelData == null)
+            {
+                return BadRequest(new { error = "modelData is required" });
+            }
+
+            var result = await _shopeeApiService.AddModelAsync(shopId, itemId, modelData);
+            return Ok(result.RootElement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error adding model - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Atualiza modelos/variações de um item
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="itemId">ID do item</param>
+    /// <param name="modelData">Dados dos modelos para atualização</param>
+    [HttpPut("items/{itemId}/models")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UpdateModel(
+        [FromQuery] long shopId,
+        [FromRoute] long itemId,
+        [FromBody] object modelData)
+    {
+        _logger.LogInformation("[SHOPEE-TEST] UpdateModel - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+
+        try
+        {
+            if (shopId <= 0)
+            {
+                return BadRequest(new { error = "Valid shopId is required" });
+            }
+
+            if (modelData == null)
+            {
+                return BadRequest(new { error = "modelData is required" });
+            }
+
+            var result = await _shopeeApiService.UpdateModelAsync(shopId, itemId, modelData);
+            return Ok(result.RootElement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error updating model - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
+    #endregion
+
+    #region Order Endpoints
+
+    /// <summary>
+    /// Obtém lista de pedidos da loja
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="timeRangeField">Campo de tempo para filtro: create_time, update_time</param>
+    /// <param name="timeFrom">Timestamp inicial do período</param>
+    /// <param name="timeTo">Timestamp final do período</param>
+    /// <param name="pageSize">Tamanho da página (default: 20, max: 100)</param>
+    /// <param name="cursor">Cursor para paginação</param>
+    /// <param name="orderStatus">Status do pedido</param>
+    [HttpGet("orders")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetOrderList(
+        [FromQuery] long shopId,
+        [FromQuery] string timeRangeField,
+        [FromQuery] long timeFrom,
+        [FromQuery] long timeTo,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? cursor = null,
+        [FromQuery] string? orderStatus = null)
+    {
+        _logger.LogInformation("[SHOPEE-TEST] GetOrderList - ShopId: {ShopId}, TimeRangeField: {TimeRangeField}, TimeFrom: {TimeFrom}, TimeTo: {TimeTo}",
+            shopId, timeRangeField, timeFrom, timeTo);
+
+        try
+        {
+            if (shopId <= 0)
+            {
+                return BadRequest(new { error = "Valid shopId is required" });
+            }
+
+            if (string.IsNullOrWhiteSpace(timeRangeField))
+            {
+                return BadRequest(new { error = "timeRangeField is required (create_time or update_time)" });
+            }
+
+            var result = await _shopeeApiService.GetOrderListAsync(shopId, timeRangeField, timeFrom, timeTo, pageSize, cursor, orderStatus);
+            return Ok(result.RootElement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error getting order list - ShopId: {ShopId}", shopId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Obtém detalhes de um ou mais pedidos
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="orderSnList">Lista de order_sn (números dos pedidos), separados por vírgula</param>
+    /// <param name="responseOptionalFields">Campos opcionais a serem retornados, separados por vírgula</param>
+    [HttpGet("orders/detail")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetOrderDetail(
+        [FromQuery] long shopId,
+        [FromQuery] string orderSnList)
+    {
+        _logger.LogInformation("[SHOPEE-TEST] GetOrderDetail - ShopId: {ShopId}, OrderSnList: {OrderSnList}", shopId, orderSnList);
+
+        try
+        {
+            if (shopId <= 0)
+            {
+                return BadRequest(new { error = "Valid shopId is required" });
+            }
+
+            if (string.IsNullOrWhiteSpace(orderSnList))
+            {
+                return BadRequest(new { error = "orderSnList is required" });
+            }
+
+            var orderSnArray = orderSnList.Split(',').Select(s => s.Trim()).ToArray();
+            
+            var result = await _shopeeApiService.GetOrderDetailAsync(shopId, orderSnArray);
+            return Ok(result.RootElement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error getting order detail - ShopId: {ShopId}", shopId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
+    #endregion
 }
 
 /// <summary>

@@ -10,14 +10,18 @@ using Dropship.Repository;
 
 namespace Dropship.Services;
 
-public class AuthenticationService(UserRepository userRepository)
+public class AuthenticationService(ILogger<AuthenticationService> logger, UserRepository userRepository)
 {
     public async Task<(string?, DateTime? expiresAt)> ProcessCallbackAsync(string code, string origin)
     {
         var redirectUrl = GetRedirectUrl(origin);
+        
+        logger.LogInformation("Received callback with code: {Code} and origin: {Origin}, redirectUrl: {redirect}", code, origin, redirectUrl);
         if (redirectUrl == null) return (null, null);
 
+        
         var tokens = await ExchangeCodeForTokens(code, redirectUrl);
+        logger.LogInformation("tokens {tokens}", tokens);
         if (tokens == null) return (null,null);
 
         if (!tokens.Value.TryGetProperty("token_type", out var tokenType) || tokenType.GetString() != "Bearer")
@@ -26,12 +30,16 @@ public class AuthenticationService(UserRepository userRepository)
         var idToken = tokens.Value.GetProperty("id_token").GetString();
         var accessToken = tokens.Value.GetProperty("access_token").GetString();
 
+        logger.LogInformation("idToken {idToken} and accessToken {accessToken}", idToken, accessToken);
         if (string.IsNullOrWhiteSpace(idToken) || string.IsNullOrWhiteSpace(accessToken))
             return (null,null);
 
         var claims = await ValidateIdToken(idToken!, accessToken!);
+        
+        logger.LogInformation("claims {claims}", claims);
         if (claims == null) return (null,null);
-
+        
+        
         var email = claims.TryGetValue("email", out var emailStr) ? emailStr!.GetString()! : string.Empty;
         var user = await userRepository.GetUser(email) ?? new UserDomain()
         {
@@ -40,6 +48,7 @@ public class AuthenticationService(UserRepository userRepository)
             Role = "new-user"
         };
 
+        logger.LogInformation("user {user}", user);
         return GenerateSessionToken(user);
     }
 
@@ -86,14 +95,9 @@ public class AuthenticationService(UserRepository userRepository)
 
     public string GenerateLoginUrl(string referer)
     {
-        var map = new Dictionary<string, string>()
-        {
-            { "http://localhost:5173/", "http://localhost:5173/callback" },
-            { "https://duz838qu410buj.cloudfront.net/", "https://duz838qu40buj.cloudfront.net/callback" },
-            { "https://d2rjoik9cb60m4.cloudfront.net/", "https://d2rjoik9cb60m4.cloudfront.net/callback" }  
-        };
+        referer = referer.EndsWith("/") ? referer[..^1] : referer;
         
-        var redirectUri = map.GetValueOrDefault(referer, "");
+        var redirectUri = AuthConfig.RedirectMap.GetValueOrDefault(referer, "");
         
         var parameters = new Dictionary<string, string>
         {
@@ -216,8 +220,9 @@ public class AuthenticationService(UserRepository userRepository)
 
             return dict;
         }
-        catch
+        catch (Exception ex)
         {
+            logger.LogError(ex, "Error validating ID token");
             return null;
         }
     }

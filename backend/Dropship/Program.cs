@@ -188,16 +188,8 @@ builder.Services.AddTransient(sp =>
     return factory.CreateClient("default");
 });
 
-// Registrar CacheService baseado no ambiente
-// Em desenvolvimento usa cache em memória, em produção usa API AWS
-if (builder.Environment.IsDevelopment())
-{
-    builder.Services.AddScoped<ICacheService, MemoryCacheService>();
-}
-else
-{
-    builder.Services.AddScoped<ICacheService, ApiCacheService>();
-}
+// Registrar CacheService usando DynamoDB para persistir tokens
+builder.Services.AddScoped<ICacheService, DynamoDbCacheService>();
 
 builder.Services.AddScoped<ShopeeApiService>();
 builder.Services.AddScoped<DynamoDbRepository>();

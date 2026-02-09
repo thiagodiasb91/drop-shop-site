@@ -183,6 +183,30 @@ public class ShopeeApiService
             var refreshTokenKey = $"{shopId}_refresh_token";
             var expiresAtKey = $"{shopId}_access_token_expires_at";
 
+            if (!string.IsNullOrEmpty(code))
+            {
+                _logger.LogInformation("Obtaining new access token via full exchange - ShopId: {ShopId}", shopId);
+                var (newToken, newRefreshToken, expiresIn) = await GetTokenShopLevelAsync(code, shopId);
+
+                if (string.IsNullOrEmpty(newToken))
+                {
+                    _logger.LogError("Failed to obtain new access token - ShopId: {ShopId}", shopId);
+                    throw new InvalidOperationException("Failed to obtain access token");
+                }
+
+                var newExpiresAt = now + expiresIn;
+
+                _logger.LogDebug("Caching new tokens - ShopId: {ShopId}, ExpiresIn: {ExpiresIn}s", shopId, expiresIn);
+                await _cacheService.SaveManyAsync(
+                    (accessTokenKey, newToken),
+                    (refreshTokenKey, newRefreshToken),
+                    (expiresAtKey, newExpiresAt.ToString())
+                );
+
+                _logger.LogInformation("New access token cached successfully - ShopId: {ShopId}", shopId);
+                return newToken;
+            }
+
             // Buscar tokens em cache
             _logger.LogDebug("Fetching tokens from cache - ShopId: {ShopId}", shopId);
             var cached = await _cacheService.GetManyAsync(accessTokenKey, refreshTokenKey, expiresAtKey);
@@ -220,35 +244,9 @@ public class ShopeeApiService
                     _logger.LogWarning(ex, "Refresh token failed - ShopId: {ShopId}, will perform full token exchange", shopId);
                 }
             }
-
-            // Nenhum token válido: fazer troca completa de token
-            if (string.IsNullOrEmpty(code))
-            {
-                _logger.LogError("No valid token in cache and no authorization code provided - ShopId: {ShopId}", shopId);
-                throw new InvalidOperationException("Authorization code is required when no valid token is cached");
-            }
-
-            _logger.LogInformation("Obtaining new access token via full exchange - ShopId: {ShopId}", shopId);
-            var (newToken, newRefreshToken, expiresIn) = await GetTokenShopLevelAsync(code, shopId);
-
-            if (string.IsNullOrEmpty(newToken))
-            {
-                _logger.LogError("Failed to obtain new access token - ShopId: {ShopId}", shopId);
-                throw new InvalidOperationException("Failed to obtain access token");
-            }
-
-            // Cache dos novos tokens
-            var newExpiresAt = now + expiresIn;
-
-            _logger.LogDebug("Caching new tokens - ShopId: {ShopId}, ExpiresIn: {ExpiresIn}s", shopId, expiresIn);
-            await _cacheService.SaveManyAsync(
-                (accessTokenKey, newToken),
-                (refreshTokenKey, newRefreshToken),
-                (expiresAtKey, newExpiresAt.ToString())
-            );
-
-            _logger.LogInformation("New access token cached successfully - ShopId: {ShopId}", shopId);
-            return newToken;
+            
+            _logger.LogInformation("Performing full token exchange due to missing/invalid refresh token - ShopId: {ShopId}", shopId);
+            throw new InvalidOperationException("Unable to obtain valid access token");
         }
         catch (Exception ex)
         {
@@ -415,6 +413,49 @@ public class ShopeeApiService
     }
 
     #region Product Methods
+
+    /// <summary>
+    /// Obtém lista de categorias disponíveis na Shopee
+    /// Endpoint: GET /api/v2/product/get_category
+    /// Ref: https://open.shopee.com/documents/v2/v2.product.get_category
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="language">Idioma das categorias (ex: pt, en, zh-Hans)</param>
+    /// <returns>JSON response com lista de categorias</returns>
+    public async Task<JsonDocument> GetCategoryListAsync(long shopId, string language = "pt")
+    {
+        _logger.LogInformation("Getting category list - ShopId: {ShopId}, Language: {Language}", shopId, language);
+
+        try
+        {
+            var accessToken = await GetCachedAccessTokenAsync(shopId);
+            var timestamp = ShopeeApiHelper.GetCurrentTimestamp();
+            const string path = "/api/v2/product/get_category";
+            var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
+
+            var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}&language={language}";
+
+            _logger.LogDebug("GetCategoryList URL - ShopId: {ShopId}", shopId);
+
+            var response = await _httpClient.GetAsync(url);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            _logger.LogDebug("GetCategoryList Response - StatusCode: {StatusCode}, Content: {Content}",
+                response.StatusCode, responseContent);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Failed to get category list: {response.StatusCode} - {responseContent}");
+            }
+
+            return JsonDocument.Parse(responseContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting category list - ShopId: {ShopId}", shopId);
+            throw;
+        }
+    }
 
     /// <summary>
     /// Obtém lista de itens/produtos da loja
@@ -886,8 +927,7 @@ public class ShopeeApiService
     /// <returns>JSON response com detalhes dos pedidos</returns>
     public async Task<JsonDocument> GetOrderDetailAsync(
         long shopId,
-        string[] orderSnList,
-        string[]? responseOptionalFields = null)
+        string[] orderSnList)
     {
         _logger.LogInformation("Getting order detail - ShopId: {ShopId}, OrderSnList: {OrderSnList}",
             shopId, string.Join(",", orderSnList));
@@ -907,10 +947,11 @@ public class ShopeeApiService
             var orderSnListParam = string.Join(",", orderSnList);
             var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}&order_sn_list={orderSnListParam}";
 
+            const string responseOptionalFields = "buyer_user_id,buyer_username,estimated_shipping_fee,recipient_address,actual_shipping_fee ,goods_to_declare,note,note_update_time,item_list,pay_time,dropshipper, dropshipper_phone,split_up,buyer_cancel_reason,cancel_by,cancel_reason,actual_shipping_fee_confirmed,buyer_cpf_id,fulfillment_flag,pickup_done_time,package_list,shipping_carrier,payment_method,total_amount,buyer_username,invoice_data,order_chargeable_weight_gram,return_request_due_date,edt,payment_info";
+            
             if (responseOptionalFields != null && responseOptionalFields.Length > 0)
             {
-                var optionalFieldsParam = string.Join(",", responseOptionalFields);
-                url += $"&response_optional_fields={optionalFieldsParam}";
+                url += $"&response_optional_fields={responseOptionalFields}";
             }
 
             _logger.LogDebug("GetOrderDetail URL - ShopId: {ShopId}", shopId);
