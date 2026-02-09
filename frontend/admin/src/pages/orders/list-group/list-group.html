@@ -2,7 +2,9 @@
 
   <h1 x-show="!loading">Fornecedores (<span x-text="suppliers.length"></span>)</h1>
 
-  <div x-show="loading" class="loader"></div>
+  <div x-show="loading" class="flex justify-center py-20">
+    <div class="h-8 w-8 animate-spin rounded-full border-2 border-slate-600 border-t-slate-200"></div>
+  </div>
 
   <!-- Desktop -->
   <table class="data-table desktop-only" x-show="!loading">

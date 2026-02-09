@@ -48,6 +48,7 @@ export async function navigate(path) {
   isRedirecting = false;
   await render();
 
+  window.dispatchEvent(new Event('popstate'));
   console.log("router.navigate.completed");
 }
 

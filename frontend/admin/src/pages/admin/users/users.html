@@ -1,0 +1,130 @@
+<div x-data="getData()" class="space-y-6">
+  <div x-show="loading" class="flex justify-center py-20">
+    <div class="h-8 w-8 animate-spin rounded-full border-2 border-slate-600 border-t-slate-200"></div>
+  </div>
+  <div x-show="!loading" 
+    class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-800 p-4 rounded-xl border border-slate-700">
+    <div class="relative flex-1 max-w-md">
+      <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500">
+        <i class="fa fa-search"></i>
+      </span>
+      <input type="text" placeholder="Buscar por email ou ID..." x-model="search"
+        class="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all" />
+    </div>
+    <div class="text-xs text-slate-400">
+      Total: <span class="font-bold text-white" x-text="filteredUsers.length"></span> usuários
+    </div>
+  </div>
+
+  <div x-show="!loading"  class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm text-left border-collapse">
+        <thead class="bg-slate-900/50 text-slate-400 uppercase text-[10px] tracking-widest">
+          <tr>
+            <th class="p-4 font-semibold">Usuário</th>
+            <th class="p-4 font-semibold">Nível de Acesso</th>
+            <th class="p-4 font-semibold text-right">Ações</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-700">
+          <template x-for="user in filteredUsers" :key="user.id">
+            <tr class="hover:bg-slate-700/30 transition-colors">
+              <td class="p-4">
+                <div class="flex flex-col">
+                  <div class="flex items-center gap-2">
+                    <span class="font-medium text-slate-200" x-text="user.email"></span>
+                    <button @click="copy(user.email, $event)"
+                      class="text-slate-500 hover:text-indigo-400 transition-colors">
+                      <i class="fa fa-copy text-[10px]"></i>
+                    </button>
+                  </div>
+                  <span class="text-[10px] font-mono text-slate-500 mt-1" x-text="user.cognitoId"></span>
+                  <template x-if="!user.emailVerified">
+                    <span class="text-[9px] text-amber-500 mt-0.5 italic">E-mail não verificado</span>
+                  </template>
+                </div>
+              </td>
+
+              <td class="p-4">
+                <div class="flex flex-wrap gap-1.5">
+                  <template x-for="r in availableRoles" :key="String(r)">
+                    <button @click="setRole(user, r)" :disabled="user.saving" :class="{
+                                                'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/20': user.role === r,
+                                                'bg-slate-900 text-slate-400 border-slate-700 hover:border-slate-500': user.role !== r,
+                                                'opacity-50 cursor-not-allowed': user.saving
+                                            }"
+                      class="px-2.5 py-1 text-[10px] uppercase font-bold rounded border transition-all whitespace-nowrap"
+                      x-text="labelRole(r)">
+                    </button>
+                  </template>
+                </div>
+              </td>
+              <td class="p-4 text-right">
+                <div class="relative inline-block text-left" x-data="{ menuOpen: false }"
+                  @click.away="menuOpen = false">
+
+                  <button @click="menuOpen = !menuOpen"
+                    class="items-center gap-2 px-3 py-1.5 bg-slate-900 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-200 transition-all active:scale-95 shadow-sm">
+                    <span>...</span>
+                    <i class="fa fa-chevron-down text-[10px] text-slate-500 transition-transform duration-200"
+                      :class="menuOpen ? 'rotate-180' : ''"></i>
+                  </button>
+
+                  <div x-show="menuOpen" x-transition:enter="transition ease-out duration-100"
+                    x-transition:enter-start="transform opacity-0 scale-95"
+                    x-transition:enter-end="transform opacity-100 scale-100"
+                    class="absolute right-0 mt-2 w-56 origin-top-right bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-50 overflow-hidden"
+                    style="display: none;">
+                    <div class="py-1 divide-y divide-slate-700">
+                      <div class="px-4 py-2 bg-slate-900/50">
+                        <p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Operações</p>
+                      </div>
+
+                      <div class="py-1">
+                        <button @click="spaNavigate($event, `/admin/users/${user.id}/history`)"
+                          class="flex items-center gap-3 w-full px-4 py-2 text-xs text-slate-300 hover:bg-slate-700 transition-colors">
+                          <i class="fa fa-history w-4 text-slate-500"></i> Ver Histórico
+                        </button>
+                      </div>
+
+                      <template x-if="user.role === 'supplier'">
+                        <div class="py-1 bg-indigo-500/5">
+                          <button @click="spaNavigate($event, `/admin/suppliers/${user.id}/products`)"
+                            class="flex items-center gap-3 w-full px-4 py-2 text-xs text-slate-300 hover:bg-slate-700 transition-colors">
+                            <i class="fa fa-boxes w-4 text-indigo-400"></i> Produtos Vinculados
+                          </button>
+                          <button @click="spaNavigate($event, `/admin/suppliers/${user.id}/stock`)"
+                            class="flex items-center gap-3 w-full px-4 py-2 text-xs text-slate-300 hover:bg-slate-700 transition-colors">
+                            <i class="fa fa-warehouse w-4 text-indigo-400"></i> Controle de Estoque
+                          </button>
+                        </div>
+                      </template>
+
+                      <template x-if="user.role === 'seller'">
+                        <div class="py-1">
+                          <button @click="spaNavigate($event, `/admin/sellers/${user.id}/stores`)"
+                            class="flex items-center gap-3 w-full px-4 py-2 text-xs text-slate-300 hover:bg-slate-700 transition-colors">
+                            <i class="fa fa-shopping-bag w-4 text-emerald-400"></i> Lojas Conectadas
+                          </button>
+                        </div>
+                      </template>
+
+                      <div class="py-1">
+                        <button @click="toggleUserStatus(user)"
+                          class="flex items-center gap-3 w-full px-4 py-2 text-xs transition-colors"
+                          :class="user.active ? 'text-red-400 hover:bg-red-500/10' : 'text-emerald-400 hover:bg-emerald-500/10'">
+                          <i class="fa w-4" :class="user.active ? 'fa-user-times' : 'fa-user-check'"></i>
+                          <span x-text="user.active ? 'Desativar Usuário' : 'Reativar Usuário'"></span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

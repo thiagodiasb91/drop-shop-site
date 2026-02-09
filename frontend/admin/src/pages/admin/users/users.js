@@ -1,34 +1,43 @@
 import html from "./users.html?raw"
-import {navigate} from "../../core/router.js"
-import UsersService from "../../services/users.services.js"
+import { navigate } from "../../../core/router.js"
+import UsersService from "../../../services/users.services.js"
 
 export function getData() {
   return {
+    loading: true,
     search: '',
     users: [],
+    availableRoles: [
+      'admin',
+      'seller', 
+      'supplier', 
+      'new-user',
+    ],
 
     init() {
       this.fetchUsers();
     },
 
     async fetchUsers() {
-      const users = await UsersService.getAllUsers()
-      console.log("pages.users.fetchUsers.getAllUsers", users)
+      this.loading = true
+      const res = await UsersService.getAllUsers()
+      console.log("pages.users.fetchUsers.getAllUsers", res)
 
-      if (!users.ok){
-        console.error("pages.users.fetchUsers.getAllUsers.error", users.data)
+      if (!res.ok) {
+        console.error("pages.users.fetchUsers.getAllUsers.error", res.data)
         Alpine.store('toast').open('Erro ao consultar usuários.', 'error');
         return
       }
 
-      this.users = users.data
+      this.users = res.data.map(u => ({ ...u, saving: false }));
+      this.loading = false
     },
 
     get filteredUsers() {
       if (!this.search) return this.users;
       const s = this.search.toLowerCase();
       return this.users.filter(u =>
-        u.name.toLowerCase().includes(s) ||
+        u.email.toLowerCase().includes(s) ||
         u.cognitoId.toLowerCase().includes(s)
       );
     },
@@ -38,26 +47,23 @@ export function getData() {
         supplier: 'Fornecedor',
         seller: 'Vendedor',
         admin: 'Admin',
-        null: 'Sem acesso'
+        'new-user': 'Sem acesso'
       }[role];
     },
-
     async setRole(user, role) {
-      if (user.role === role) return;
-      user.role = role;
-      await this.save(user);
-    },
+      if (user.role === role || user.saving) return;
 
-    async save(user) {
+      const oldRole = user.role;
+      user.role = role;
       user.saving = true;
 
-      console.log("users.save", user)
-      const res = await UsersService.save(user)
+      const res = await UsersService.save(user);
 
-      if (!res.ok){
-        console.error("pages.users.save.error", res.data)
-        Alpine.store('toast').open('Erro ao salvar o usuário.', 'error');
-        return
+      if (!res.ok) {
+        user.role = oldRole; // Reverte em caso de erro
+        Alpine.store('toast').open('Erro ao atualizar permissão.', 'error');
+      } else {
+        Alpine.store('toast').open(`Usuário atualizado para ${this.labelRole(role)}`, 'success');
       }
       user.saving = false;
     },

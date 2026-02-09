@@ -9,6 +9,7 @@ console.log("ENV.API_BASE_URL", ENV.API_BASE_URL);
 
 const AuthService = {
   basePath: `${ENV.API_BASE_URL}/auth`,
+  _mePromise: null,
   async login() {
     console.log("AuthService.login.request")
     window.location.href = `${this.basePath}/login`
@@ -41,42 +42,55 @@ const AuthService = {
       return cachedMe
     }
 
-    const sessionToken = CacheHelper.get("session_token")
-    console.log("AuthService.me.api.call", sessionToken)
+    if (this._mePromise) {
+      console.log("AuthService.me.returning_mePromise", cachedMe)
+      return this._mePromise;
+    }
 
-    const res = await fetch(
-      `${this.basePath}/me`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${sessionToken}`
-        },
+    this._mePromise = (async () => {
+      try {
+        const sessionToken = CacheHelper.get("session_token")
+        console.log("AuthService.me.api.call", sessionToken)
+
+        const res = await fetch(
+          `${this.basePath}/me`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${sessionToken}`
+            },
+          }
+        )
+
+        if (res.status === 401) {
+          console.log("AuthService.me.unauthorized")
+          this.logout()
+          return null
+        }
+
+        if (!res.ok) {
+          throw new Error("Erro ao buscar usuário")
+        }
+
+        const data = (await res.json())
+        console.log("AuthService.me.api.response", data)
+
+        // Simula resposta da API
+        // data.role = 'supplier';
+        // data.role = 'seller';
+
+        CacheHelper.set("me.data", data)
+        CacheHelper.set("me.expiresAt", data.session?.exp)
+
+        console.log("AuthService.me.new-session", data, data.session?.exp)
+
+        return data
       }
-    )
-
-    if (res.status === 401) {
-      console.log("AuthService.me.unauthorized")
-      this.logout()
-      return null
-    }
-
-    if(!res.ok){
-      throw new Error("Erro ao buscar usuário")
-    }
-
-    const data = (await res.json())
-    console.log("AuthService.me.api.response", data)
-
-    // Simula resposta da API
-    // data.role = 'supplier';
-    // data.role = 'seller';
-
-    CacheHelper.set("me.data", data)
-    CacheHelper.set("me.expiresAt", data.session?.exp)
-
-    console.log("AuthService.me.new-session", data, data.session?.exp)
-
-    return data
+      finally {
+        this._mePromise = null;
+      }
+    })()
+    return this._mePromise
   },
 
   async confirmCode(code, shopId, email) {
@@ -92,16 +106,16 @@ const AuthService = {
 
     return responseHandler(res)
   },
-  
+
   async renewToken() {
     console.log("AuthService.renewToken.request")
     const res = await fetch(
       `${this.basePath}/renew`,
       {
         method: "POST",
-        headers: { 
+        headers: {
           "Authorization": `Bearer ${CacheHelper.get("session_token")}`,
-          "Content-Type": "application/json" 
+          "Content-Type": "application/json"
         },
       }
     )
