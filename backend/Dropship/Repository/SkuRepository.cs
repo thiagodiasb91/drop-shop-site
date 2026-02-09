@@ -202,6 +202,7 @@ public class SkuRepository
 
             var skus = items
                 .Select(SkuMapper.ToDomain)
+                .Where( x=> x.EntityType == "sku") ///TODO: REMOVER quando FOR PARA SQL
                 .OrderByDescending(s => s.CreatedAt)
                 .ToList();
 

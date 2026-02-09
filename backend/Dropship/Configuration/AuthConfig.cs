@@ -13,6 +13,7 @@ public static class AuthConfig
     public static readonly Dictionary<string, string> RedirectMap = new()
     {
         { "http://localhost:5173", "http://localhost:5173/callback" },
-        { "https://d35nbs4n8cbsw3.cloudfront.net", "https://d35nbs4n8cbsw3.cloudfront.net/callback" }
+        { "https://d35nbs4n8cbsw3.cloudfront.net", "https://d35nbs4n8cbsw3.cloudfront.net/callback" },
+        {"https://duz838qu40buj.cloudfront.net", "https://duz838qu40buj.cloudfront.net"}
     };
 }

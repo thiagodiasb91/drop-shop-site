@@ -10,17 +10,9 @@ namespace Dropship.Controllers;
 /// </summary>
 [ApiController]
 [Route("products")]
-public class ProductController : ControllerBase
+public class ProductController(ProductRepository productRepository, ILogger<ProductController> logger)
+    : ControllerBase
 {
-    private readonly ProductRepository _productRepository;
-    private readonly ILogger<ProductController> _logger;
-
-    public ProductController(ProductRepository productRepository, ILogger<ProductController> logger)
-    {
-        _productRepository = productRepository;
-        _logger = logger;
-    }
-
     /// <summary>
     /// Obtém um produto pelo ID
     /// </summary>
@@ -31,20 +23,20 @@ public class ProductController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetProduct(string id)
     {
-        _logger.LogInformation("Getting product - ProductId: {ProductId}", id);
+        logger.LogInformation("Getting product - ProductId: {ProductId}", id);
 
         try
         {
             if (string.IsNullOrWhiteSpace(id))
             {
-                _logger.LogWarning("Invalid product ID provided");
+                logger.LogWarning("Invalid product ID provided");
                 return BadRequest(new { error = "Product ID is required" });
             }
 
-            var product = await _productRepository.GetProductByIdAsync(id);
+            var product = await productRepository.GetProductByIdAsync(id);
             if (product == null)
             {
-                _logger.LogWarning("Product not found - ProductId: {ProductId}", id);
+                logger.LogWarning("Product not found - ProductId: {ProductId}", id);
                 return NotFound(new { error = "Product not found" });
             }
 
@@ -53,7 +45,7 @@ public class ProductController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting product - ProductId: {ProductId}", id);
+            logger.LogError(ex, "Error getting product - ProductId: {ProductId}", id);
             return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
         }
     }
@@ -66,19 +58,19 @@ public class ProductController : ControllerBase
     [ProducesResponseType(typeof(ProductListResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAllProducts()
     {
-        _logger.LogInformation("Fetching all products");
+        logger.LogInformation("Fetching all products");
 
         try
         {
-            var products = await _productRepository.GetAllProductsAsync();
+            var products = await productRepository.GetAllProductsAsync();
             var response = products.ToListResponse();
 
-            _logger.LogInformation("Retrieved {Count} products", response.Total);
+            logger.LogInformation("Retrieved {Count} products", response.Total);
             return Ok(response);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error fetching products");
+            logger.LogError(ex, "Error fetching products");
             return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
         }
     }
@@ -93,26 +85,26 @@ public class ProductController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateProduct([FromBody] CreateProductRequest request)
     {
-        _logger.LogInformation("Creating product - ProductName: {ProductName}", request.ProductName);
+        logger.LogInformation("Creating product - ProductName: {ProductName}", request.ProductName);
 
         try
         {
             // Validações de Data Annotations são automáticas no ModelState
             if (!ModelState.IsValid)
             {
-                _logger.LogWarning("Invalid product request - ModelState errors");
+                logger.LogWarning("Invalid product request - ModelState errors");
                 return BadRequest(ModelState);
             }
 
-            var product = await _productRepository.CreateProductAsync(request);
+            var product = await productRepository.CreateProductAsync(request);
             var response = product.ToResponse();
 
-            _logger.LogInformation("Product created successfully - ProductId: {ProductId}", product.Id);
+            logger.LogInformation("Product created successfully - ProductId: {ProductId}", product.Id);
             return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, response);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating product");
+            logger.LogError(ex, "Error creating product");
             return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
         }
     }
@@ -129,31 +121,31 @@ public class ProductController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> UpdateProduct(string id, [FromBody] UpdateProductRequest request)
     {
-        _logger.LogInformation("Updating product - ProductId: {ProductId}", id);
+        logger.LogInformation("Updating product - ProductId: {ProductId}", id);
 
         try
         {
             // Validações de Data Annotations são automáticas no ModelState
             if (!ModelState.IsValid)
             {
-                _logger.LogWarning("Invalid product request - ModelState errors");
+                logger.LogWarning("Invalid product request - ModelState errors");
                 return BadRequest(ModelState);
             }
 
-            var product = await _productRepository.UpdateProductAsync(id, request);
+            var product = await productRepository.UpdateProductAsync(id, request);
             if (product == null)
             {
-                _logger.LogWarning("Product not found for update - ProductId: {ProductId}", id);
+                logger.LogWarning("Product not found for update - ProductId: {ProductId}", id);
                 return NotFound(new { error = "Product not found" });
             }
 
             var response = product.ToResponse();
-            _logger.LogInformation("Product updated successfully - ProductId: {ProductId}", id);
+            logger.LogInformation("Product updated successfully - ProductId: {ProductId}", id);
             return Ok(response);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating product - ProductId: {ProductId}", id);
+            logger.LogError(ex, "Error updating product - ProductId: {ProductId}", id);
             return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
         }
     }
@@ -168,29 +160,29 @@ public class ProductController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteProduct(string id)
     {
-        _logger.LogInformation("Deleting product - ProductId: {ProductId}", id);
+        logger.LogInformation("Deleting product - ProductId: {ProductId}", id);
 
         try
         {
             if (string.IsNullOrWhiteSpace(id))
             {
-                _logger.LogWarning("Invalid product ID provided");
+                logger.LogWarning("Invalid product ID provided");
                 return BadRequest(new { error = "Product ID is required" });
             }
 
-            var success = await _productRepository.DeleteProductAsync(id);
+            var success = await productRepository.DeleteProductAsync(id);
             if (!success)
             {
-                _logger.LogWarning("Product not found for deletion - ProductId: {ProductId}", id);
+                logger.LogWarning("Product not found for deletion - ProductId: {ProductId}", id);
                 return NotFound(new { error = "Product not found" });
             }
 
-            _logger.LogInformation("Product deleted successfully - ProductId: {ProductId}", id);
+            logger.LogInformation("Product deleted successfully - ProductId: {ProductId}", id);
             return NoContent();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting product - ProductId: {ProductId}", id);
+            logger.LogError(ex, "Error deleting product - ProductId: {ProductId}", id);
             return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
         }
     }
