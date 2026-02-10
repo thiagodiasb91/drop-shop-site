@@ -257,6 +257,9 @@ public class ShopeeApiService
 
     /// <summary>
     /// Faz refresh do access token usando o refresh token
+    /// Baseado na implementação Python com melhorias
+    /// Se o refresh falhar, lança Exception para que o caller possa fazer full token exchange
+    /// Nota: Este é um endpoint shop-level que requer access_token na assinatura
     /// </summary>
     private async Task<string> RefreshAccessTokenAsync(long shopId, string refreshToken)
     {
@@ -264,16 +267,25 @@ public class ShopeeApiService
 
         try
         {
+            if (string.IsNullOrWhiteSpace(refreshToken))
+            {
+                _logger.LogWarning("No refresh token available - ShopId: {ShopId}", shopId);
+                throw new InvalidOperationException("No refresh token available");
+            }
+
             var timestamp = ShopeeApiHelper.GetCurrentTimestamp();
-            var path = "/api/v2/auth/token/refresh"; 
+            const string path = "/api/v2/auth/access_token/get";
+            
             var sign = ShopeeApiHelper.GenerateSign(_partnerId, _partnerKey, path, timestamp);
 
             var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&sign={sign}";
 
+            // Body contém refresh_token, shop_id e partner_id
             var body = new
             {
                 refresh_token = refreshToken,
-                partner_id = _partnerId
+                shop_id = shopId,
+                partner_id = int.Parse(_partnerId)
             };
 
             var content = new StringContent(
@@ -281,44 +293,92 @@ public class ShopeeApiService
                 Encoding.UTF8,
                 "application/json");
 
-            var response = await _httpClient.PostAsync(url, content);
+            _logger.LogDebug("Refreshing access token - ShopId: {ShopId}, Timestamp: {Timestamp}", shopId, timestamp);
 
+            var response = await _httpClient.PostAsync(url, content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            _logger.LogDebug("Token refresh response - ShopId: {ShopId}, StatusCode: {StatusCode}, Content: {Content}",
+                shopId, response.StatusCode, responseContent);
+
+            // Verificar status code
             if (!response.IsSuccessStatusCode)
             {
-                var errorContent = await response.Content.ReadAsStringAsync();
                 _logger.LogWarning("Token refresh failed - ShopId: {ShopId}, StatusCode: {StatusCode}, Error: {Error}",
-                    shopId, response.StatusCode, errorContent);
-                throw new InvalidOperationException($"Failed to refresh token: {response.StatusCode} - {errorContent}");
+                    shopId, response.StatusCode, responseContent);
+                throw new InvalidOperationException($"Refresh failed: {response.StatusCode} {responseContent}");
             }
 
-            var responseJson = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+            // Parse response
+            var responseJson = JsonDocument.Parse(responseContent);
+            var rootElement = responseJson.RootElement;
 
-            if (responseJson.RootElement.TryGetProperty("error", out var errorElement) && !string.IsNullOrEmpty(errorElement.GetString()))
+            // Verificar se há erro na resposta
+            if (rootElement.TryGetProperty("error", out var errorElement))
             {
-                var errorMessage = responseJson.RootElement.TryGetProperty("message", out var msgElement)
-                    ? msgElement.GetString()
-                    : "Unknown error";
-
-                _logger.LogWarning("Shopee error on token refresh - ShopId: {ShopId}, Error: {Error}, Message: {Message}",
-                    shopId, errorElement.GetString(), errorMessage);
-                throw new InvalidOperationException($"Error refreshing token: {errorMessage}");
+                var errorValue = errorElement.GetString();
+                if (!string.IsNullOrEmpty(errorValue))
+                {
+                    _logger.LogWarning("Shopee error on token refresh - ShopId: {ShopId}, Error: {Error}, Response: {Response}",
+                        shopId, errorValue, responseContent);
+                    throw new InvalidOperationException($"Refresh error: {responseContent}");
+                }
             }
 
+            // Extrair tokens
             var accessToken = ShopeeApiHelper.GetJsonProperty(responseJson, "access_token");
             var newRefreshToken = ShopeeApiHelper.GetJsonProperty(responseJson, "refresh_token");
-            var expiresIn = ShopeeApiHelper.ParseExpiresIn(responseJson);
+            
+            if (string.IsNullOrEmpty(accessToken))
+            {
+                _logger.LogWarning("No access token in refresh response - ShopId: {ShopId}", shopId);
+                throw new InvalidOperationException("No access token in refresh response");
+            }
 
-            _logger.LogInformation("Token refreshed successfully - ShopId: {ShopId}, ExpiresIn: {ExpiresIn}",
+            // Parse expires_in (pode vir como "expires_in" ou "expire_in")
+            long expiresIn = 3600; // default 1 hora
+            if (rootElement.TryGetProperty("expires_in", out var expiresInElement))
+            {
+                if (expiresInElement.ValueKind == JsonValueKind.Number && 
+                    expiresInElement.TryGetInt64(out var expiresInValue))
+                {
+                    expiresIn = expiresInValue;
+                }
+                else if (expiresInElement.ValueKind == JsonValueKind.String &&
+                         long.TryParse(expiresInElement.GetString(), out var expiresInString))
+                {
+                    expiresIn = expiresInString;
+                }
+            }
+            else if (rootElement.TryGetProperty("expire_in", out var expireInElement))
+            {
+                if (expireInElement.ValueKind == JsonValueKind.Number && 
+                    expireInElement.TryGetInt64(out var expireInValue))
+                {
+                    expiresIn = expireInValue;
+                }
+                else if (expireInElement.ValueKind == JsonValueKind.String &&
+                         long.TryParse(expireInElement.GetString(), out var expireInString))
+                {
+                    expiresIn = expireInString;
+                }
+            }
+
+            _logger.LogInformation("Token refreshed successfully - ShopId: {ShopId}, ExpiresIn: {ExpiresIn}s",
                 shopId, expiresIn);
 
+            // Calcular expira_at
             var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             var expiresAt = now + expiresIn;
 
+            // Atualizar cache com os novos tokens
             await _cacheService.SaveManyAsync(
                 ($"{shopId}_access_token", accessToken),
                 ($"{shopId}_refresh_token", newRefreshToken),
                 ($"{shopId}_access_token_expires_at", expiresAt.ToString())
             );
+
+            _logger.LogDebug("Tokens cached - ShopId: {ShopId}, ExpiresAt: {ExpiresAt}", shopId, expiresAt);
 
             return accessToken;
         }
@@ -670,6 +730,65 @@ public class ShopeeApiService
     #endregion
 
     #region Model/Variation Methods
+
+    /// <summary>
+    /// Inicializa variações de tier para um item existente
+    /// Endpoint: POST /api/v2/product/init_tier_variation
+    /// Ref: https://open.shopee.com/documents/v2/v2.product.init_tier_variation
+    /// Use este método para adicionar variações a um item que foi criado sem variações
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="itemId">ID do item</param>
+    /// <param name="standardiseTierVariation">Lista de variações padronizadas (ex: Color, Size)</param>
+    /// <param name="model">Lista de modelos para cada combinação de variações</param>
+    /// <returns>JSON response com dados das variações criadas</returns>
+    public async Task<JsonDocument> InitTierVariationAsync(long shopId, long itemId, object standardiseTierVariation, object model)
+    {
+        _logger.LogInformation("Initializing tier variation - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+
+        try
+        {
+            var accessToken = await GetCachedAccessTokenAsync(shopId);
+            var timestamp = ShopeeApiHelper.GetCurrentTimestamp();
+            const string path = "/api/v2/product/init_tier_variation";
+            var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
+
+            var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
+
+            var requestData = new Dictionary<string, object>
+            {
+                ["item_id"] = itemId,
+                ["standardise_tier_variation"] = standardiseTierVariation,
+                ["model"] = model
+            };
+
+            var content = new StringContent(
+                JsonSerializer.Serialize(requestData),
+                Encoding.UTF8,
+                "application/json");
+
+            _logger.LogDebug("InitTierVariation URL - ShopId: {ShopId}, ItemId: {ItemId}, Body: {Body}", 
+                shopId, itemId, JsonSerializer.Serialize(requestData));
+
+            var response = await _httpClient.PostAsync(url, content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            _logger.LogDebug("InitTierVariation Response - StatusCode: {StatusCode}, Content: {Content}",
+                response.StatusCode, responseContent);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Failed to init tier variation: {response.StatusCode} - {responseContent}");
+            }
+
+            return JsonDocument.Parse(responseContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error initializing tier variation - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+            throw;
+        }
+    }
 
     /// <summary>
     /// Obtém lista de modelos/variações de um item

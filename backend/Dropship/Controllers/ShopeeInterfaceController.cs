@@ -1,3 +1,4 @@
+using Dropship.Requests;
 using Microsoft.AspNetCore.Mvc;
 using Dropship.Services;
 using Dropship.Responses;
@@ -337,6 +338,91 @@ public class ShopeeInterfaceController : ControllerBase
     #endregion
 
     #region Model/Variation Endpoints
+
+    /// <summary>
+    /// Inicializa variações de tier para um item existente (sem variações)
+    /// Use este endpoint para adicionar variações a um produto que foi criado sem elas
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="itemId">ID do item</param>
+    /// <param name="request">Dados das variações e modelos</param>
+    /// <remarks>
+    /// Exemplo de requisição:
+    /// 
+    ///     POST /shopee-interface/items/43464493923/init-tier-variation?shopId=226289035
+    ///     {
+    ///         "standardise_tier_variation": [
+    ///             {
+    ///                 "variation_id": 0,
+    ///                 "variation_group_id": 0,
+    ///                 "variation_name": "Cor",
+    ///                 "variation_option_list": [
+    ///                     { "variation_option_id": 0, "variation_option_name": "Azul", "image_id": "sg-xxx-azul" },
+    ///                     { "variation_option_id": 0, "variation_option_name": "Amarelo", "image_id": "sg-xxx-amarelo" },
+    ///                     { "variation_option_id": 0, "variation_option_name": "Vermelho", "image_id": "sg-xxx-vermelho" }
+    ///                 ]
+    ///             },
+    ///             {
+    ///                 "variation_id": 0,
+    ///                 "variation_group_id": 0,
+    ///                 "variation_name": "Tamanho",
+    ///                 "variation_option_list": [
+    ///                     { "variation_option_id": 0, "variation_option_name": "P" },
+    ///                     { "variation_option_id": 0, "variation_option_name": "M" },
+    ///                     { "variation_option_id": 0, "variation_option_name": "G" }
+    ///                 ]
+    ///             }
+    ///         ],
+    ///         "model": [
+    ///             { "tier_index": [0, 0], "model_sku": "CAM-AZUL-P", "original_price": 10000, "seller_stock": [{ "stock": 10 }] },
+    ///             { "tier_index": [0, 1], "model_sku": "CAM-AZUL-M", "original_price": 10000, "seller_stock": [{ "stock": 10 }] },
+    ///             { "tier_index": [0, 2], "model_sku": "CAM-AZUL-G", "original_price": 10000, "seller_stock": [{ "stock": 10 }] },
+    ///             { "tier_index": [1, 0], "model_sku": "CAM-AMARELO-P", "original_price": 10000, "seller_stock": [{ "stock": 10 }] },
+    ///             { "tier_index": [1, 1], "model_sku": "CAM-AMARELO-M", "original_price": 10000, "seller_stock": [{ "stock": 10 }] },
+    ///             { "tier_index": [1, 2], "model_sku": "CAM-AMARELO-G", "original_price": 10000, "seller_stock": [{ "stock": 10 }] },
+    ///             { "tier_index": [2, 0], "model_sku": "CAM-VERMELHO-P", "original_price": 10000, "seller_stock": [{ "stock": 10 }] },
+    ///             { "tier_index": [2, 1], "model_sku": "CAM-VERMELHO-M", "original_price": 10000, "seller_stock": [{ "stock": 10 }] },
+    ///             { "tier_index": [2, 2], "model_sku": "CAM-VERMELHO-G", "original_price": 10000, "seller_stock": [{ "stock": 10 }] }
+    ///         ]
+    ///     }
+    /// 
+    /// Notas:
+    /// - tier_index[0] = índice da Cor (0=Azul, 1=Amarelo, 2=Vermelho)
+    /// - tier_index[1] = índice do Tamanho (0=P, 1=M, 2=G)
+    /// - image_id é opcional e só necessário para variações visuais (como cor)
+    /// - original_price pode estar em centavos dependendo da região
+    /// </remarks>
+    [HttpPost("items/{itemId}/init-tier-variation")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> InitTierVariation(
+        [FromQuery] long shopId,
+        [FromRoute] long itemId,
+        [FromBody] InitTierVariationRequest request)
+    {
+        _logger.LogInformation("[SHOPEE-TEST] InitTierVariation - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+
+        try
+        {
+            if (shopId <= 0)
+            {
+                return BadRequest(new { error = "Valid shopId is required" });
+            }
+
+            if (request == null || request.StandardiseTierVariation == null || request.Model == null)
+            {
+                return BadRequest(new { error = "standardise_tier_variation and model are required" });
+            }
+
+            var result = await _shopeeApiService.InitTierVariationAsync(shopId, itemId, request.StandardiseTierVariation, request.Model);
+            return Ok(result.RootElement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error initializing tier variation - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
 
     /// <summary>
     /// Obtém lista de modelos/variações de um item

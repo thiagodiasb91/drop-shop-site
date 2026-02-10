@@ -18,7 +18,7 @@ public class ProductDomain
 
     // Informações do Produto
     public string Name { get; set; } = default!;
-
+    public string Description { get; set; } = default!;
     // Metadata
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
@@ -41,20 +41,15 @@ public static class ProductMapper
 
         return new ProductDomain
         {
-            // Chaves
-            PK = item.ContainsKey("PK") ? item["PK"].S : "",
-            SK = item.ContainsKey("SK") ? item["SK"].S : "",
+            PK = item.TryGetValue("PK", out var pk) ? pk.S : "",
+            SK = item.TryGetValue("SK", out var sk) ? sk.S : "",
 
-            // Identificadores
-            Id = item.ContainsKey("product_id") ? item["product_id"].S : 
-                 (item.ContainsKey("id") ? item["id"].S : ""),
-            EntityType = item.ContainsKey("entityType") ? item["entityType"].S : "product",
-
-            // Informações
-            Name = item.ContainsKey("product_name") ? item["product_name"].S : 
-                   (item.ContainsKey("name") ? item["name"].S : ""),
-
-            // Metadata
+            Id = item.ContainsKey("product_id") ? item["product_id"].S : "",
+            EntityType = item.ContainsKey("entity_type") ? item["entity_type"].S : "product",
+            
+            Name = item.ContainsKey("product_name") ? item["product_name"].S : "",
+            Description = item.ContainsKey("product_description") ? item["product_description"].S : "",
+            
             CreatedAt = createdAt,
             UpdatedAt = updatedAtString != null ? updatedAt : null
         };

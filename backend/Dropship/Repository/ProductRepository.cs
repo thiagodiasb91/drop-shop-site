@@ -29,8 +29,8 @@ public class ProductRepository
         {
             var key = new Dictionary<string, AttributeValue>
             {
-                { "PK", new AttributeValue { S = $"Product#{productId}" } },
-                { "SK", new AttributeValue { S = "META" } }
+                { "PK", new AttributeValue { S = "Product" } },
+                { "SK", new AttributeValue { S = $"META#{productId}" } }
             };
 
             var item = await _repository.GetItemAsync(key);
@@ -175,12 +175,11 @@ public class ProductRepository
         try
         {
             var items = await _repository.QueryTableAsync(
-                indexName: "GSI_RELATIONS_LOOKUP",
-                keyConditionExpression: "SK = :sk AND begins_with(PK, :pk)",
+                keyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
                 expressionAttributeValues: new Dictionary<string, AttributeValue>
                 {
-                    { ":sk", new AttributeValue { S = "META" } },
-                    { ":pk", new AttributeValue { S = "Product#" } }
+                    { ":sk", new AttributeValue { S = "META#" } },
+                    { ":pk", new AttributeValue { S = "Product" } }
                 }
             );
 

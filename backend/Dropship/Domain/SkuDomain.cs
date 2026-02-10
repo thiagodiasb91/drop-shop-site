@@ -55,9 +55,8 @@ public static class SkuMapper
 
             // Identificadores
             Id = item.ContainsKey("sku") ? item["sku"].S : "",
-            ProductId = item.ContainsKey("productId") ? item["productId"].S : 
-                       (item.ContainsKey("product_id") ? item["product_id"].S : ""),
-            EntityType = item.ContainsKey("entityType") ? item["entityType"].S : "sku",
+            ProductId = item.ContainsKey("product_id") ? item["product_id"].S : "",
+            EntityType = item.ContainsKey("entity_type") ? item["entity_type"].S : "sku",
 
             // Informações
             Sku = item.ContainsKey("sku") ? item["sku"].S : "",

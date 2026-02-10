@@ -200,6 +200,7 @@ builder.Services.AddScoped<KardexRepository>();
 builder.Services.AddScoped<StockRepository>();
 builder.Services.AddScoped<ProductRepository>();
 builder.Services.AddScoped<SkuRepository>();
+builder.Services.AddScoped<ProductSkuSupplierRepository>();
 builder.Services.AddScoped<KardexService>();
 builder.Services.AddScoped<PaymentService>();
 builder.Services.AddScoped<AuthenticationService>();
