@@ -47,7 +47,7 @@ public static class ProductSupplierMapper
             ProductName = item.ContainsKey("product_name") ? item["product_name"].S : "",
 
             // Dados
-            ProductionPrice = item.ContainsKey("production_price") && decimal.TryParse(item["production_price"].N, out var price) ? price : 0,
+            ProductionPrice = item.ContainsKey("production_price") && decimal.TryParse(item["production_price"].N, System.Globalization.CultureInfo.InvariantCulture, out var price) ? price : 0,
             Priority = item.ContainsKey("priority") && int.TryParse(item["priority"].N, out var prio) ? prio : 0,
             SkuCount = item.ContainsKey("sku_count") && int.TryParse(item["sku_count"].N, out var count) ? count : 0,
             CreatedAt = createdAt

@@ -41,7 +41,7 @@ public static class ProductSkuSupplierMapper
             SupplierId = item.ContainsKey("supplier_id") ? item["supplier_id"].S : "",
 
             // Dados
-            ProductionPrice = item.ContainsKey("production_price") && decimal.TryParse(item["production_price"].N, out var price) ? price : 0,
+            ProductionPrice = item.ContainsKey("production_price") && decimal.TryParse(item["production_price"].N, System.Globalization.CultureInfo.InvariantCulture, out var price) ? price : 0,
             Quantity = item.ContainsKey("quantity") && long.TryParse(item["quantity"].N, out var qty) ? qty : 0
         };
     }

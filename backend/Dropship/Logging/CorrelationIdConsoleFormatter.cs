@@ -105,10 +105,10 @@ public sealed class CorrelationIdConsoleFormatter : ConsoleFormatter
     {
         LogLevel.Trace => "TRACE",
         LogLevel.Debug => "DEBUG",
-        LogLevel.Information => "INFO ",
+        LogLevel.Information => "INFO",
         LogLevel.Warning => "WARN ",
         LogLevel.Error => "ERROR",
         LogLevel.Critical => "FATAL",
-        _ => "UNKN "
+        _ => "UNKN"
     };
 }
