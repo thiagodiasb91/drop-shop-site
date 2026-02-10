@@ -151,7 +151,7 @@ public class AuthenticationService(ILogger<AuthenticationService> logger, UserRe
         var symKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(AuthConfig.SESSION_SECRET));
         var creds = new SigningCredentials(symKey, SecurityAlgorithms.HmacSha256);
 
-        var expiration = DateTime.UtcNow.AddSeconds(AuthConfig.SESSION_TTL);
+        var expiration = DateTime.UtcNow.AddMinutes(AuthConfig.SESSION_TTL);
         
         var sessionToken = new JwtSecurityToken(
             claims: sessionClaims,

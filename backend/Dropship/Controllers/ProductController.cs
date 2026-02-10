@@ -14,6 +14,7 @@ public class ProductController(
     ProductRepository productRepository,
     SkuRepository skuRepository,
     ProductSkuSupplierRepository productSkuSupplierRepository,
+    ProductSupplierRepository productSupplierRepository,
     SupplierRepository supplierRepository,
     ILogger<ProductController> logger)
     : ControllerBase
@@ -149,16 +150,57 @@ public class ProductController(
     #region Supplier Integration
 
     /// <summary>
+    /// Obtém todos os produtos fornecidos pelo fornecedor autenticado
+    /// O ID do fornecedor é obtido automaticamente da claim "resourceId" do usuário autenticado
+    /// </summary>
+    /// <returns>Lista de produtos fornecidos com informações de preço e quantidade de SKUs</returns>
+    [HttpGet("supplier")]
+    [ProducesResponseType(typeof(ProductSupplierListResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetProductsBySupplier()
+    {
+        var supplierId = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "resourceId")?.Value;
+        logger.LogInformation("Getting products for supplier - SupplierId: {SupplierId}", supplierId);
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(supplierId))
+            {
+                logger.LogWarning("Supplier ID not found in claims");
+                return BadRequest(new { error = "Supplier ID not found in authentication claims" });
+            }
+
+            var products = await productSupplierRepository.GetProductsBySupplierAsync(supplierId);
+            if (products == null || products.Count == 0)
+            {
+                logger.LogWarning("No products found for supplier - SupplierId: {SupplierId}", supplierId);
+                return NotFound(new { error = "No products found for this supplier" });
+            }
+
+            logger.LogInformation("Found {Count} products for supplier - SupplierId: {SupplierId}",
+                products.Count, supplierId);
+
+            return Ok(products.ToListResponse());
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting products for supplier - SupplierId: {SupplierId}", supplierId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
     /// Vincula um fornecedor a um produto com preço de produção
     /// Mapeia automaticamente todos os SKUs do produto e cria registros na estrutura:
     /// PK: Product#{productId}
     /// SK: Sku#{sku}#Supplier#{supplierId}
+    /// O ID do fornecedor é obtido da claim "resourceId" do usuário autenticado
     /// </summary>
     /// <param name="productId">ID do produto que deve existir no banco de dados</param>
-    /// <param name="supplierId">ID do fornecedor que deve existir no banco de dados</param>
     /// <param name="request">Dados do fornecimento (preço de produção, prioridade)</param>
     /// <returns>Lista de registros criados (um por SKU do produto)</returns>
-    [HttpPost("{productId}/supplier")]
+    [HttpPost("{productId}/suppliers")]
     [ProducesResponseType(typeof(ProductSkuSupplierListResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -207,6 +249,14 @@ public class ProductController(
                 supplierId,
                 request.ProductionPrice,
                 skuCodes
+            );
+
+            await productSupplierRepository.CreateProductSupplierAsync(
+                productId,
+                supplierId,
+                product.Name,
+                request.ProductionPrice,
+                skuCodes.Count
             );
 
             logger.LogInformation("Supplier linked to product successfully - ProductId: {ProductId}, SupplierId: {SupplierId}, SKUs: {SkuCount}",
@@ -264,13 +314,14 @@ public class ProductController(
     }
 
     /// <summary>
-    /// Obtém todos os SKUs fornecidos por um fornecedor específico para um produto
+    /// Obtém todos os SKUs fornecidos pelo fornecedor autenticado para um produto específico
+    /// O ID do fornecedor é obtido automaticamente da claim "resourceId" do usuário autenticado
     /// </summary>
     /// <param name="productId">ID do produto</param>
-    /// <param name="supplierId">ID do fornecedor</param>
-    /// <returns>Lista de SKUs fornecidos com seus preços</returns>
-    [HttpGet("{productId}/supplier/skus")]
+    /// <returns>Lista de SKUs fornecidos com seus preços de produção</returns>
+    [HttpGet("{productId}/suppliers")]
     [ProducesResponseType(typeof(ProductSkuSupplierListResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetSkusBySupplier(string productId)
     {
@@ -280,10 +331,16 @@ public class ProductController(
 
         try
         {
-            if (string.IsNullOrWhiteSpace(productId) || string.IsNullOrWhiteSpace(supplierId))
+            if (string.IsNullOrWhiteSpace(productId))
             {
-                logger.LogWarning("Invalid product or supplier ID provided");
-                return BadRequest(new { error = "Product ID and Supplier ID are required" });
+                logger.LogWarning("Invalid product ID provided");
+                return BadRequest(new { error = "Product ID is required" });
+            }
+
+            if (string.IsNullOrWhiteSpace(supplierId))
+            {
+                logger.LogWarning("Supplier ID not found in claims");
+                return BadRequest(new { error = "Supplier ID not found in authentication claims" });
             }
 
             var skus = await productSkuSupplierRepository.GetSkusBySupplier(productId, supplierId);
@@ -291,8 +348,11 @@ public class ProductController(
             {
                 logger.LogWarning("No SKUs found for supplier - ProductId: {ProductId}, SupplierId: {SupplierId}",
                     productId, supplierId);
-                return NotFound(new { error = "No SKUs found for this supplier" });
+                return NotFound(new { error = "No SKUs found for this supplier in this product" });
             }
+
+            logger.LogInformation("Found {Count} SKUs for supplier - ProductId: {ProductId}, SupplierId: {SupplierId}",
+                skus.Count, productId, supplierId);
 
             return Ok(skus.ToListResponse());
         }
