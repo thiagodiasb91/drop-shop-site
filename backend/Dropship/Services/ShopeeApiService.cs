@@ -1096,4 +1096,74 @@ public class ShopeeApiService
     }
 
     #endregion
+
+    #region Media
+
+    /// <summary>
+    /// Faz upload de uma imagem para a Shopee
+    /// Endpoint: POST /api/v2/media_space/upload_image
+    /// Ref: https://open.shopee.com/documents/v2/v2.media_space.upload_image
+    /// 
+    /// A resposta contém um image_id que pode ser usado em operações de produtos
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="imageStream">Stream do arquivo de imagem para upload</param>
+    /// <param name="fileName">Nome do arquivo (opcional, usado para logs)</param>
+    /// <returns>JSON response com image_id e outras informações da imagem uploaded</returns>
+    public async Task<JsonDocument> UploadImageAsync(long shopId, Stream imageStream, string fileName = "image.jpg")
+    {
+        _logger.LogInformation("Uploading image - ShopId: {ShopId}, FileName: {FileName}", shopId, fileName);
+
+        try
+        {
+            var accessToken = await GetCachedAccessTokenAsync(shopId);
+            var timestamp = ShopeeApiHelper.GetCurrentTimestamp();
+            const string path = "/api/v2/media_space/upload_image";
+            var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
+
+            var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
+
+            // Usar MultipartFormDataContent para enviar o arquivo como form data
+            using var form = new MultipartFormDataContent();
+            
+            // Adicionar o arquivo de imagem
+            var imageContent = new StreamContent(imageStream);
+            imageContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
+            form.Add(imageContent, "image", fileName);
+
+            _logger.LogDebug("UploadImage URL - ShopId: {ShopId}, FileName: {FileName}", shopId, fileName);
+
+            var response = await _httpClient.PostAsync(url, form);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            _logger.LogDebug("UploadImage Response - StatusCode: {StatusCode}, Content: {Content}",
+                response.StatusCode, responseContent);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Failed to upload image: {response.StatusCode} - {responseContent}");
+            }
+
+            var jsonResponse = JsonDocument.Parse(responseContent);
+            
+            // Extrair image_id se disponível
+            if (jsonResponse.RootElement.TryGetProperty("data", out var dataElement))
+            {
+                if (dataElement.TryGetProperty("image_id", out var imageIdElement))
+                {
+                    var imageId = imageIdElement.GetString();
+                    _logger.LogInformation("Image uploaded successfully - ShopId: {ShopId}, ImageId: {ImageId}", shopId, imageId);
+                }
+            }
+
+            return jsonResponse;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading image - ShopId: {ShopId}, FileName: {FileName}", shopId, fileName);
+            throw;
+        }
+    }
+
+    #endregion
 }

@@ -25,16 +25,10 @@ public class ProductSkuSupplierRepository
     /// <param name="productId">ID do produto</param>
     /// <param name="supplierId">ID do fornecedor</param>
     /// <param name="productionPrice">Preço de produção</param>
-    /// <param name="priority">Prioridade de fornecimento (opcional)</param>
     /// <param name="skus">Lista de SKUs do produto</param>
-    public async Task<List<ProductSkuSupplierDomain>> LinkSupplierToProductAsync(
-        string productId,
-        string supplierId,
-        decimal productionPrice,
-        List<string> skus)
+    public async Task<List<ProductSkuSupplierDomain>> LinkSupplierToProductAsync(List<ProductSkuSupplierDomain> skus)
     {
-        _logger.LogInformation("Linking supplier to product - ProductId: {ProductId}, SupplierId: {SupplierId}, SKUs: {SkuCount}",
-            productId, supplierId, skus.Count);
+        _logger.LogInformation("Linking supplier to product");
 
         var createdRecords = new List<ProductSkuSupplierDomain>();
 
@@ -43,22 +37,18 @@ public class ProductSkuSupplierRepository
             // Criar um registro para cada SKU
             foreach (var sku in skus)
             {
-                var record = await CreateProductSkuSupplierAsync(productId, sku, supplierId, productionPrice);
-                createdRecords.Add(record);
-
-                _logger.LogDebug("Created product-sku-supplier link - ProductId: {ProductId}, SKU: {Sku}, SupplierId: {SupplierId}",
-                    productId, sku, supplierId);
+                var record = await CreateProductSkuSupplierAsync(sku);
+                
+                _logger.LogDebug("Created product-sku-supplier link - ProductId: {ProductId}, SKU: {Sku}, SupplierId: {SupplierId}", sku.ProductId, sku.Sku, sku.SupplierId);
             }
 
-            _logger.LogInformation("Successfully linked {Count} SKUs to supplier - ProductId: {ProductId}, SupplierId: {SupplierId}",
-                createdRecords.Count, productId, supplierId);
+            _logger.LogInformation("Successfully linked {Count} SKUs to supplier");
 
             return createdRecords;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error linking supplier to product - ProductId: {ProductId}, SupplierId: {SupplierId}",
-                productId, supplierId);
+            _logger.LogError(ex, "Error linking supplier to product");
             throw;
         }
     }
@@ -66,24 +56,8 @@ public class ProductSkuSupplierRepository
     /// <summary>
     /// Cria um registro individual de Product-SKU-Supplier
     /// </summary>
-    private async Task<ProductSkuSupplierDomain> CreateProductSkuSupplierAsync(
-        string productId,
-        string sku,
-        string supplierId,
-        decimal productionPrice)
+    private async Task<ProductSkuSupplierDomain> CreateProductSkuSupplierAsync( ProductSkuSupplierDomain record )
     {
-        var record = new ProductSkuSupplierDomain
-        {
-            Pk = $"Product#{productId}",
-            Sk = $"Sku#{sku}#Supplier#{supplierId}",
-            EntityType = "product_sku_supplier",
-            ProductId = productId,
-            Sku = sku,
-            SupplierId = supplierId,
-            ProductionPrice = productionPrice,
-            Quantity = 0
-        };
-
         var item = new Dictionary<string, AttributeValue>
         {
             { "PK", new AttributeValue { S = record.Pk } },
@@ -191,8 +165,8 @@ public class ProductSkuSupplierRepository
         string productId,
         string sku,
         string supplierId,
-        decimal productionPrice,
-        long quantity)
+        decimal? productionPrice,
+        long? quantity)
     {
         _logger.LogInformation("Updating supplier pricing - ProductId: {ProductId}, SKU: {Sku}, SupplierId: {SupplierId}",
             productId, sku, supplierId);
@@ -205,19 +179,29 @@ public class ProductSkuSupplierRepository
                 { "SK", new AttributeValue { S = $"Sku#{sku}#Supplier#{supplierId}" } }
             };
 
-            var updateExpression = "SET production_price = :price, quantity = :qty";
-            var expressionAttributeValues = new Dictionary<string, AttributeValue>
+            var expressionAttributeValues = new Dictionary<string, AttributeValue>();
+
+            var updateExpression = "SET ";
+            if (productionPrice.HasValue)
             {
-                { ":price", new AttributeValue { N = productionPrice.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
-                { ":qty", new AttributeValue { N = quantity.ToString(System.Globalization.CultureInfo.InvariantCulture) } }
-            };
+                updateExpression += " production_price = :price";
+                expressionAttributeValues.Add(":price", new AttributeValue { N = productionPrice.ToString() });
+            }
+
+            if (quantity.HasValue)
+            {
+                if(productionPrice.HasValue)
+                    updateExpression += ", ";
+                
+                updateExpression += " quantity = :qty";
+                expressionAttributeValues.Add(":qty", new AttributeValue { N = quantity.ToString() });
+            }
 
             await _repository.UpdateItemAsync(key, updateExpression, expressionAttributeValues);
 
             _logger.LogInformation("Supplier pricing updated - ProductId: {ProductId}, SKU: {Sku}, Price: {Price}, Qty: {Qty}",
                 productId, sku, productionPrice, quantity);
 
-            // Retornar o registro atualizado
             var item = await _repository.GetItemAsync(key);
             return item != null ? ProductSkuSupplierMapper.ToDomain(item) : null;
         }

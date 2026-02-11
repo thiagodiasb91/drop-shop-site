@@ -1,3 +1,4 @@
+using Dropship.Domain;
 using Microsoft.AspNetCore.Mvc;
 using Dropship.Repository;
 using Dropship.Requests;
@@ -12,7 +13,13 @@ namespace Dropship.Controllers;
 [ApiController]
 [Route("suppliers")]
 [Authorize]
-public class SupplierController(SupplierRepository supplierRepository, UserRepository userRepository, ILogger<SupplierController> logger)
+public class SupplierController(SupplierRepository supplierRepository, 
+                                UserRepository userRepository, 
+                                ProductRepository productRepository,
+                                ProductSkuSupplierRepository productSkuSupplierRepository,
+                                ProductSupplierRepository productSupplierRepository,
+                                SkuRepository skuRepository,
+                                ILogger<SupplierController> logger)
     : ControllerBase
 {
     /// <summary>
@@ -176,6 +183,318 @@ public class SupplierController(SupplierRepository supplierRepository, UserRepos
         catch (Exception ex)
         {
             logger.LogError(ex, "Error deleting supplier with ID: {SupplierId}", id);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
+        }
+    }
+    
+     /// <summary>
+    /// Vincula um fornecedor a um produto com preço de produção
+    /// Mapeia automaticamente todos os SKUs do produto e cria registros na estrutura:
+    /// PK: Product#{productId}
+    /// SK: Sku#{sku}#Supplier#{supplierId}
+    /// O ID do fornecedor é obtido da claim "resourceId" do usuário autenticado
+    /// </summary>
+    /// <param name="productId">ID do produto que deve existir no banco de dados</param>
+    /// <param name="request">Dados do fornecimento (preço de produção, prioridade)</param>
+    /// <returns>Lista de registros criados (um por SKU do produto)</returns>
+    [HttpPost("products/{productId}")]
+    [ProducesResponseType(typeof(ProductSkuSupplierListResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> LinkSupplierToProduct(
+        string productId,
+        [FromBody] LinkSupplierToProductRequest request)
+    {
+        var supplierId = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "resourceId")?.Value;
+        logger.LogInformation("Linking supplier to product - ProductId: {ProductId}, SupplierId: {SupplierId}",
+            productId, supplierId);
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(productId) || string.IsNullOrWhiteSpace(supplierId))
+            {
+                logger.LogWarning("Invalid product or supplier ID provided");
+                return BadRequest(new { error = "Product ID and Supplier ID are required" });
+            }
+
+            var product = await productRepository.GetProductByIdAsync(productId);
+            if (product == null)
+            {
+                logger.LogWarning("Product not found - ProductId: {ProductId}", productId);
+                return NotFound(new { error = "Product not found" });
+            }
+
+            var supplier = await supplierRepository.GetSupplierAsync(supplierId);
+            if (supplier == null)
+            {
+                logger.LogWarning("Supplier not found - SupplierId: {SupplierId}", supplierId);
+                return NotFound(new { error = "Supplier not found" });
+            }
+
+            var skus = await skuRepository.GetSkusByProductIdAsync(productId);
+            if (skus == null || skus.Count == 0)
+            {
+                logger.LogWarning("No SKUs found for product - ProductId: {ProductId}", productId);
+                return BadRequest(new { error = "Product has no SKUs" });
+            }
+
+            var productSkuSuppliers = new List<ProductSkuSupplierDomain>();
+            foreach (var sku in skus)
+            {
+                var skuRequest = request.Skus.FirstOrDefault(x => x.Sku == sku.Sku);
+                
+                productSkuSuppliers.Add( ProductSkuSupplierBuilder.Create(productId, sku.Sku, skuRequest.SkuSupplier, request.ProductionPrice) );
+            }
+            
+            var linkedRecords = await productSkuSupplierRepository.LinkSupplierToProductAsync(productSkuSuppliers);
+
+            await productSupplierRepository.CreateProductSupplierAsync(
+                productId,
+                supplierId,
+                product.Name,
+                request.ProductionPrice,
+                productSkuSuppliers.Count
+            );
+
+            logger.LogInformation(
+                "Supplier linked to product successfully - ProductId: {ProductId}, SupplierId: {SupplierId}, SKUs: {SkuCount}",
+                productId, supplierId, linkedRecords.Count);
+
+            return Ok(
+                linkedRecords.ToListResponse()
+            );
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error linking supplier to product - ProductId: {ProductId}, SupplierId: {SupplierId}",
+                productId, supplierId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Obtém todos os produtos fornecidos pelo fornecedor autenticado
+    /// O ID do fornecedor é obtido automaticamente da claim "resourceId" do usuário autenticado
+    /// </summary>
+    /// <returns>Lista de produtos fornecidos com informações de preço e quantidade de SKUs</returns>
+    [HttpGet("products")]
+    [ProducesResponseType(typeof(ProductSupplierListResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetProductsBySupplier()
+    {
+        var supplierId = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "resourceId")?.Value;
+        logger.LogInformation("Getting products for supplier - SupplierId: {SupplierId}", supplierId);
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(supplierId))
+            {
+                logger.LogWarning("Supplier ID not found in claims");
+                return BadRequest(new { error = "Supplier ID not found in authentication claims" });
+            }
+
+            var products = await productSupplierRepository.GetProductsBySupplierAsync(supplierId);
+            if (products == null || products.Count == 0)
+            {
+                logger.LogWarning("No products found for supplier - SupplierId: {SupplierId}", supplierId);
+                return NotFound(new { error = "No products found for this supplier" });
+            }
+
+            logger.LogInformation("Found {Count} products for supplier - SupplierId: {SupplierId}",
+                products.Count, supplierId);
+
+            return Ok(products.ToListResponse());
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting products for supplier - SupplierId: {SupplierId}", supplierId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
+        }
+    }
+
+   
+
+    /// <summary>
+    /// Obtém todos os fornecedores disponíveis para um SKU específico
+    /// </summary>
+    /// <param name="productId">ID do produto</param>
+    /// <param name="sku">Código do SKU</param>
+    /// <returns>Lista de fornecedores com seus preços de produção</returns>
+    [HttpGet("products/{productId}/skus/{sku}")]
+    [ProducesResponseType(typeof(ProductSkuSupplierListResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetSuppliersBySku(string productId, string sku)
+    {
+        logger.LogInformation("Getting suppliers for SKU - ProductId: {ProductId}, SKU: {Sku}", productId, sku);
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(productId) || string.IsNullOrWhiteSpace(sku))
+            {
+                logger.LogWarning("Invalid product ID or SKU provided");
+                return BadRequest(new { error = "Product ID and SKU are required" });
+            }
+
+            var suppliers = await productSkuSupplierRepository.GetSuppliersBySku(productId, sku);
+            if (suppliers == null || suppliers.Count == 0)
+            {
+                logger.LogWarning("No suppliers found for SKU - ProductId: {ProductId}, SKU: {Sku}", productId, sku);
+                return NotFound(new { error = "No suppliers found for this SKU" });
+            }
+
+            return Ok(suppliers.ToListResponse());
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting suppliers for SKU - ProductId: {ProductId}, SKU: {Sku}", productId, sku);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Obtém todos os SKUs fornecidos pelo fornecedor autenticado para um produto específico
+    /// O ID do fornecedor é obtido automaticamente da claim "resourceId" do usuário autenticado
+    /// </summary>
+    /// <param name="productId">ID do produto</param>
+    /// <returns>Lista de SKUs fornecidos com seus preços de produção</returns>
+    [HttpGet("products/{productId}/skus")]
+    [ProducesResponseType(typeof(ProductSkuSupplierListResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetSkusBySupplier(string productId)
+    {
+        var supplierId = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "resourceId")?.Value;
+        logger.LogInformation("Getting SKUs for supplier - ProductId: {ProductId}, SupplierId: {SupplierId}",
+            productId, supplierId);
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(productId))
+            {
+                logger.LogWarning("Invalid product ID provided");
+                return BadRequest(new { error = "Product ID is required" });
+            }
+
+            if (string.IsNullOrWhiteSpace(supplierId))
+            {
+                logger.LogWarning("Supplier ID not found in claims");
+                return BadRequest(new { error = "Supplier ID not found in authentication claims" });
+            }
+
+            var skus = await productSkuSupplierRepository.GetSkusBySupplier(productId, supplierId);
+            if (skus == null || skus.Count == 0)
+            {
+                logger.LogWarning("No SKUs found for supplier - ProductId: {ProductId}, SupplierId: {SupplierId}",
+                    productId, supplierId);
+                return NotFound(new { error = "No SKUs found for this supplier in this product" });
+            }
+
+            logger.LogInformation("Found {Count} SKUs for supplier - ProductId: {ProductId}, SupplierId: {SupplierId}",
+                skus.Count, productId, supplierId);
+
+            return Ok(skus.ToListResponse());
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting SKUs for supplier - ProductId: {ProductId}, SupplierId: {SupplierId}",
+                productId, supplierId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Atualiza o preço de produção e quantidade de um SKU fornecido por um fornecedor
+    /// </summary>
+    /// <param name="productId">ID do produto</param>
+    /// <param name="sku">Código do SKU</param>
+    /// <param name="supplierId">ID do fornecedor</param>
+    /// <param name="request">Novos preço e quantidade</param>
+    /// <returns>Registro atualizado</returns>
+    [HttpPut("products/{productId}/skus/{sku}")]
+    [ProducesResponseType(typeof(ProductSkuSupplierResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateSupplierPricing(
+        string productId,
+        string sku,
+        [FromBody] UpdateSupplierPricingRequest request)
+    {
+        var supplierId = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "resourceId")?.Value;
+        logger.LogInformation(
+            "Updating supplier pricing - ProductId: {ProductId}, SKU: {Sku}, SupplierId: {SupplierId}",
+            productId, sku, supplierId);
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(productId) || string.IsNullOrWhiteSpace(sku) ||
+                string.IsNullOrWhiteSpace(supplierId))
+            {
+                logger.LogWarning("Invalid parameters provided");
+                return BadRequest(new { error = "Product ID, SKU, and Supplier ID are required" });
+            }
+
+            var updated = await productSkuSupplierRepository.UpdateSupplierPricingAsync(
+                productId, sku, supplierId, request.ProductionPrice, request.Quantity);
+
+            if (updated == null)
+            {
+                logger.LogWarning("Product-SKU-Supplier record not found - ProductId: {ProductId}, SKU: {Sku}",
+                    productId, sku);
+                return NotFound(new { error = "Product-SKU-Supplier record not found" });
+            }
+
+            return Ok(updated.ToResponse());
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error updating supplier pricing - ProductId: {ProductId}, SKU: {Sku}",
+                productId, sku);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Remove um fornecedor de um SKU específico
+    /// </summary>
+    /// <param name="productId">ID do produto</param>
+    /// <param name="sku">Código do SKU</param>
+    /// <param name="supplierId">ID do fornecedor</param>
+    /// <returns>Status de sucesso</returns>
+    [HttpDelete("products/{productId}/skus/{sku}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RemoveSupplierFromSku(string productId, string sku)
+    {
+        var supplierId = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "resourceId")?.Value;
+        logger.LogInformation(
+            "Removing supplier from SKU - ProductId: {ProductId}, SKU: {Sku}, SupplierId: {SupplierId}",
+            productId, sku, supplierId);
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(productId) || string.IsNullOrWhiteSpace(sku) ||
+                string.IsNullOrWhiteSpace(supplierId))
+            {
+                logger.LogWarning("Invalid parameters provided");
+                return BadRequest(new { error = "Product ID, SKU, and Supplier ID are required" });
+            }
+
+            var removed = await productSkuSupplierRepository.RemoveSupplierFromSku(productId, sku, supplierId);
+            if (!removed)
+            {
+                logger.LogWarning("Failed to remove supplier - ProductId: {ProductId}, SKU: {Sku}", productId, sku);
+                return NotFound(new { error = "Product-SKU-Supplier record not found" });
+            }
+
+            logger.LogInformation("Supplier removed successfully - ProductId: {ProductId}, SKU: {Sku}",
+                productId, sku);
+
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error removing supplier from SKU - ProductId: {ProductId}, SKU: {Sku}",
+                productId, sku);
             return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
         }
     }

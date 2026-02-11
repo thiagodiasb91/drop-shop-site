@@ -14,11 +14,30 @@ public class ProductSkuSupplierDomain
     public string EntityType { get; set; } = "product_sku_supplier";
     public string ProductId { get; set; } = default!;
     public string Sku { get; set; } = default!;
+    public string SkuSupplier { get; set; } = default!;
     public string SupplierId { get; set; } = default!;
 
     // Dados do Fornecimento
     public decimal ProductionPrice { get; set; } // Preço de produção do fornecedor
     public long Quantity { get; set; } // Quantidade disponível
+}
+
+public static class ProductSkuSupplierBuilder
+{
+    public static ProductSkuSupplierDomain Create(string productId, string sku, string supplierId, decimal productionPrice)
+    {
+        return new ProductSkuSupplierDomain()
+        {
+            Pk = $"Product#{productId}",
+            Sk = $"Sku#{sku}#Supplier#{supplierId}",
+            EntityType = "product_sku_supplier",
+            ProductId = productId,
+            Sku = sku,
+            SupplierId = supplierId,
+            ProductionPrice = productionPrice,
+            Quantity = 0
+        };
+    }
 }
 
 /// <summary>
