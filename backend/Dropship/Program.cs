@@ -163,11 +163,7 @@ builder.Services.AddScoped<IAmazonSQS>(_ => new AmazonSQSClient(
 );
 
 
-ServicePointManager.ServerCertificateValidationCallback += (sender, certificate, chain, errors) =>
-{
-    // local dev, just approve all certs
-    return true;
-};
+ServicePointManager.ServerCertificateValidationCallback += (sender, certificate, chain, errors) => true;
 // Configure HttpClient with SSL certificate validation bypass for development (macOS compatibility)
 builder.Services.AddHttpClient("default")
     .ConfigurePrimaryHttpMessageHandler(() =>
@@ -214,8 +210,8 @@ JwtSecurityTokenHandler.DefaultOutboundClaimTypeMap.Clear();
 var app = builder.Build();
 
 // Enable Swagger/OpenAPI
-//if (app.Environment.IsDevelopment())
-//{
+// if (app.Environment.IsDevelopment())
+// {
     app.UseSwagger();
     app.UseSwaggerUI(options =>
     {
@@ -223,7 +219,7 @@ var app = builder.Build();
         options.SwaggerEndpoint($"{prefix}/swagger/v1/swagger.json", "Dropship API v1");
         options.RoutePrefix = "swagger";
     });
-//}
+// }
 
 // Enable CORS middleware
 
@@ -237,9 +233,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.UsePathBase("/bff");
 
 app.UseCors("DefaultCorsPolicy");
 
-app.MapGet("/", () => "Dropship working!");
+app.MapGet("/", () => $"Dropship working! {Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}");
 app.Run();
