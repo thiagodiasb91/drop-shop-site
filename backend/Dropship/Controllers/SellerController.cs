@@ -1,6 +1,7 @@
 using Dropship.Repository;
 using Dropship.Requests;
 using Dropship.Responses;
+using Dropship.Domain;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Dropship.Controllers;
@@ -21,7 +22,7 @@ public class SellerController(ILogger<SellerController> logger,
     /// O ID do vendedor é obtido automaticamente da claim "resourceId" do usuário autenticado
     /// </summary>
     /// <returns>Lista de produtos vinculados com informações de SKUs</returns>
-    [HttpGet]
+    [HttpGet("products")]
     [ProducesResponseType(typeof(ProductSellerListResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -71,7 +72,7 @@ public class SellerController(ILogger<SellerController> logger,
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> LinkSellerToProduct(
         string productId,
-        [FromBody] UpdateSellerPriceRequest request)
+        [FromBody] LinkSellerToProductRequest request)
     {
         var sellerId = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "resourceId")?.Value;
         logger.LogInformation(
@@ -102,17 +103,31 @@ public class SellerController(ILogger<SellerController> logger,
                 return BadRequest(new { error = "Product has no SKUs" });
             }
 
-            var store = await sellerRepository.GetSellerByIdAsync(sellerId);
-            
-            // Vincular vendedor ao produto (cria registros para cada SKU)
-            var linkedRecords = await productSkuSellerRepository.LinkSellerToProductAsync(
-                productId,
-                sellerId,
-                "shopee",
-                store.ShopId,
-                request.Price,
-                skus
-            );
+            // Mapear SKUs com dados do marketplace e criar domains usando Factory
+            var domains = new List<ProductSkuSellerDomain>();
+            foreach (var mapping in request.SkuMappings)
+            {
+                // Validar que cada SKU existe no produto
+                var sku = skus.FirstOrDefault(s => s.Sku == mapping.Sku);
+                if (sku == null)
+                {
+                    logger.LogWarning("SKU not found in product - ProductId: {ProductId}, SKU: {Sku}", productId, mapping.Sku);
+                    return BadRequest(new { error = $"SKU {mapping.Sku} not found in this product" });
+                }
+
+                var domain = ProductSkuSellerFactory.Create(
+                    productId,
+                    mapping.Sku,
+                    sellerId,
+                    "shopee",
+                    request.StoreId,
+                    request.Price
+                );
+                domains.Add(domain);
+            }
+
+            // Vincular vendedor ao produto (cria registros para cada domain)
+            var linkedRecords = await productSkuSellerRepository.LinkSellerToProductAsync(domains);
 
             // Criar registro META para busca rápida de produtos por vendedor
             await productSellerRepository.CreateProductSellerAsync(
@@ -120,7 +135,7 @@ public class SellerController(ILogger<SellerController> logger,
                 product.Name,
                 sellerId,
                 "shopee",
-                store.ShopId,
+                request.StoreId,
                 linkedRecords.Count
             );
 
@@ -138,6 +153,71 @@ public class SellerController(ILogger<SellerController> logger,
         {
             logger.LogError(ex, "Error linking seller to product - ProductId: {ProductId}, SellerId: {SellerId}",
                 productId, sellerId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Atualiza o preço de um produto para todos os seus SKUs para o vendedor autenticado
+    /// Similar ao Supplier, atualiza o preço em todos os SKUs vinculados ao produto
+    /// </summary>
+    /// <param name="productId">ID do produto</param>
+    /// <param name="request">Novo preço</param>
+    /// <returns>Lista de SKUs com preço atualizado</returns>
+    [HttpPut("products/{productId}")]
+    [ProducesResponseType(typeof(ProductSkuSellerListResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateSellerProduct(
+        string productId,
+        [FromBody] UpdateSellerPriceRequest request)
+    {
+        var sellerId = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "resourceId")?.Value;
+        logger.LogInformation("Updating seller product price - ProductId: {ProductId}, SellerId: {SellerId}, Price: {Price}",
+            productId, sellerId, request.Price);
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(productId) || string.IsNullOrWhiteSpace(sellerId))
+            {
+                logger.LogWarning("Missing required parameters");
+                return BadRequest(new { error = "Product ID and Seller ID are required" });
+            }
+
+            // Obter todos os SKUs do vendedor neste produto
+            var skus = await productSkuSellerRepository.GetSkusBySellerAsync(productId, sellerId, "shopee");
+            if (skus == null || skus.Count == 0)
+            {
+                logger.LogWarning("No SKUs found for seller product - ProductId: {ProductId}", productId);
+                return NotFound(new { error = "No SKUs found for this seller in this product" });
+            }
+
+            // Atualizar preço de todos os SKUs
+            var updatedSkus = new List<ProductSkuSellerDomain>();
+            foreach (var sku in skus)
+            {
+                var updated = await productSkuSellerRepository.UpdatePriceAsync(
+                    productId, sku.Sku, sellerId, "shopee", request.Price);
+                if (updated != null)
+                {
+                    updatedSkus.Add(updated);
+                }
+            }
+
+            if (updatedSkus.Count == 0)
+            {
+                logger.LogWarning("Failed to update any SKUs - ProductId: {ProductId}", productId);
+                return NotFound(new { error = "Failed to update product SKUs" });
+            }
+
+            logger.LogInformation("Seller product price updated - ProductId: {ProductId}, SellerId: {SellerId}, UpdatedSKUs: {Count}",
+                productId, sellerId, updatedSkus.Count);
+
+            return Ok(updatedSkus.ToListResponse());
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error updating seller product price - ProductId: {ProductId}", productId);
             return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
         }
     }
@@ -162,7 +242,7 @@ public class SellerController(ILogger<SellerController> logger,
             if (string.IsNullOrWhiteSpace(productId))
             {
                 logger.LogWarning("Missing required parameters");
-                return BadRequest(new { error = "Product ID and marketplace are required" });
+                return BadRequest(new { error = "Product ID is required" });
             }
 
             if (string.IsNullOrWhiteSpace(sellerId))
@@ -186,6 +266,7 @@ public class SellerController(ILogger<SellerController> logger,
             return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
         }
     }
+    
 
     /// <summary>
     /// Atualiza o preço de um SKU para o vendedor autenticado
@@ -211,7 +292,7 @@ public class SellerController(ILogger<SellerController> logger,
             if (string.IsNullOrWhiteSpace(productId) || string.IsNullOrWhiteSpace(sku) || string.IsNullOrWhiteSpace(sellerId))
             {
                 logger.LogWarning("Missing required parameters");
-                return BadRequest(new { error = "Product ID, SKU, marketplace, and Seller ID are required" });
+                return BadRequest(new { error = "Product ID, SKU, and Seller ID are required" });
             }
 
             var updated = await productSkuSellerRepository.UpdatePriceAsync(
@@ -254,7 +335,7 @@ public class SellerController(ILogger<SellerController> logger,
             if (string.IsNullOrWhiteSpace(productId) || string.IsNullOrWhiteSpace(sku) || string.IsNullOrWhiteSpace(sellerId))
             {
                 logger.LogWarning("Missing required parameters");
-                return BadRequest(new { error = "Product ID, SKU, marketplace, and Seller ID are required" });
+                return BadRequest(new { error = "Product ID, SKU, and Seller ID are required" });
             }
 
             var removed =

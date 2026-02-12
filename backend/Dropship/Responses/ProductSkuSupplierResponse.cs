@@ -1,3 +1,5 @@
+using Dropship.Domain;
+
 namespace Dropship.Responses;
 
 /// <summary>
@@ -11,6 +13,7 @@ public class ProductSkuSupplierResponse
     public decimal Price { get; set; }
     public long Quantity { get; set; }
     public string SkuSupplier { get; set; }
+    public string SupplierName { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -27,25 +30,26 @@ public class ProductSkuSupplierListResponse
 /// </summary>
 public static class ProductSkuSupplierResponseMapper
 {
-    public static ProductSkuSupplierResponse ToResponse(this Domain.ProductSkuSupplierDomain domain)
+    public static ProductSkuSupplierResponse ToResponse(this Domain.ProductSkuSupplierDomain domain, SupplierDomain supplierDomain)
     {
         return new ProductSkuSupplierResponse
         {
             ProductId = domain.ProductId,
             Sku = domain.Sku,
-            SupplierId = domain.SupplierId,
+            SupplierId = supplierDomain.Id,
+            SupplierName = supplierDomain.Name,
             Price = domain.Price,
             Quantity = domain.Quantity,
             SkuSupplier = domain.SkuSupplier
         };
     }
 
-    public static ProductSkuSupplierListResponse ToListResponse(this List<Domain.ProductSkuSupplierDomain> domains)
+    public static ProductSkuSupplierListResponse ToListResponse(this List<Domain.ProductSkuSupplierDomain> domains, List<SupplierDomain> supplierDomains)
     {
         return new ProductSkuSupplierListResponse
         {
             Total = domains.Count,
-            Items = domains.Select(d => d.ToResponse()).ToList()
+            Items = domains.Select(d => d.ToResponse( supplierDomains.First( s => s.Id == d.SupplierId))).ToList()
         };
     }
 }

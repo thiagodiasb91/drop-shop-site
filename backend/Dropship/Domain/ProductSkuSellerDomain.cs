@@ -33,6 +33,39 @@ public class ProductSkuSellerDomain
 }
 
 /// <summary>
+/// Factory para criar instâncias de ProductSkuSellerDomain
+/// Centraliza a lógica de criação com geração automática de chaves PK/SK
+/// </summary>
+public static class ProductSkuSellerFactory
+{
+    public static ProductSkuSellerDomain Create(
+        string productId,
+        string sku,
+        string sellerId,
+        string marketplace,
+        long storeId,
+        decimal price,
+        long quantity = 0)
+    {
+        return new ProductSkuSellerDomain
+        {
+            Pk = $"Product#{productId}",
+            Sk = $"Sku#{sku}#Seller#{marketplace}#{sellerId}",
+            EntityType = "product_sku_seller",
+            ProductId = productId,
+            Sku = sku,
+            SellerId = sellerId,
+            Marketplace = marketplace,
+            StoreId = storeId,
+            Price = price,
+            Quantity = quantity,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = null
+        };
+    }
+}
+
+/// <summary>
 /// Mapper para converter Dictionary em Domain
 /// </summary>
 public static class ProductSkuSellerMapper

@@ -10,99 +10,75 @@ namespace Dropship.Repository;
 public class ProductSkuSellerRepository(DynamoDbRepository repository, ILogger<ProductSkuSellerRepository> logger)
 {
     /// <summary>
-    /// Vincula um vendedor a um produto com preço
-    /// Cria um registro para cada SKU do produto
+    /// Vincula um vendedor a um produto
+    /// Cria um registro para cada domain ProductSkuSeller fornecido
     /// </summary>
     public async Task<List<ProductSkuSellerDomain>> LinkSellerToProductAsync(
-        string productId,
-        string sellerId,
-        string marketplace,
-        long storeId,
-        decimal price,
-        List<SkuDomain> skus)
+        List<ProductSkuSellerDomain> domains)
     {
-        logger.LogInformation("Linking seller to product - ProductId: {ProductId}, SellerId: {SellerId}, Marketplace: {Marketplace}",
-            productId, sellerId, marketplace);
+        if (domains == null || domains.Count == 0)
+        {
+            logger.LogWarning("No domains provided for linking");
+            return new List<ProductSkuSellerDomain>();
+        }
+
+        var firstDomain = domains.First();
+        logger.LogInformation("Linking seller to product - ProductId: {ProductId}, SellerId: {SellerId}, Count: {Count}",
+            firstDomain.ProductId, firstDomain.SellerId, domains.Count);
 
         var createdRecords = new List<ProductSkuSellerDomain>();
 
         try
         {
-            // Criar um registro para cada SKU
-            foreach (var sku in skus)
+            foreach (var domain in domains)
             {
-                var record = await CreateProductSkuSellerAsync(productId, sku.Sku, sellerId, marketplace, storeId,"", "", price);
+                var record = await CreateProductSkuSellerAsync(domain);
                 createdRecords.Add(record);
 
                 logger.LogDebug("Created product-sku-seller link - ProductId: {ProductId}, SKU: {Sku}, SellerId: {SellerId}",
-                    productId, sku, sellerId);
+                    domain.ProductId, domain.Sku, domain.SellerId);
             }
 
             logger.LogInformation("Successfully linked {Count} SKUs to seller - ProductId: {ProductId}, SellerId: {SellerId}",
-                createdRecords.Count, productId, sellerId);
+                createdRecords.Count, firstDomain.ProductId, firstDomain.SellerId);
 
             return createdRecords;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error linking seller to product - ProductId: {ProductId}, SellerId: {SellerId}",
-                productId, sellerId);
+            logger.LogError(ex, "Error linking seller to product - Count: {Count}", domains.Count);
             throw;
         }
     }
 
     /// <summary>
-    /// Cria um registro individual de Product-SKU-Seller
+    /// Cria um registro de Product-SKU-Seller no banco
+    /// Recebe o domain já construído
     /// </summary>
-    private async Task<ProductSkuSellerDomain> CreateProductSkuSellerAsync(
-        string productId,
-        string sku,
-        string sellerId,
-        string marketplace,
-        long storeId,
-        string marketplaceProductId,
-        string marketplaceModelId,
-        decimal price)
+    private async Task<ProductSkuSellerDomain> CreateProductSkuSellerAsync(ProductSkuSellerDomain domain)
     {
         var createdAtUtc = DateTime.UtcNow.ToString("O");
 
-        var record = new ProductSkuSellerDomain
-        {
-            Pk = $"Product#{productId}",
-            Sk = $"Sku#{sku}#Seller#{marketplace}#{sellerId}",
-            EntityType = "product_sku_seller",
-            ProductId = productId,
-            Sku = sku,
-            SellerId = sellerId,
-            Marketplace = marketplace,
-            StoreId = storeId,
-            MarketplaceProductId = marketplaceProductId,
-            MarketplaceModelId = marketplaceModelId,
-            Price = price,
-            Quantity = 0, // Será atualizado automaticamente via sistema
-            CreatedAt = DateTime.UtcNow
-        };
-
         var item = new Dictionary<string, AttributeValue>
         {
-            { "PK", new AttributeValue { S = record.Pk } },
-            { "SK", new AttributeValue { S = record.Sk } },
-            { "entity_type", new AttributeValue { S = record.EntityType } },
-            { "product_id", new AttributeValue { S = record.ProductId } },
-            { "sku", new AttributeValue { S = record.Sku } },
-            { "seller_id", new AttributeValue { S = record.SellerId } },
-            { "marketplace", new AttributeValue { S = record.Marketplace } },
-            { "store_id", new AttributeValue { N = record.StoreId.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
-            { "marketplace_product_id", new AttributeValue { S = record.MarketplaceProductId } },
-            { "marketplace_model_id", new AttributeValue { S = record.MarketplaceModelId } },
-            { "price", new AttributeValue { N = record.Price.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
-            { "quantity", new AttributeValue { N = record.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
+            { "PK", new AttributeValue { S = domain.Pk } },
+            { "SK", new AttributeValue { S = domain.Sk } },
+            { "entity_type", new AttributeValue { S = domain.EntityType } },
+            { "product_id", new AttributeValue { S = domain.ProductId } },
+            { "sku", new AttributeValue { S = domain.Sku } },
+            { "seller_id", new AttributeValue { S = domain.SellerId } },
+            { "marketplace", new AttributeValue { S = domain.Marketplace } },
+            { "store_id", new AttributeValue { N = domain.StoreId.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
+            { "marketplace_product_id", new AttributeValue { S = domain.MarketplaceProductId } },
+            { "marketplace_model_id", new AttributeValue { S = domain.MarketplaceModelId } },
+            { "price", new AttributeValue { N = domain.Price.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) } },
+            { "quantity", new AttributeValue { N = domain.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
             { "created_at", new AttributeValue { S = createdAtUtc } }
         };
 
         await repository.PutItemAsync(item);
 
-        return record;
+        return domain;
     }
 
     /// <summary>

@@ -277,8 +277,16 @@ public class SupplierController(SupplierRepository supplierRepository,
                 "Supplier linked to product successfully - ProductId: {ProductId}, SupplierId: {SupplierId}, SKUs: {SkuCount}",
                 productId, supplierId, linkedRecords.Count);
 
+            var suppliers = linkedRecords.Select(x => x.SupplierId);
+            var supplierList = new List<SupplierDomain>();
+
+            foreach (var suppliersId in suppliers)
+            {
+                supplierList.Add(await supplierRepository.GetSupplierAsync(suppliersId));
+            }
+            
             return Ok(
-                linkedRecords.ToListResponse()
+                linkedRecords.ToListResponse(supplierList)
             );
         }
         catch (Exception ex)
@@ -330,7 +338,45 @@ public class SupplierController(SupplierRepository supplierRepository,
         }
     }
 
-   
+    /// <summary>
+    /// Obtém todos os produtos fornecidos pelo fornecedor autenticado
+    /// O ID do fornecedor é obtido automaticamente da claim "resourceId" do usuário autenticado
+    /// </summary>
+    /// <returns>Lista de produtos fornecidos com informações de preço e quantidade de SKUs</returns>
+    [HttpGet("{supplierId}/products")]
+    [ProducesResponseType(typeof(ProductSupplierListResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetProductsBySupplier(string supplierId)
+    {
+        logger.LogInformation("Getting products for supplier - SupplierId: {SupplierId}", supplierId);
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(supplierId))
+            {
+                logger.LogWarning("Supplier ID not found in claims");
+                return BadRequest(new { error = "Supplier ID not found in authentication claims" });
+            }
+
+            var products = await productSupplierRepository.GetProductsBySupplierAsync(supplierId);
+            if (products == null || products.Count == 0)
+            {
+                logger.LogWarning("No products found for supplier - SupplierId: {SupplierId}", supplierId);
+                return NotFound(new { error = "No products found for this supplier" });
+            }
+
+            logger.LogInformation("Found {Count} products for supplier - SupplierId: {SupplierId}",
+                products.Count, supplierId);
+
+            return Ok(products.ToListResponse());
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting products for supplier - SupplierId: {SupplierId}", supplierId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
+        }
+    }
 
     /// <summary>
     /// Obtém todos os fornecedores disponíveis para um SKU específico
@@ -359,8 +405,14 @@ public class SupplierController(SupplierRepository supplierRepository,
                 logger.LogWarning("No suppliers found for SKU - ProductId: {ProductId}, SKU: {Sku}", productId, sku);
                 return NotFound(new { error = "No suppliers found for this SKU" });
             }
+            var supplierList = new List<SupplierDomain>();
 
-            return Ok(suppliers.ToListResponse());
+            foreach (var suppliersId in suppliers)
+            {
+                supplierList.Add(await supplierRepository.GetSupplierAsync(suppliersId.SupplierId));
+            }
+            
+            return Ok(suppliers.ToListResponse(supplierList));
         }
         catch (Exception ex)
         {
@@ -409,8 +461,16 @@ public class SupplierController(SupplierRepository supplierRepository,
 
             logger.LogInformation("Found {Count} SKUs for supplier - ProductId: {ProductId}, SupplierId: {SupplierId}",
                 skus.Count, productId, supplierId);
+  
+            var suppliers = skus.Select(x => x.SupplierId);
+            var supplierList = new List<SupplierDomain>();
 
-            return Ok(skus.ToListResponse());
+            foreach (var suppliersId in suppliers)
+            {
+                supplierList.Add(await supplierRepository.GetSupplierAsync(suppliersId));
+            }
+            
+            return Ok(skus.ToListResponse(supplierList));
         }
         catch (Exception ex)
         {
@@ -469,7 +529,9 @@ public class SupplierController(SupplierRepository supplierRepository,
                 return NotFound(new { error = "Product-SKU-Supplier record not found" });
             }
 
-            return Ok(updated.ToResponse());
+            var supplier = await supplierRepository.GetSupplierAsync(supplierId);
+
+            return Ok(updated.ToResponse(supplier));
         }
         catch (Exception ex)
         {
