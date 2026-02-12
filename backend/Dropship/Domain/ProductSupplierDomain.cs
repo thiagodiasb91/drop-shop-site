@@ -16,9 +16,6 @@ public class ProductSupplierDomain
     public string SupplierId { get; set; } = default!;
 
     public string ProductName { get; set; } = default!;
-    // Dados
-    public decimal ProductionPrice { get; set; } // Preço de produção do fornecedor
-    public int Priority { get; set; } // Prioridade de fornecimento
     public int SkuCount { get; set; } // Quantidade de SKUs fornecidos
     public DateTime CreatedAt { get; set; } // Data de criação
 }
@@ -46,9 +43,6 @@ public static class ProductSupplierMapper
             SupplierId = item.ContainsKey("supplier_id") ? item["supplier_id"].S : "",
             ProductName = item.ContainsKey("product_name") ? item["product_name"].S : "",
 
-            // Dados
-            ProductionPrice = item.ContainsKey("production_price") && decimal.TryParse(item["production_price"].N, System.Globalization.CultureInfo.InvariantCulture, out var price) ? price : 0,
-            Priority = item.ContainsKey("priority") && int.TryParse(item["priority"].N, out var prio) ? prio : 0,
             SkuCount = item.ContainsKey("sku_count") && int.TryParse(item["sku_count"].N, out var count) ? count : 0,
             CreatedAt = createdAt
         };

@@ -11,7 +11,8 @@ public class SellerController(ILogger<SellerController> logger,
                             ProductRepository productRepository,
                             SkuRepository skuRepository,
                             ProductSkuSellerRepository productSkuSellerRepository,
-                            ProductSellerRepository productSellerRepository
+                            ProductSellerRepository productSellerRepository,
+                            ProductSupplierRepository productSupplierRepository
 
      ) : ControllerBase 
 {
@@ -270,6 +271,30 @@ public class SellerController(ILogger<SellerController> logger,
         catch (Exception ex)
         {
             logger.LogError(ex, "Error removing seller from SKU - ProductId: {ProductId}, SKU: {Sku}", productId, sku);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
+        }
+    }
+    
+    /// <summary>
+    /// Lista todos os SKUs de um produto
+    /// </summary>
+    /// <param name="productId">ID do produto</param>
+    /// <returns>Lista de SKUs do produto</returns>
+    [HttpGet("products/available")]
+    [ProducesResponseType(typeof(SkuListResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAllProductsAvailable()
+    {
+        logger.LogInformation("Getting all products");
+
+        try
+        {
+            var skus = await productSupplierRepository.GetAllProductsWithSupplier();
+            
+            return Ok(skus.ToListResponse());
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting SKUs for product");
             return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
         }
     }

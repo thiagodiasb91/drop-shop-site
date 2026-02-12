@@ -23,7 +23,7 @@ public class SellerDomain
     /// <summary>
     /// Tipo da entidade: "seller"
     /// </summary>
-    [DynamoDBProperty("entityType")]
+    [DynamoDBProperty("entity_type")]
     public string EntityType { get; set; } = "seller";
 
     /// <summary>

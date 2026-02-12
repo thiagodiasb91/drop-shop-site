@@ -8,9 +8,9 @@ public class ProductSkuSupplierResponse
     public string ProductId { get; set; } = string.Empty;
     public string Sku { get; set; } = string.Empty;
     public string SupplierId { get; set; } = string.Empty;
-    public decimal ProductionPrice { get; set; }
+    public decimal Price { get; set; }
     public long Quantity { get; set; }
-    public int Priority { get; set; }
+    public string SkuSupplier { get; set; }
 }
 
 /// <summary>
@@ -34,8 +34,9 @@ public static class ProductSkuSupplierResponseMapper
             ProductId = domain.ProductId,
             Sku = domain.Sku,
             SupplierId = domain.SupplierId,
-            ProductionPrice = domain.ProductionPrice,
-            Quantity = domain.Quantity
+            Price = domain.Price,
+            Quantity = domain.Quantity,
+            SkuSupplier = domain.SkuSupplier
         };
     }
 

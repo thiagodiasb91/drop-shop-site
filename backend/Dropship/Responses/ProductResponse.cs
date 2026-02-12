@@ -15,6 +15,7 @@ public class ProductItemResponse
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
+    public string ImageUrl { get; set; }
 }
 
 public class ProductListResponse
@@ -45,6 +46,7 @@ public static class ProductResponseMapper
         {
             Id = product.Id,
             Name = product.Name,
+            ImageUrl = product.ImageUrl,
             CreatedAt = product.CreatedAt
         };
     }

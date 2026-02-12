@@ -3,33 +3,18 @@ using Dropship.Domain;
 
 namespace Dropship.Repository;
 
-/// <summary>
-/// Repositório para gerenciar relações entre Produtos e Fornecedores
-/// Permite buscar produtos por fornecedor de forma eficiente
-/// </summary>
-public class ProductSupplierRepository
+public class ProductSupplierRepository(DynamoDbRepository repository,
+                                      ProductRepository productRepository,
+    ILogger<ProductSupplierRepository> logger)
 {
-    private readonly DynamoDbRepository _repository;
-    private readonly ILogger<ProductSupplierRepository> _logger;
-
-    public ProductSupplierRepository(DynamoDbRepository repository, ILogger<ProductSupplierRepository> logger)
-    {
-        _repository = repository;
-        _logger = logger;
-    }
-
-    /// <summary>
-    /// Cria um registro de relação Product-Supplier
-    /// </summary>
-    public async Task<ProductSupplierDomain> CreateProductSupplierAsync(
+    
+    public async Task CreateProductSupplierAsync(
         string productId,
         string supplierId,
         string productName,
-        decimal productionPrice,
-        int skuCount,
-        int priority = 0)
+        int skuCount)
     {
-        _logger.LogInformation("Creating product-supplier link - ProductId: {ProductId}, SupplierId: {SupplierId}, SKUCount: {SKUCount}",
+        logger.LogInformation("Creating product-supplier link - ProductId: {ProductId}, SupplierId: {SupplierId}, SKUCount: {SKUCount}",
             productId, supplierId, skuCount);
 
         try
@@ -44,9 +29,7 @@ public class ProductSupplierRepository
                 ProductId = productId,
                 ProductName = productName,
                 SupplierId = supplierId,
-                ProductionPrice = productionPrice,
                 SkuCount = skuCount,
-                Priority = priority,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -58,23 +41,17 @@ public class ProductSupplierRepository
                 { "product_id", new AttributeValue { S = record.ProductId } },
                 { "product_name", new AttributeValue { S = record.ProductName } },
                 { "supplier_id", new AttributeValue { S = record.SupplierId } },
-                { "production_price", new AttributeValue { N = record.ProductionPrice.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
                 { "sku_count", new AttributeValue { N = record.SkuCount.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
-                { "priority", new AttributeValue { N = record.Priority.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
                 { "created_at", new AttributeValue { S = createdAtUtc } }
             };
 
-            await _repository.PutItemAsync(item);
+            await repository.PutItemAsync(item);
 
-            _logger.LogInformation("Product-supplier link created - ProductId: {ProductId}, SupplierId: {SupplierId}",
-                productId, supplierId);
-
-            return record;
+            logger.LogInformation("Product-supplier link created - ProductId: {ProductId}, SupplierId: {SupplierId}", productId, supplierId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating product-supplier link - ProductId: {ProductId}, SupplierId: {SupplierId}",
-                productId, supplierId);
+            logger.LogError(ex, "Error creating product-supplier link - ProductId: {ProductId}, SupplierId: {SupplierId}", productId, supplierId);
             throw;
         }
     }
@@ -84,7 +61,7 @@ public class ProductSupplierRepository
     /// </summary>
     public async Task<List<ProductSupplierDomain>> GetProductsBySupplierAsync(string supplierId)
     {
-        _logger.LogInformation("Getting products for supplier - SupplierId: {SupplierId}", supplierId);
+        logger.LogInformation("Getting products for supplier - SupplierId: {SupplierId}", supplierId);
 
         try
         {
@@ -94,97 +71,29 @@ public class ProductSupplierRepository
                 { ":sk_prefix", new AttributeValue { S = "Product#" } }
             };
 
-            var items = await _repository.QueryTableAsync(
+            var items = await repository.QueryTableAsync(
                 keyConditionExpression: "PK = :pk AND begins_with(SK, :sk_prefix)",
                 expressionAttributeValues: expressionAttributeValues
             );
 
             if (items == null || items.Count == 0)
             {
-                _logger.LogDebug("No products found for supplier - SupplierId: {SupplierId}", supplierId);
+                logger.LogDebug("No products found for supplier - SupplierId: {SupplierId}", supplierId);
                 return new List<ProductSupplierDomain>();
             }
 
             var products = items
                 .Select(ProductSupplierMapper.ToDomain)
-                .OrderBy(p => p.Priority)
                 .ToList();
 
-            _logger.LogInformation("Found {Count} products for supplier - SupplierId: {SupplierId}",
+            logger.LogInformation("Found {Count} products for supplier - SupplierId: {SupplierId}",
                 products.Count, supplierId);
 
             return products;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting products for supplier - SupplierId: {SupplierId}", supplierId);
-            throw;
-        }
-    }
-
-    /// <summary>
-    /// Obtém um registro específico de Product-Supplier
-    /// </summary>
-    public async Task<ProductSupplierDomain?> GetProductSupplierAsync(string supplierId, string productId)
-    {
-        _logger.LogInformation("Getting product-supplier record - SupplierId: {SupplierId}, ProductId: {ProductId}",
-            supplierId, productId);
-
-        try
-        {
-            var key = new Dictionary<string, AttributeValue>
-            {
-                { "PK", new AttributeValue { S = $"Supplier#{supplierId}" } },
-                { "SK", new AttributeValue { S = $"Product#{productId}" } }
-            };
-
-            var item = await _repository.GetItemAsync(key);
-            return item != null ? ProductSupplierMapper.ToDomain(item) : null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting product-supplier record - SupplierId: {SupplierId}, ProductId: {ProductId}",
-                supplierId, productId);
-            throw;
-        }
-    }
-
-    /// <summary>
-    /// Atualiza um registro de Product-Supplier
-    /// </summary>
-    public async Task<ProductSupplierDomain?> UpdateProductSupplierAsync(
-        string supplierId,
-        string productId,
-        decimal productionPrice,
-        int skuCount)
-    {
-        _logger.LogInformation("Updating product-supplier record - SupplierId: {SupplierId}, ProductId: {ProductId}",
-            supplierId, productId);
-
-        try
-        {
-            var key = new Dictionary<string, AttributeValue>
-            {
-                { "PK", new AttributeValue { S = $"Supplier#{supplierId}" } },
-                { "SK", new AttributeValue { S = $"Product#{productId}" } }
-            };
-
-            var updateExpression = "SET production_price = :price, sku_count = :count";
-            var expressionAttributeValues = new Dictionary<string, AttributeValue>
-            {
-                { ":price", new AttributeValue { N = productionPrice.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
-                { ":count", new AttributeValue { N = skuCount.ToString(System.Globalization.CultureInfo.InvariantCulture) } }
-            };
-
-            await _repository.UpdateItemAsync(key, updateExpression, expressionAttributeValues);
-
-            var item = await _repository.GetItemAsync(key);
-            return item != null ? ProductSupplierMapper.ToDomain(item) : null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating product-supplier record - SupplierId: {SupplierId}, ProductId: {ProductId}",
-                supplierId, productId);
+            logger.LogError(ex, "Error getting products for supplier - SupplierId: {SupplierId}", supplierId);
             throw;
         }
     }
@@ -192,9 +101,9 @@ public class ProductSupplierRepository
     /// <summary>
     /// Remove um produto da lista de produtos fornecidos por um fornecedor
     /// </summary>
-    public async Task<bool> RemoveProductSupplierAsync(string supplierId, string productId)
+    public async Task RemoveProductSupplierAsync(string supplierId, string productId)
     {
-        _logger.LogInformation("Removing product from supplier - SupplierId: {SupplierId}, ProductId: {ProductId}",
+        logger.LogInformation("Removing product from supplier - SupplierId: {SupplierId}, ProductId: {ProductId}",
             supplierId, productId);
 
         try
@@ -205,17 +114,77 @@ public class ProductSupplierRepository
                 { "SK", new AttributeValue { S = $"Product#{productId}" } }
             };
 
-            await _repository.DeleteItemAsync(key);
+            await repository.DeleteItemAsync(key);
 
-            _logger.LogInformation("Product removed from supplier - SupplierId: {SupplierId}, ProductId: {ProductId}",
+            logger.LogInformation("Product removed from supplier - SupplierId: {SupplierId}, ProductId: {ProductId}",
                 supplierId, productId);
 
-            return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error removing product from supplier - SupplierId: {SupplierId}, ProductId: {ProductId}",
+            logger.LogError(ex, "Error removing product from supplier - SupplierId: {SupplierId}, ProductId: {ProductId}",
                 supplierId, productId);
+            throw;
+        }
+    }
+
+    public async Task<bool> HasSupplierRelation(string productId)
+    {
+        logger.LogInformation("Checking if product has supplier relation - ProductId: {ProductId}", productId);
+
+        try
+        {
+            var expressionAttributeValues = new Dictionary<string, AttributeValue>
+            {
+                { ":pk", new AttributeValue { S = "Supplier#" } },
+                { ":sk", new AttributeValue { S = $"Product#{productId}" } }
+            };
+
+            var items = await repository.QueryTableAsync(
+                indexName: "GSI_RELATIONS",
+                keyConditionExpression: "SK = :sk AND begins_with(PK, :pk)",
+                expressionAttributeValues: expressionAttributeValues
+            );
+
+            return items != null && items.Count > 0;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error removing product from supplier - ProductId: {ProductId}", productId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Obtém todos os produtos que possuem pelo menos um fornecedor vinculado
+    /// Usa foreach assíncrono para verificar relações em paralelo quando possível
+    /// </summary>
+    /// <returns>Lista de produtos que têm fornecedores vinculados</returns>
+    public async Task<List<ProductDomain>> GetAllProductsWithSupplier()
+    {
+        logger.LogInformation("Getting all products with supplier relations");
+
+        try
+        {
+            var products = await productRepository.GetAllProductsAsync();
+            var productsWithSupplier = new List<ProductDomain>();
+
+            foreach (var product in products)
+            {
+                if (!await HasSupplierRelation(product.Id)) continue;
+                
+                productsWithSupplier.Add(product);
+                logger.LogDebug("Product has supplier relation - ProductId: {ProductId}", product.Id);
+            }
+
+            logger.LogInformation("Found {Count} products with supplier relations out of {Total} total products",
+                productsWithSupplier.Count, products.Count);
+
+            return productsWithSupplier;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting all products with supplier relations");
             throw;
         }
     }

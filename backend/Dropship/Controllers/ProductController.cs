@@ -115,7 +115,7 @@ public class ProductController(
             return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
         }
     }
-
+    
     /// <summary>
     /// Lista todos os SKUs de um produto
     /// </summary>

@@ -8,7 +8,6 @@ public class ProductSupplierResponse
     public string ProductId { get; set; } = string.Empty;
     public string ProductName { get; set; } = string.Empty;
     public string SupplierId { get; set; } = string.Empty;
-    public decimal ProductionPrice { get; set; }
     public int SkuCount { get; set; }
     public int Priority { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -35,9 +34,7 @@ public static class ProductSupplierResponseMapper
             ProductId = domain.ProductId,
             ProductName = domain.ProductName,
             SupplierId = domain.SupplierId,
-            ProductionPrice = domain.ProductionPrice,
             SkuCount = domain.SkuCount,
-            Priority = domain.Priority,
             CreatedAt = domain.CreatedAt
         };
     }

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Amazon.DynamoDBv2.Model;
 using Dropship.Domain;
 
@@ -30,8 +31,6 @@ public class ProductSkuSupplierRepository
     {
         _logger.LogInformation("Linking supplier to product");
 
-        var createdRecords = new List<ProductSkuSupplierDomain>();
-
         try
         {
             // Criar um registro para cada SKU
@@ -44,7 +43,7 @@ public class ProductSkuSupplierRepository
 
             _logger.LogInformation("Successfully linked {Count} SKUs to supplier");
 
-            return createdRecords;
+            return skus;
         }
         catch (Exception ex)
         {
@@ -66,7 +65,8 @@ public class ProductSkuSupplierRepository
             { "product_id", new AttributeValue { S = record.ProductId } },
             { "sku", new AttributeValue { S = record.Sku } },
             { "supplier_id", new AttributeValue { S = record.SupplierId } },
-            { "production_price", new AttributeValue { N = record.ProductionPrice.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
+            { "sku_supplier", new AttributeValue { S = record.SkuSupplier} },
+            { "price", new AttributeValue { N = record.Price.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
             { "quantity", new AttributeValue { N = record.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture) } }
         };
 
@@ -161,11 +161,12 @@ public class ProductSkuSupplierRepository
     /// <summary>
     /// Atualiza o preço de produção e quantidade de um SKU-Supplier específico
     /// </summary>
-    public async Task<ProductSkuSupplierDomain?> UpdateSupplierPricingAsync(
+    public async Task<ProductSkuSupplierDomain?> UpdateSkuSupplier(
         string productId,
         string sku,
         string supplierId,
-        decimal? productionPrice,
+        string skuSupplier,
+        decimal? price,
         long? quantity)
     {
         _logger.LogInformation("Updating supplier pricing - ProductId: {ProductId}, SKU: {Sku}, SupplierId: {SupplierId}",
@@ -182,15 +183,24 @@ public class ProductSkuSupplierRepository
             var expressionAttributeValues = new Dictionary<string, AttributeValue>();
 
             var updateExpression = "SET ";
-            if (productionPrice.HasValue)
+            if (price.HasValue)
             {
-                updateExpression += " production_price = :price";
-                expressionAttributeValues.Add(":price", new AttributeValue { N = productionPrice.ToString() });
+                updateExpression += " price = :price";
+                expressionAttributeValues.Add(":price", new AttributeValue { N = price.Value.ToString(CultureInfo.InvariantCulture) });
+            }
+
+            if (!string.IsNullOrWhiteSpace(skuSupplier))
+            {
+                if(price.HasValue)
+                    updateExpression += ", ";
+                
+                updateExpression += " sku_supplier = :skuSupplier";
+                expressionAttributeValues.Add(":skuSupplier", new AttributeValue { S = skuSupplier });
             }
 
             if (quantity.HasValue)
             {
-                if(productionPrice.HasValue)
+                if(price.HasValue || !string.IsNullOrWhiteSpace(skuSupplier))
                     updateExpression += ", ";
                 
                 updateExpression += " quantity = :qty";
@@ -200,7 +210,7 @@ public class ProductSkuSupplierRepository
             await _repository.UpdateItemAsync(key, updateExpression, expressionAttributeValues);
 
             _logger.LogInformation("Supplier pricing updated - ProductId: {ProductId}, SKU: {Sku}, Price: {Price}, Qty: {Qty}",
-                productId, sku, productionPrice, quantity);
+                productId, sku, price, quantity);
 
             var item = await _repository.GetItemAsync(key);
             return item != null ? ProductSkuSupplierMapper.ToDomain(item) : null;

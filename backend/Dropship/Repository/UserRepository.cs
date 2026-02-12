@@ -32,7 +32,7 @@ public class UserRepository(IAmazonDynamoDB amazonDynamoDb) : DynamoDbRepository
             { "id", new AttributeValue { S = user.Id } },
             { "email", new AttributeValue { S = user.Email } },
             { "role", new AttributeValue { S = user.Role } },
-            { "entityType", new AttributeValue { S = "user" } }
+            { "entity_type", new AttributeValue { S = "user" } }
         };
 
         await PutItemAsync(item);
@@ -48,7 +48,7 @@ public class UserRepository(IAmazonDynamoDB amazonDynamoDb) : DynamoDbRepository
             { "id", new AttributeValue { S = user.Id } },
             { "email", new AttributeValue { S = user.Email } },
             { "role", new AttributeValue { S = user.Role } },
-            { "entityType", new AttributeValue { S = "user" } }
+            { "entity_type", new AttributeValue { S = "user" } }
         };
 
         if (!string.IsNullOrWhiteSpace(user.ResourceId))

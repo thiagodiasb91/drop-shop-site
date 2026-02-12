@@ -5,49 +5,43 @@ namespace Dropship.Requests;
 /// <summary>
 /// Request para vincular um fornecedor a um produto
 /// </summary>
-public class LinkSupplierToProductRequest
+public class SupplierToProductRequest
 {
-    /// <summary>
-    /// Preço de produção do fornecedor
-    /// </summary>
-    /// <example>49.90</example>
-    [Required]
-    [Range(0.01, double.MaxValue, ErrorMessage = "Production price must be greater than 0")]
-    public decimal ProductionPrice { get; set; }
-    
-    [Required]
-    public List<SkuReference> Skus { get; set; } = new();
+    public List<SkuSupplierReference> Skus { get; set; } = new();
 }
 
-public class SkuReference
+public class SupplierUpdateRequest
 {
-    [Required]
+    public List<SupplierSkuUpdateReference> Skus { get; set; } = new();
+}
+
+public class SkuSupplierReference
+{
     public string Sku { get; set; } = string.Empty;
     
-    [Required]
     public string SkuSupplier { get; set; } = string.Empty;
     
-    [Required]
     public decimal Price { get; set; }
 }
 
-/// <summary>
-/// Request para atualizar preço e quantidade de um SKU fornecido
-/// </summary>
+public class SupplierSkuUpdateReference
+{
+    public string Sku { get; set; } = string.Empty;
+    
+    public string SkuSupplier { get; set; } = string.Empty;
+    
+    public decimal Price { get; set; }
+    public long? Quantity { get; set; }
+}
+
 public class UpdateSupplierPricingRequest
 {
-    /// <summary>
-    /// Novo preço de produção
-    /// </summary>
-    /// <example>45.50</example>
     [Range(0.01, double.MaxValue, ErrorMessage = "Production price must be greater than 0")]
-    public decimal? ProductionPrice { get; set; }
+    public decimal? price { get; set; }
 
-    /// <summary>
-    /// Quantidade disponível no fornecedor
-    /// </summary>
-    /// <example>100</example>
     [Range(0, long.MaxValue, ErrorMessage = "Quantity cannot be negative")]
     public long? Quantity { get; set; }
+    
+    public string SkuSupplier { get; set; }
 }
 
