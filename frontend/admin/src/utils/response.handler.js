@@ -1,12 +1,19 @@
 export async function responseHandler(res) {
-  let data = null
+  let response = null
   try {
-    data = await res.json()
+    response = await res.json()
+    response = response.items ? response.items : response
   } catch {}
+
+  console.log("responseHandler",{
+    ok: res.ok,
+    status: res.status,
+    response
+  })
 
   return {
     ok: res.ok,
     status: res.status,
-    data
+    response
   }
 }

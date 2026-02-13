@@ -1,5 +1,3 @@
-import { getShopId } from "../services/sellers.services"
-
 export function canAccessRoute(route, userRole) {
   console.log("route.control.canAccessRoute.request", route, userRole)
 

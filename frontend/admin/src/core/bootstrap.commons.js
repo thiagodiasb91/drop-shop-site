@@ -10,7 +10,8 @@ export function commons() {
     async init() {
       console.log('bootstrap.commons.init.called');
       const logged = await AuthService.me()
-      logged.roleName = roleName(logged.role)
+      if (logged)
+        logged.roleName = roleName(logged.role)
       console.log('bootstrap.commons.init.logged', logged);
       this.logged = logged
     },

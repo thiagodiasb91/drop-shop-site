@@ -27,7 +27,7 @@ export function getData() {
       console.log("pages.sellers.store-code.confirmCode.response", confirmResponse)
 
       if (!confirmResponse.ok) {
-        console.error("pages.sellers.store-code.confirmCode.error", confirmResponse.data)
+        console.error("pages.sellers.store-code.confirmCode.error", confirmResponse.response)
         this.message = "Houve um erro ao tentar configurar a loja. Tente novamente."
         this.loading = false
         return
@@ -37,13 +37,13 @@ export function getData() {
       console.log("pages.sellers.store-code.renewToken.response", renewResponse)
 
       if (!renewResponse.ok) {
-        console.error("pages.sellers.store-code.renewToken.error", renewResponse.data)
+        console.error("pages.sellers.store-code.renewToken.error", renewResponse.response)
         this.message = "Houve um erro ao tentar renovar o seu token. Tente novamente."
         this.loading = false
         return
       }
 
-      CacheHelper.set("session_token", renewResponse.data.sessionToken)
+      CacheHelper.set("session_token", renewResponse.response.sessionToken)
 
       console.log("pages.sellers.store-code.sessionToken.set")
 

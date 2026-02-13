@@ -49,15 +49,12 @@ const AuthService = {
 
     this._mePromise = (async () => {
       try {
-        const sessionToken = CacheHelper.get("session_token")
-        console.log("AuthService.me.api.call", sessionToken)
-
         const res = await fetch(
           `${this.basePath}/me`,
           {
             headers: {
               "Content-Type": "application/json",
-              "Authorization": `Bearer ${sessionToken}`
+              "Authorization": `Bearer ${CacheHelper.get("session_token")}`
             },
           }
         )

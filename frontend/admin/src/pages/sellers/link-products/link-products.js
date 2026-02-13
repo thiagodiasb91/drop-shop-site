@@ -1,181 +1,129 @@
 import html from "./link-products.html?raw"
+import SellersService from "../../../services/sellers.services"
+import ProductsService from "../../../services/products.services"
 
-export function getData(){
+export function getData() {
   return {
     loading: true,
 
     search: '',
     filter: 'all',
+    originalLinks: new Map(),
 
     products: [],
-    originalLinks: new Set(),
 
     page: 0,
     pageSize: 6,
     nextCursor: true,
 
-    init() {
-      setTimeout(() => {
-        this.loadProducts()
-        this.loading = false
-      }, 600)
+    async init() {
+      await this.refresh();
     },
 
-    loadProducts() {
-      if (!this.nextCursor) return
+    async refresh() {
+      this.loading = true;
+      const [resLinkedProducts, resProductsWithSuppliers] = await Promise.all([
+        SellersService.getLinkedProducts(),
+        SellersService.getProductsWithSuppliers()
+      ]);
 
-      const newProducts = generateMockProducts(this.page, this.pageSize)
-
-      newProducts.forEach(p => {
-        if (p.linked) {
-          this.originalLinks.add(p.id)
-        }
-      })
-
-      this.products.push(...newProducts)
-
-      this.page++
-      if (this.page >= 3) this.nextCursor = false
-    },
-
-    /* ======================
-       COMPUTED – HEADER
-    ====================== */
-
-    get totalProducts() {
-      return this.products.length
-    },
-
-    get linkedProducts() {
-      return this.products.filter(p => p.linked).length
-    },
-
-    get syncStats() {
-      const synced = this.products.filter(p => p.linked && p.synced).length
-      const pending = this.products.filter(p => p.linked && !p.synced).length
-      return { synced, pending }
-    },
-
-    get includedCount() {
-      return this.products.filter(
-        p => p.linked && !this.originalLinks.has(p.id)
-      ).length
-    },
-
-    get removedCount() {
-      return this.products.filter(
-        p => !p.linked && this.originalLinks.has(p.id)
-      ).length
-    },
-
-    get hasChanges() {
-      return this.includedCount > 0 || this.removedCount > 0
-    },
-
-    /* ======================
-       FILTER / SEARCH
-    ====================== */
-
-    get filteredProducts() {
-      let list = this.products
-
-      if (this.filter === 'linked') {
-        list = list.filter(p => p.linked)
-      }
-
-      if (this.filter === 'unlinked') {
-        list = list.filter(p => !p.linked)
-      }
-
-      if (this.search.trim()) {
-        const q = this.search.toLowerCase()
-
-        list = list.filter(p =>
-          p.name.toLowerCase().includes(q) ||
-          p.description.toLowerCase().includes(q) ||
-          p.id.toLowerCase().includes(q) ||
-          p.marketplaceId.toLowerCase().includes(q) ||
-          p.skus.some(sku =>
-            sku.id.toLowerCase().includes(q) ||
-            sku.label.toLowerCase().includes(q)
-          )
+      if (resProductsWithSuppliers.ok) {
+        this.originalLinks = new Map(
+          resLinkedProducts.response?.map(p => [p.productId, p.supplierId])
         )
+
+        this.products = resProductsWithSuppliers.response.map(p => {
+          const initialSupplierId = this.originalLinks.has(p.id) || null;
+          return {
+            ...p,
+            expanded: !!initialSupplierId,
+            selectedSupplierId: initialSupplierId,
+            suppliers: [],
+            loadingSuppliers: false,
+          }
+        });
+
+        const loadInitialSuppliers = this.products
+          .filter(p => p.selectedSupplierId)
+          .map(p => this.fetchSuppliers(p));
+
+        await Promise.all(loadInitialSuppliers);
+
       }
-
-      return list
+      this.loading = false;
     },
+    async fetchSuppliers(product) {
+      if (product.suppliers.length > 0) return;
 
-    getTotalSkuProducts(product) {
-      return product.skus.reduce((sum, sku) => sum + sku.stock, 0)
+      product.loadingSuppliers = true;
+      const res = await ProductsService.getProductSuppliers(product.id);
+
+      if (res.ok) {
+        product.suppliers = res.response.map(s => {
+          const min = s.minPrice
+          const max = s.maxPrice
+          return {
+            ...s,
+            priceDisplay: min === max ? `R$ ${min.toFixed(2)}` : `R$ ${min.toFixed(2)} - ${max.toFixed(2)}`
+          };
+        });
+      }
+      product.loadingSuppliers = false;
+    },
+    async toggleExpand(product) {
+      product.expanded = !product.expanded;
+      if (product.expanded) {
+        await this.fetchSuppliers(product);
+      }
     },
     /* ======================
        ACTIONS
     ====================== */
+    // Getters para a barra Sticky
+    get includedCount() {
+      return this.products.filter(p => p.selectedSupplierId && !this.originalLinks.has(p.id)).length;
+    },
+    get removedCount() {
+      return this.products.filter(p => !p.selectedSupplierId && this.originalLinks.has(p.id)).length;
+    },
+    get hasChanges() {
+      return this.includedCount > 0 || this.removedCount > 0;
+    },
+    async cancel() {
+      await this.refresh();
+    },
 
-    saveLinks() {
-      if (!this.hasChanges) return
+    get filteredProducts() {
+      const q = this.search.toLowerCase();
+      return this.products.filter(p => p.name.toLowerCase().includes(q) || p.id.includes(q));
+    },
+    async saveLinks() {
+      const toLink = this.products.filter(p => p.selectedSupplierId && !this.originalLinks.has(p.id));
+      const toUnlink = this.products.filter(p => !p.selectedSupplierId && this.originalLinks.has(p.id));
+      const promises = [
+        toLink?.map(p =>
+          // SellersService.linkProduct(p.id, p.selectedSupplierId)
+          console.log(`Linkando ${p.id} para ${p.selectedSupplierId}`)
+        ),
+        toUnlink?.map(p =>
+          // p => SellersService.unlinkProduct(p.id)
+          console.log(`Removendo link ${p.id} para ${p.selectedSupplierId}`)
+        )
+      ];
 
-      const included = this.products
-        .filter(p => p.linked && !this.originalLinks.has(p.id))
-        .map(p => p.id)
-
-      const removed = this.products
-        .filter(p => !p.linked && this.originalLinks.has(p.id))
-        .map(p => p.id)
-
-      console.log('INCLUIR:', included)
-      console.log('REMOVER:', removed)
-
-      // simula sucesso
-      this.originalLinks = new Set(
-        this.products.filter(p => p.linked).map(p => p.id)
-      )
-
-      alert('Vínculos salvos com sucesso (mock)')
+      try {
+        await Promise.all(promises);
+        Alpine.store('toast').open('Vínculos atualizados com sucesso', 'success');
+        await this.refresh();
+      } catch (e) {
+        Alpine.store('toast').open('Erro ao salvar algumas alterações', 'error');
+      }
     },
 
     goBack() {
       history.back()
     }
   }
-}
-function generateMockProducts(page, size) {
-  const baseIndex = page * size
-
-  return Array.from({ length: size }).map((_, i) => {
-    const index = baseIndex + i + 1
-    const linked = Math.random() > 0.5
-    const synced = linked && Math.random() > 0.3
-
-    const skus = generateMockSkus(index)
-
-    return {
-      id: `PROD-${1000 + index}`,
-      marketplaceId: `MP-${5000 + index}`,
-      name: `Camiseta Premium ${index}`,
-      description: `Camiseta de algodão fio 30.1 — ref ${index}`,
-      expanded: false,
-      linked,
-      synced,
-      skus
-    }
-  })
-}
-
-function generateMockSkus(productIndex) {
-  const variations = [
-    { color: 'Preto', size: 'P' },
-    { color: 'Preto', size: 'M' },
-    { color: 'Preto', size: 'G' },
-    { color: 'Branco', size: 'M' },
-    { color: 'Branco', size: 'G' }
-  ]
-
-  return variations.map((v, i) => ({
-    id: `SKU-${productIndex}-${i + 1}`,
-    label: `${v.color} / ${v.size}`,
-    stock: Math.floor(Math.random() * 40)
-  }))
 }
 
 export function render() {

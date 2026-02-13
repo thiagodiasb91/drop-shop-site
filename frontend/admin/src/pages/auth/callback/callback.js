@@ -34,14 +34,14 @@ export function getData() {
       console.log("page.callback.init.callbackResponse", callbackResponse);
 
       if (!callbackResponse.ok) {
-        console.error("page.callback.init.error", callbackResponse.data);
+        console.error("page.callback.init.error", callbackResponse.response);
         CacheHelper.remove("session_token")
         this.message = "Erro ao autenticar"
         this.executing = false
         return
       }
 
-      CacheHelper.set("session_token", callbackResponse.data.sessionToken)
+      CacheHelper.set("session_token", callbackResponse.response.sessionToken)
 
       this.message = "Login realizado"
       console.log("page.callback.init.redirecting");

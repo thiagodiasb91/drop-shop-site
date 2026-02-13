@@ -96,7 +96,7 @@
                             <span class="text-slate-500" x-text="seller.percentage + '%'"></span>
                         </div>
                         <div class="w-full bg-slate-900 rounded-full h-1.5">
-                            <div class="bg-indigo-500 h-1.5 rounded-full" :style="`width: ${seller.percentage}%` text-indigo-400"></div>
+                            <div class="bg-indigo-500 h-1.5 rounded-full text-indigo-400" :style="{ width: seller.percentage + '%' }"></div>
                         </div>
                     </div>
                 </template>

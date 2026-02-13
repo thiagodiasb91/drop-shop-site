@@ -23,7 +23,7 @@ export function getData() {
           order.code.toLowerCase().includes(search) ||
           order.seller.toLowerCase().includes(search) ||
           order.customer.name.toLowerCase().includes(search) ||
-          order.items.some(item =>
+          order.response.some(item =>
             item.productName.toLowerCase().includes(search) ||
             item.productId.toLowerCase().includes(search) ||
             item.skuId.toLowerCase().includes(search)
