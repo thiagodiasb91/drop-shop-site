@@ -8,13 +8,6 @@ namespace Dropship.Requests;
 public class LinkSellerToProductRequest
 {
     /// <summary>
-    /// ID da loja no marketplace (ex: shop_id para Shopee)
-    /// </summary>
-    /// <example>226477144</example>
-    [Required]
-    public long StoreId { get; set; }
-
-    /// <summary>
     /// Preço do produto no marketplace
     /// </summary>
     /// <example>12.90</example>

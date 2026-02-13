@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
@@ -210,16 +211,16 @@ JwtSecurityTokenHandler.DefaultOutboundClaimTypeMap.Clear();
 var app = builder.Build();
 
 // Enable Swagger/OpenAPI
-// if (app.Environment.IsDevelopment())
-// {
+if (app.Environment.IsDevelopment())
+{
     app.UseSwagger();
     app.UseSwaggerUI(options =>
     {
-        var prefix = !app.Environment.IsDevelopment() ? "/dev" : ""; // o /dev é quando está hospedado na AWS
+        var prefix = !Debugger.IsAttached ? "/dev" : ""; // o /dev é quando está hospedado na AWS
         options.SwaggerEndpoint($"{prefix}/swagger/v1/swagger.json", "Dropship API v1");
         options.RoutePrefix = "swagger";
     });
-// }
+}
 
 // Enable CORS middleware
 

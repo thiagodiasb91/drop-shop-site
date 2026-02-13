@@ -19,8 +19,11 @@ public class ShopeeApiService
 
     // Configurações da Shopee - Sandbox Environment
     private const string SandboxApiHost = "https://openplatform.sandbox.test-stable.shopee.sg";
+    private const string ProductionApiHost = "https://openplatform.shopee.com.br";
     
-    private const string DefaultApiHost = SandboxApiHost;
+    private string urlHost = !Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT").Equals("Development", StringComparison.OrdinalIgnoreCase)
+                                    ? ProductionApiHost
+                                    : SandboxApiHost;
 
     public ShopeeApiService(
         HttpClient httpClient,
@@ -107,7 +110,7 @@ public class ShopeeApiService
             var sign = ShopeeApiHelper.GenerateSign(_partnerId, _partnerKey, path, timestamp);
 
             // Usar API host para chamadas de token, não account host
-            var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&sign={sign}";
+            var url = $"{urlHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&sign={sign}";
 
             var body = new
             {
@@ -278,7 +281,7 @@ public class ShopeeApiService
             
             var sign = ShopeeApiHelper.GenerateSign(_partnerId, _partnerKey, path, timestamp);
 
-            var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&sign={sign}";
+            var url = $"{urlHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&sign={sign}";
 
             // Body contém refresh_token, shop_id e partner_id
             var body = new
@@ -420,7 +423,7 @@ public class ShopeeApiService
             var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
 
             // URL da API com parâmetros de autenticação
-            var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
+            var url = $"{urlHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
 
             _logger.LogDebug("GetShopInfo URL - ShopId: {ShopId}, Path: {Path}, Timestamp: {Timestamp}", shopId, path, timestamp);
 
@@ -493,7 +496,7 @@ public class ShopeeApiService
             const string path = "/api/v2/product/get_category";
             var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
 
-            var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}&language={language}";
+            var url = $"{urlHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}&language={language}";
 
             _logger.LogDebug("GetCategoryList URL - ShopId: {ShopId}", shopId);
 
@@ -539,7 +542,7 @@ public class ShopeeApiService
             const string path = "/api/v2/product/get_item_list";
             var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
 
-            var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}&offset={offset}&page_size={pageSize}&item_status={itemStatus}";
+            var url = $"{urlHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}&offset={offset}&page_size={pageSize}&item_status={itemStatus}";
 
             _logger.LogDebug("GetItemList URL - ShopId: {ShopId}", shopId);
 
@@ -589,7 +592,7 @@ public class ShopeeApiService
             var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
 
             var itemIdList = string.Join(",", itemIds);
-            var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}&item_id_list={itemIdList}";
+            var url = $"{urlHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}&item_id_list={itemIdList}";
 
             _logger.LogDebug("GetItemBaseInfo URL - ShopId: {ShopId}", shopId);
 
@@ -632,10 +635,13 @@ public class ShopeeApiService
             const string path = "/api/v2/product/add_item";
             var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
 
-            var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
+            var url = $"{urlHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
 
+            var jsonToPost = JsonSerializer.Serialize(itemData);    
+            
+            _logger.LogInformation("JsonToPost: {jsonToPost}", jsonToPost);
             var content = new StringContent(
-                JsonSerializer.Serialize(itemData),
+                jsonToPost,
                 Encoding.UTF8,
                 "application/json");
 
@@ -681,7 +687,7 @@ public class ShopeeApiService
             const string path = "/api/v2/product/update_item";
             var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
 
-            var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
+            var url = $"{urlHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
 
             // Adiciona item_id ao objeto de dados
             var updateData = new Dictionary<string, object>
@@ -753,7 +759,7 @@ public class ShopeeApiService
             const string path = "/api/v2/product/init_tier_variation";
             var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
 
-            var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
+            var url = $"{urlHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
 
             var requestData = new Dictionary<string, object>
             {
@@ -762,8 +768,10 @@ public class ShopeeApiService
                 ["model"] = model
             };
 
+            var jsonToPost = JsonSerializer.Serialize(requestData);
+            _logger.LogInformation("JsonToPost: {jsonToPost}", jsonToPost);
             var content = new StringContent(
-                JsonSerializer.Serialize(requestData),
+                jsonToPost,
                 Encoding.UTF8,
                 "application/json");
 
@@ -809,7 +817,7 @@ public class ShopeeApiService
             const string path = "/api/v2/product/get_model_list";
             var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
 
-            var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}&item_id={itemId}";
+            var url = $"{urlHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}&item_id={itemId}";
 
             _logger.LogDebug("GetModelList URL - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
 
@@ -853,7 +861,7 @@ public class ShopeeApiService
             const string path = "/api/v2/product/add_model";
             var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
 
-            var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
+            var url = $"{urlHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
 
             // Adiciona item_id ao objeto de dados
             var addData = new Dictionary<string, object>
@@ -919,7 +927,7 @@ public class ShopeeApiService
             const string path = "/api/v2/product/update_model";
             var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
 
-            var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
+            var url = $"{urlHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
 
             // Adiciona item_id ao objeto de dados
             var updateData = new Dictionary<string, object>
@@ -1001,7 +1009,7 @@ public class ShopeeApiService
             const string path = "/api/v2/order/get_order_list";
             var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
 
-            var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}&time_range_field={timeRangeField}&time_from={timeFrom}&time_to={timeTo}&page_size={pageSize}";
+            var url = $"{urlHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}&time_range_field={timeRangeField}&time_from={timeFrom}&time_to={timeTo}&page_size={pageSize}";
 
             if (!string.IsNullOrEmpty(cursor))
             {
@@ -1064,7 +1072,7 @@ public class ShopeeApiService
             var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
 
             var orderSnListParam = string.Join(",", orderSnList);
-            var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}&order_sn_list={orderSnListParam}";
+            var url = $"{urlHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}&order_sn_list={orderSnListParam}";
 
             const string responseOptionalFields = "buyer_user_id,buyer_username,estimated_shipping_fee,recipient_address,actual_shipping_fee ,goods_to_declare,note,note_update_time,item_list,pay_time,dropshipper, dropshipper_phone,split_up,buyer_cancel_reason,cancel_by,cancel_reason,actual_shipping_fee_confirmed,buyer_cpf_id,fulfillment_flag,pickup_done_time,package_list,shipping_carrier,payment_method,total_amount,buyer_username,invoice_data,order_chargeable_weight_gram,return_request_due_date,edt,payment_info";
             
@@ -1121,7 +1129,7 @@ public class ShopeeApiService
             const string path = "/api/v2/media_space/upload_image";
             var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
 
-            var url = $"{DefaultApiHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
+            var url = $"{urlHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
 
             // Usar MultipartFormDataContent para enviar o arquivo como form data
             using var form = new MultipartFormDataContent();

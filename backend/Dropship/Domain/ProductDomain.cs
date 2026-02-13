@@ -20,6 +20,8 @@ public class ProductDomain
     public string Name { get; set; } = default!;
     public string Description { get; set; } = default!;
     public string ImageUrl { get; set; } = default!;
+
+    public int CategoryId { get; set; } = default!;
     // Metadata
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
@@ -52,6 +54,7 @@ public static class ProductMapper
             Description = item.ContainsKey("product_description") ? item["product_description"].S : "",
             ImageUrl = item.ContainsKey("product_image_url") ? item["product_image_url"].S : "",
             CreatedAt = createdAt,
+            CategoryId = item.TryGetValue("product_category_id", out var categoryId) ? int.Parse(categoryId.N) : default,
             UpdatedAt = updatedAtString != null ? updatedAt : null
         };
     }

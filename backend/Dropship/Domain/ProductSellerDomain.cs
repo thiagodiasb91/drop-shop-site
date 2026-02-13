@@ -19,6 +19,8 @@ public class ProductSellerDomain
     // Marketplace
     public string Marketplace { get; set; } = default!;
     public long StoreId { get; set; }
+    public long MarketplaceItemId { get; set; }
+    public decimal Price { get; set; }
 
     // Dados
     public int SkuCount { get; set; } // Quantidade de SKUs vinculados
@@ -57,6 +59,9 @@ public static class ProductSellerMapper
             // Marketplace
             Marketplace = item.ContainsKey("marketplace") ? item["marketplace"].S : "",
             StoreId = item.ContainsKey("store_id") && long.TryParse(item["store_id"].N, out var storeId) ? storeId : 0,
+
+            MarketplaceItemId = item.ContainsKey("marketplace_item_id") && long.TryParse(item["marketplace_item_id"].N, out var itemId) ? itemId : 0,
+            Price = item.ContainsKey("price") && decimal.TryParse(item["price"].N, out var price) ? price : 0,
 
             // Dados
             SkuCount = item.ContainsKey("sku_count") && int.TryParse(item["sku_count"].N, out var count) ? count : 0,

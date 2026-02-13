@@ -57,6 +57,50 @@ public class ProductSupplierRepository(DynamoDbRepository repository,
     }
 
     /// <summary>
+    /// Obtém todos os fornecedores de um produto específico
+    /// Faz scan na tabela filtrando por product_id e entity_type = "product_supplier"
+    /// </summary>
+    public async Task<List<string>> GetSuppliersByProductIdAsync(string productId)
+    {
+        logger.LogInformation("Getting suppliers for product - ProductId: {ProductId}", productId);
+
+        try
+        {
+            var expressionAttributeValues = new Dictionary<string, AttributeValue>
+            {
+                { ":product_id", new AttributeValue { S = $"Product#{productId}" } },
+                { ":pk", new AttributeValue() { S = "Supplier#"}}
+            };
+
+            var items = await repository.QueryTableAsync(
+                keyConditionExpression: "SK = :product_id AND begins_with(PK, :pk)",
+                expressionAttributeValues: expressionAttributeValues,
+                indexName:"GSI_RELATIONS"    
+            );
+
+            if (items == null || items.Count == 0)
+            {
+                logger.LogDebug("No suppliers found for product - ProductId: {ProductId}", productId);
+                return [];
+            }
+
+            var suppliers = items
+                .Select( x=> x["PK"].S.Replace("Supplier#",""))
+                .ToList();
+
+            logger.LogInformation("Found {Count} suppliers for product - ProductId: {ProductId}",
+                suppliers.Count, productId);
+
+            return suppliers;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting suppliers for product - ProductId: {ProductId}", productId);
+            throw;
+        }
+    }
+
+    /// <summary>
     /// Obtém todos os produtos fornecidos por um fornecedor específico
     /// </summary>
     public async Task<List<ProductSupplierDomain>> GetProductsBySupplierAsync(string supplierId)

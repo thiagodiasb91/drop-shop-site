@@ -2,13 +2,16 @@ using Dropship.Repository;
 using Dropship.Requests;
 using Dropship.Responses;
 using Dropship.Domain;
+using Dropship.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Dropship.Controllers;
 
-[Route("seller")]
-public class SellerController(ILogger<SellerController> logger,
+[Route("sellers")]
+public class SellersController(ILogger<SellersController> logger,
                             SellerRepository sellerRepository,
+                            UserRepository userRepository,
+                            ShopeeService shopeeService,
                             ProductRepository productRepository,
                             SkuRepository skuRepository,
                             ProductSkuSellerRepository productSkuSellerRepository,
@@ -103,39 +106,40 @@ public class SellerController(ILogger<SellerController> logger,
                 return BadRequest(new { error = "Product has no SKUs" });
             }
 
+            var seller = await sellerRepository.GetSellerByIdAsync(sellerId);
+            
+            
             // Mapear SKUs com dados do marketplace e criar domains usando Factory
-            var domains = new List<ProductSkuSellerDomain>();
-            foreach (var mapping in request.SkuMappings)
+            var skusToPublish = new List<ProductSkuSellerDomain>();
+            foreach (var mapping in skus)
             {
                 // Validar que cada SKU existe no produto
-                var sku = skus.FirstOrDefault(s => s.Sku == mapping.Sku);
-                if (sku == null)
-                {
-                    logger.LogWarning("SKU not found in product - ProductId: {ProductId}, SKU: {Sku}", productId, mapping.Sku);
-                    return BadRequest(new { error = $"SKU {mapping.Sku} not found in this product" });
-                }
-
+                var skuMapping = request.SkuMappings.FirstOrDefault(s => s.Sku == mapping.Sku);
+                
                 var domain = ProductSkuSellerFactory.Create(
                     productId,
                     mapping.Sku,
                     sellerId,
                     "shopee",
-                    request.StoreId,
-                    request.Price
+                    seller.ShopId,
+                    request.Price,
+                    mapping.Color,
+                    mapping.Size
                 );
-                domains.Add(domain);
+                skusToPublish.Add(domain);
             }
 
             // Vincular vendedor ao produto (cria registros para cada domain)
-            var linkedRecords = await productSkuSellerRepository.LinkSellerToProductAsync(domains);
+            var linkedRecords = await productSkuSellerRepository.LinkSellerToProductAsync(skusToPublish);
 
             // Criar registro META para busca rápida de produtos por vendedor
-            await productSellerRepository.CreateProductSellerAsync(
+            var productSeller = await productSellerRepository.CreateProductSellerAsync(
                 productId,
                 product.Name,
                 sellerId,
                 "shopee",
-                request.StoreId,
+                seller.ShopId,
+                request.Price,
                 linkedRecords.Count
             );
 
@@ -143,6 +147,8 @@ public class SellerController(ILogger<SellerController> logger,
                 "Seller linked to product successfully - ProductId: {ProductId}, SellerId: {SellerId}, SKUs: {SkuCount}",
                 productId, sellerId, linkedRecords.Count);
 
+            await shopeeService.UploadProduct(productSeller, skusToPublish);
+            
             return CreatedAtAction(
                 nameof(GetSkusBySellerInProduct),
                 new { productId },
@@ -314,44 +320,52 @@ public class SellerController(ILogger<SellerController> logger,
     }
 
     /// <summary>
-    /// Remove um vendedor de um SKU
+    /// Remove um vendedor de um produto (remove todos os SKUs vinculados)
+    /// O vendedor é obtido automaticamente da claim "resourceId" do usuário autenticado
     /// </summary>
     /// <param name="productId">ID do produto</param>
-    /// <param name="sku">Código do SKU</param>
     /// <returns>Status de sucesso</returns>
-    [HttpDelete("products/{productId}/skus/{sku}")]
+    [HttpDelete("products/{productId}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> RemoveSellerFromSku(
-        string productId,
-        string sku)
+    public async Task<IActionResult> RemoveSellerFromProduct(string productId)
     {
         var sellerId = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "resourceId")?.Value;
-        logger.LogInformation("Removing seller from SKU - ProductId: {ProductId}, SKU: {Sku}, SellerId: {SellerId}",
-            productId, sku, sellerId);
+        logger.LogInformation(
+            "Removing seller from product - ProductId: {ProductId}, SellerId: {SellerId}",
+            productId, sellerId);
 
         try
         {
-            if (string.IsNullOrWhiteSpace(productId) || string.IsNullOrWhiteSpace(sku) || string.IsNullOrWhiteSpace(sellerId))
+            if (string.IsNullOrWhiteSpace(productId) || string.IsNullOrWhiteSpace(sellerId))
             {
-                logger.LogWarning("Missing required parameters");
-                return BadRequest(new { error = "Product ID, SKU, and Seller ID are required" });
+                logger.LogWarning("Invalid parameters provided");
+                return BadRequest(new { error = "Product ID and Seller ID are required" });
             }
 
-            var removed =
-                await productSkuSellerRepository.RemoveSellerFromSkuAsync(productId, sku, sellerId, "shopee");
-            if (!removed)
+            // Obter todos os SKUs do vendedor neste produto
+            var sellerSkus = await productSkuSellerRepository.GetSkusBySellerAsync(productId, sellerId, "shopee");
+            
+            // Remover cada SKU do vendedor
+            foreach (var sellerSku in sellerSkus)
             {
-                logger.LogWarning("Failed to remove seller - ProductId: {ProductId}, SKU: {Sku}", productId, sku);
-                return NotFound(new { error = "Product-SKU-Seller record not found" });
+                await productSkuSellerRepository.RemoveSellerFromSkuAsync(
+                    productId, sellerSku.Sku, sellerId, "shopee");
             }
 
-            logger.LogInformation("Seller removed from SKU - ProductId: {ProductId}, SKU: {Sku}", productId, sku);
+            // Remover registro META do vendedor no produto
+            await productSellerRepository.RemoveProductSellerAsync(sellerId, "shopee", productId);
+
+            logger.LogInformation("Seller removed successfully from product - ProductId: {ProductId}, SellerId: {SellerId}, RemovedSKUs: {Count}",
+                productId, sellerId, sellerSkus.Count);
+
             return NoContent();
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error removing seller from SKU - ProductId: {ProductId}, SKU: {Sku}", productId, sku);
+            logger.LogError(ex, "Error removing seller from product - ProductId: {ProductId}, SellerId: {SellerId}",
+                productId, sellerId);
             return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
         }
     }

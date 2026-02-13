@@ -42,6 +42,6 @@ public class UpdateSupplierPricingRequest
     [Range(0, long.MaxValue, ErrorMessage = "Quantity cannot be negative")]
     public long? Quantity { get; set; }
     
-    public string SkuSupplier { get; set; }
+    public string? SkuSupplier { get; set; }
 }
 

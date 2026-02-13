@@ -32,7 +32,8 @@ public class ProductRepository(DynamoDbRepository repository, ILogger<ProductRep
             }
 
             var product = ProductMapper.ToDomain(item);
-            logger.LogInformation("Product found - ProductId: {ProductId}, Name: {ProductName}", productId, product.Name);
+            logger.LogInformation("Product found - ProductId: {ProductId}, Name: {ProductName}", productId,
+                product.Name);
             return product;
         }
         catch (Exception ex)
@@ -78,6 +79,52 @@ public class ProductRepository(DynamoDbRepository repository, ILogger<ProductRep
         catch (Exception ex)
         {
             logger.LogError(ex, "Error fetching all products");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Obtém todas as imagens de um produto pelo ProductId
+    /// Busca por PK = "Product#{productId}" e SK começando com "Color#"
+    /// Filtra apenas registros com entity_type = "product_image"
+    /// </summary>
+    public async Task<List<ProductImageDomain>> GetImagesByProductIdAsync(string productId)
+    {
+        logger.LogInformation("Getting images for product - ProductId: {ProductId}", productId);
+
+        try
+        {
+            var expressionAttributeValues = new Dictionary<string, AttributeValue>
+            {
+                { ":pk", new AttributeValue { S = $"Product#{productId}" } },
+                { ":sk_prefix", new AttributeValue { S = "Color#" } },
+                { ":entity_type", new AttributeValue { S = "product_image" } }
+            };
+
+            var items = await repository.QueryTableAsync(
+                keyConditionExpression: "PK = :pk AND begins_with(SK, :sk_prefix)",
+                filterExpression: "entity_type = :entity_type",
+                expressionAttributeValues: expressionAttributeValues
+            );
+
+            if (items == null || items.Count == 0)
+            {
+                logger.LogDebug("No images found for product - ProductId: {ProductId}", productId);
+                return new List<ProductImageDomain>();
+            }
+
+            var images = items
+                .Select(ProductImageMapper.ToDomain)
+                .OrderByDescending(i => i.CreatedAt)
+                .ToList();
+
+            logger.LogInformation("Retrieved {Count} images for product - ProductId: {ProductId}", images.Count,
+                productId);
+            return images;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting images for product - ProductId: {ProductId}", productId);
             throw;
         }
     }

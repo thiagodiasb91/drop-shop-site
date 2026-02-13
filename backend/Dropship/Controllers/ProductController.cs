@@ -14,9 +14,12 @@ namespace Dropship.Controllers;
 public class ProductController(
     ProductRepository productRepository,
     SkuRepository skuRepository,
+    SupplierRepository supplierRepository,
+    ProductSupplierRepository productSupplierRepository,
     ILogger<ProductController> logger)
     : ControllerBase
 {
+    // ...existing code...
     /// <summary>
     /// Obtém um produto pelo ID
     /// </summary>
@@ -141,6 +144,102 @@ public class ProductController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Error getting SKUs for product - ProductId: {ProductId}", productId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Obtém todas as imagens de um produto
+    /// </summary>
+    /// <param name="productId">ID do produto</param>
+    /// <returns>Lista de imagens do produto</returns>
+    [HttpGet("{productId}/images")]
+    [ProducesResponseType(typeof(ProductImagesListResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetProductImages(string productId)
+    {
+        logger.LogInformation("Getting images for product - ProductId: {ProductId}", productId);
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(productId))
+            {
+                logger.LogWarning("Invalid product ID provided");
+                return BadRequest(new { error = "Product ID is required" });
+            }
+
+            var images = await productRepository.GetImagesByProductIdAsync(productId);
+            if (images == null || images.Count == 0)
+            {
+                logger.LogDebug("No images found for product - ProductId: {ProductId}", productId);
+                return NotFound(new { error = "No images found for this product" });
+            }
+
+            logger.LogInformation("Retrieved {Count} images for product - ProductId: {ProductId}", images.Count, productId);
+            return Ok(images.ToListResponse());
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting images for product - ProductId: {ProductId}", productId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Obtém todos os fornecedores de um produto
+    /// </summary>
+    /// <param name="productId">ID do produto</param>
+    /// <returns>Lista de fornecedores vinculados ao produto com nome</returns>
+    [HttpGet("{productId}/suppliers")]
+    [ProducesResponseType(typeof(ProductSupplierListResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetProductSuppliers(string productId)
+    {
+        logger.LogInformation("Getting suppliers for product - ProductId: {ProductId}", productId);
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(productId))
+            {
+                logger.LogWarning("Invalid product ID provided");
+                return BadRequest(new { error = "Product ID is required" });
+            }
+
+            var suppliers = await productSupplierRepository.GetSuppliersByProductIdAsync(productId);
+            if (suppliers == null || suppliers.Count == 0)
+            {
+                logger.LogDebug("No suppliers found for product - ProductId: {ProductId}", productId);
+                return NotFound(new { error = "No suppliers found for this product" });
+            }
+
+            // Enriquecer com dados do fornecedor (nome)
+            var enrichedSuppliers = new List<dynamic>();
+            foreach (var supplier in suppliers)
+            {
+                var supplierDetails = await supplierRepository.GetSupplierAsync(supplier);
+                
+                enrichedSuppliers.Add(new
+                {
+                    supplierId = supplierDetails.Id,
+                    supplierName = supplierDetails?.Name ?? "Unknown",
+                    
+                });
+            }
+
+            logger.LogInformation("Retrieved {Count} suppliers for product - ProductId: {ProductId}", 
+                enrichedSuppliers.Count, productId);
+            
+            return Ok(new
+            {
+                total = enrichedSuppliers.Count,
+                items = enrichedSuppliers
+            });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting suppliers for product - ProductId: {ProductId}", productId);
             return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
         }
     }

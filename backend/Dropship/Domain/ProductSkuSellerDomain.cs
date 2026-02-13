@@ -16,7 +16,9 @@ public class ProductSkuSellerDomain
     public string ProductId { get; set; } = default!;
     public string Sku { get; set; } = default!;
     public string SellerId { get; set; } = default!;
-    
+
+    public string Color { get; set; } = default!;
+    public string Size { get; set; } = default!;
     // Marketplace
     public string Marketplace { get; set; } = default!; // ex: "shopee", "mercado_livre"
     public long StoreId { get; set; } // ID da loja no marketplace (ex: shop_id Shopee)
@@ -45,6 +47,8 @@ public static class ProductSkuSellerFactory
         string marketplace,
         long storeId,
         decimal price,
+        string color,
+        string size,
         long quantity = 0)
     {
         return new ProductSkuSellerDomain
@@ -59,6 +63,8 @@ public static class ProductSkuSellerFactory
             StoreId = storeId,
             Price = price,
             Quantity = quantity,
+            Color = color,
+            Size = size,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = null
         };
@@ -95,7 +101,7 @@ public static class ProductSkuSellerMapper
             // Marketplace
             Marketplace = item.ContainsKey("marketplace") ? item["marketplace"].S : "",
             StoreId = item.ContainsKey("store_id") && long.TryParse(item["store_id"].N, out var storeId) ? storeId : 0,
-            MarketplaceProductId = item.ContainsKey("marketplace_product_id") ? item["marketplace_product_id"].S : "",
+            MarketplaceProductId = item.ContainsKey("marketplace_item_id") ? item["marketplace_item_id"].S : "",
             MarketplaceModelId = item.ContainsKey("marketplace_model_id") ? item["marketplace_model_id"].S : "",
 
             // Dados

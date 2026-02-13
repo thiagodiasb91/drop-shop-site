@@ -27,6 +27,7 @@ public class ProductSellerRepository
         string sellerId,
         string marketplace,
         long storeId,
+        decimal price,
         int skuCount)
     {
         _logger.LogInformation("Creating product-seller META - ProductId: {ProductId}, SellerId: {SellerId}, Marketplace: {Marketplace}",
@@ -47,6 +48,7 @@ public class ProductSellerRepository
                 Marketplace = marketplace,
                 StoreId = storeId,
                 SkuCount = skuCount,
+                Price = price,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -212,5 +214,80 @@ public class ProductSellerRepository
             throw;
         }
     }
-}
 
+    public async Task UpdateMarketplaceItemIdAsync(ProductSellerDomain productSeller)
+    {
+        _logger.LogInformation("Updating marketplace item ID - SellerId: {SellerId}, ProductId: {ProductId}, MarketplaceItemId: {MarketplaceItemId}",
+            productSeller.SellerId, productSeller.ProductId, productSeller.MarketplaceItemId);
+
+        try
+        {
+            var key = new Dictionary<string, AttributeValue>
+            {
+                { "PK", new AttributeValue { S = productSeller.Pk } },
+                { "SK", new AttributeValue { S = productSeller.Sk } }
+            };
+
+            var updateExpression = "SET marketplace_item_id = :marketplace_item_id, updated_at = :updated_at";
+            var expressionAttributeValues = new Dictionary<string, AttributeValue>
+            {
+                { ":marketplace_item_id", new AttributeValue { N = productSeller.MarketplaceItemId.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
+                { ":updated_at", new AttributeValue { S = DateTime.UtcNow.ToString("O") } }
+            };
+
+            await _repository.UpdateItemAsync(key, updateExpression, expressionAttributeValues);
+
+            _logger.LogInformation("Marketplace item ID updated - SellerId: {SellerId}, ProductId: {ProductId}, MarketplaceItemId: {MarketplaceItemId}",
+                productSeller.SellerId, productSeller.ProductId, productSeller.MarketplaceItemId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating marketplace item ID - SellerId: {SellerId}, ProductId: {ProductId}",
+                productSeller.SellerId, productSeller.ProductId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Atualiza o marketplace_model_id de um SKU de vendedor
+    /// </summary>
+    public async Task UpdateMarketplaceModelIdAsync(
+        string productId,
+        string sku,
+        string sellerId,
+        string marketplace,
+        string modelId,
+        string itemId)
+    {
+        _logger.LogInformation("Updating marketplace model ID - ProductId: {ProductId}, SKU: {Sku}, ModelId: {ModelId}",
+            productId, sku, modelId);
+
+        try
+        {
+            var key = new Dictionary<string, AttributeValue>
+            {
+                { "PK", new AttributeValue { S = $"Product#{productId}" } },
+                { "SK", new AttributeValue { S = $"Sku#{sku}#Seller#{marketplace}#{sellerId}" } }
+            };
+
+            var updateExpression = "SET marketplace_model_id = :model_id, marketplace_item_id = :item_id, updated_at = :updated_at";
+            var expressionAttributeValues = new Dictionary<string, AttributeValue>
+            {
+                { ":model_id", new AttributeValue { S = modelId } },
+                { ":item_id", new AttributeValue { S = itemId } },
+                { ":updated_at", new AttributeValue { S = DateTime.UtcNow.ToString("O") } }
+            };
+
+            await _repository.UpdateItemAsync(key, updateExpression, expressionAttributeValues);
+
+            _logger.LogInformation("Marketplace model ID updated - ProductId: {ProductId}, SKU: {Sku}, ModelId: {ModelId}",
+                productId, sku, modelId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating marketplace model ID - ProductId: {ProductId}, SKU: {Sku}",
+                productId, sku);
+            throw;
+        }
+    }
+}
