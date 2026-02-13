@@ -270,7 +270,7 @@ public class SupplierController(SupplierRepository supplierRepository,
                 productId,
                 supplierId,
                 product.Name,
-                productSkuSuppliers.Count
+                productSkuSuppliers
             );
 
             logger.LogInformation(

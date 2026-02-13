@@ -3,6 +3,7 @@ namespace Dropship.Domain;
 /// <summary>
 /// Domain para a relação entre Produto e Fornecedor
 /// Permite buscar produtos por fornecedor de forma eficiente
+/// Preços são armazenados em centavos (cents)
 /// </summary>
 public class ProductSupplierDomain
 {
@@ -17,6 +18,11 @@ public class ProductSupplierDomain
 
     public string ProductName { get; set; } = default!;
     public int SkuCount { get; set; } // Quantidade de SKUs fornecidos
+    
+    // 💰 Preços em centavos (populados automaticamente pelos SKUs)
+    public decimal MinPrice { get; set; } // Preço mínimo dos SKUs
+    public decimal MaxPrice { get; set; } // Preço máximo dos SKUs
+    
     public DateTime CreatedAt { get; set; } // Data de criação
 }
 
@@ -44,6 +50,11 @@ public static class ProductSupplierMapper
             ProductName = item.ContainsKey("product_name") ? item["product_name"].S : "",
 
             SkuCount = item.ContainsKey("sku_count") && int.TryParse(item["sku_count"].N, out var count) ? count : 0,
+            
+            // Preços com CultureInfo.InvariantCulture
+            MinPrice = item.ContainsKey("min_price") && decimal.TryParse(item["min_price"].N, System.Globalization.CultureInfo.InvariantCulture, out var minPrice) ? minPrice : 0,
+            MaxPrice = item.ContainsKey("max_price") && decimal.TryParse(item["max_price"].N, System.Globalization.CultureInfo.InvariantCulture, out var maxPrice) ? maxPrice : 0,
+            
             CreatedAt = createdAt
         };
     }

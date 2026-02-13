@@ -207,24 +207,24 @@ public class ProductController(
                 return BadRequest(new { error = "Product ID is required" });
             }
 
-            var suppliers = await productSupplierRepository.GetSuppliersByProductIdAsync(productId);
-            if (suppliers == null || suppliers.Count == 0)
+            var productsSupplier = await productSupplierRepository.GetSuppliersByProductIdAsync(productId);
+            if (productsSupplier == null || productsSupplier.Count == 0)
             {
                 logger.LogDebug("No suppliers found for product - ProductId: {ProductId}", productId);
                 return NotFound(new { error = "No suppliers found for this product" });
             }
 
-            // Enriquecer com dados do fornecedor (nome)
             var enrichedSuppliers = new List<dynamic>();
-            foreach (var supplier in suppliers)
+            foreach (var product in productsSupplier)
             {
-                var supplierDetails = await supplierRepository.GetSupplierAsync(supplier);
+                var supplierDetails = await supplierRepository.GetSupplierAsync(product.SupplierId);
                 
                 enrichedSuppliers.Add(new
                 {
                     supplierId = supplierDetails.Id,
                     supplierName = supplierDetails?.Name ?? "Unknown",
-                    
+                    minPrice = product.MinPrice,
+                    maxPrice = product.MaxPrice
                 });
             }
 
