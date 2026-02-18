@@ -1,3 +1,4 @@
+using Dropship.Domain;
 using Microsoft.AspNetCore.Mvc;
 using Dropship.Repository;
 using Dropship.Requests;
@@ -10,17 +11,15 @@ namespace Dropship.Controllers;
 /// </summary>
 [ApiController]
 [Route("products")]
-public class ProductController : ControllerBase
+public class ProductController(
+    ProductRepository productRepository,
+    SkuRepository skuRepository,
+    SupplierRepository supplierRepository,
+    ProductSupplierRepository productSupplierRepository,
+    ILogger<ProductController> logger)
+    : ControllerBase
 {
-    private readonly ProductRepository _productRepository;
-    private readonly ILogger<ProductController> _logger;
-
-    public ProductController(ProductRepository productRepository, ILogger<ProductController> logger)
-    {
-        _productRepository = productRepository;
-        _logger = logger;
-    }
-
+    // ...existing code...
     /// <summary>
     /// Obtém um produto pelo ID
     /// </summary>
@@ -31,20 +30,20 @@ public class ProductController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetProduct(string id)
     {
-        _logger.LogInformation("Getting product - ProductId: {ProductId}", id);
+        logger.LogInformation("Getting product - ProductId: {ProductId}", id);
 
         try
         {
             if (string.IsNullOrWhiteSpace(id))
             {
-                _logger.LogWarning("Invalid product ID provided");
+                logger.LogWarning("Invalid product ID provided");
                 return BadRequest(new { error = "Product ID is required" });
             }
 
-            var product = await _productRepository.GetProductByIdAsync(id);
+            var product = await productRepository.GetProductByIdAsync(id);
             if (product == null)
             {
-                _logger.LogWarning("Product not found - ProductId: {ProductId}", id);
+                logger.LogWarning("Product not found - ProductId: {ProductId}", id);
                 return NotFound(new { error = "Product not found" });
             }
 
@@ -53,7 +52,7 @@ public class ProductController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting product - ProductId: {ProductId}", id);
+            logger.LogError(ex, "Error getting product - ProductId: {ProductId}", id);
             return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
         }
     }
@@ -66,131 +65,181 @@ public class ProductController : ControllerBase
     [ProducesResponseType(typeof(ProductListResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAllProducts()
     {
-        _logger.LogInformation("Fetching all products");
+        logger.LogInformation("Fetching all products");
 
         try
         {
-            var products = await _productRepository.GetAllProductsAsync();
+            var products = await productRepository.GetAllProductsAsync();
             var response = products.ToListResponse();
 
-            _logger.LogInformation("Retrieved {Count} products", response.Total);
+            logger.LogInformation("Retrieved {Count} products", response.Total);
             return Ok(response);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error fetching products");
+            logger.LogError(ex, "Error fetching products");
             return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
         }
     }
 
     /// <summary>
-    /// Cria um novo produto
+    /// Obtém um SKU específico de um produto
     /// </summary>
-    /// <param name="request">Dados do novo produto</param>
-    /// <returns>Produto criado</returns>
-    [HttpPost]
-    [ProducesResponseType(typeof(ProductResponse), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> CreateProduct([FromBody] CreateProductRequest request)
+    /// <param name="productId">ID do produto</param>
+    /// <param name="sku">Código do SKU</param>
+    /// <returns>Informações do SKU</returns>
+    [HttpGet("{productId}/skus/{sku}")]
+    [ProducesResponseType(typeof(SkuResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetSku(string productId, string sku)
     {
-        _logger.LogInformation("Creating product - ProductName: {ProductName}", request.ProductName);
+        logger.LogInformation("Getting SKU - ProductId: {ProductId}, SKU: {Sku}", productId, sku);
 
         try
         {
-            // Validações de Data Annotations são automáticas no ModelState
-            if (!ModelState.IsValid)
+            if (string.IsNullOrWhiteSpace(productId) || string.IsNullOrWhiteSpace(sku))
             {
-                _logger.LogWarning("Invalid product request - ModelState errors");
-                return BadRequest(ModelState);
+                logger.LogWarning("Invalid product ID or SKU provided");
+                return BadRequest(new { error = "Product ID and SKU are required" });
             }
 
-            var product = await _productRepository.CreateProductAsync(request);
-            var response = product.ToResponse();
+            var skuDomain = await skuRepository.GetSkuAsync(productId, sku);
+            if (skuDomain == null)
+            {
+                logger.LogWarning("SKU not found - ProductId: {ProductId}, SKU: {Sku}", productId, sku);
+                return NotFound(new { error = "SKU not found" });
+            }
 
-            _logger.LogInformation("Product created successfully - ProductId: {ProductId}", product.Id);
-            return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, response);
+            return Ok(skuDomain.ToResponse());
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating product");
+            logger.LogError(ex, "Error getting SKU - ProductId: {ProductId}, SKU: {Sku}", productId, sku);
             return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
         }
     }
-
+    
     /// <summary>
-    /// Atualiza um produto existente
+    /// Lista todos os SKUs de um produto
     /// </summary>
-    /// <param name="id">ID do produto</param>
-    /// <param name="request">Dados a atualizar</param>
-    /// <returns>Produto atualizado</returns>
-    [HttpPut("{id}")]
-    [ProducesResponseType(typeof(ProductResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> UpdateProduct(string id, [FromBody] UpdateProductRequest request)
+    /// <param name="productId">ID do produto</param>
+    /// <returns>Lista de SKUs do produto</returns>
+    [HttpGet("{productId}/skus")]
+    [ProducesResponseType(typeof(SkuListResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetSkusByProduct(string productId)
     {
-        _logger.LogInformation("Updating product - ProductId: {ProductId}", id);
+        logger.LogInformation("Getting all SKUs for product - ProductId: {ProductId}", productId);
 
         try
         {
-            // Validações de Data Annotations são automáticas no ModelState
-            if (!ModelState.IsValid)
+            if (string.IsNullOrWhiteSpace(productId))
             {
-                _logger.LogWarning("Invalid product request - ModelState errors");
-                return BadRequest(ModelState);
-            }
-
-            var product = await _productRepository.UpdateProductAsync(id, request);
-            if (product == null)
-            {
-                _logger.LogWarning("Product not found for update - ProductId: {ProductId}", id);
-                return NotFound(new { error = "Product not found" });
-            }
-
-            var response = product.ToResponse();
-            _logger.LogInformation("Product updated successfully - ProductId: {ProductId}", id);
-            return Ok(response);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating product - ProductId: {ProductId}", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
-        }
-    }
-
-    /// <summary>
-    /// Deleta um produto
-    /// </summary>
-    /// <param name="id">ID do produto</param>
-    /// <returns>Status da exclusão</returns>
-    [HttpDelete("{id}")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DeleteProduct(string id)
-    {
-        _logger.LogInformation("Deleting product - ProductId: {ProductId}", id);
-
-        try
-        {
-            if (string.IsNullOrWhiteSpace(id))
-            {
-                _logger.LogWarning("Invalid product ID provided");
+                logger.LogWarning("Invalid product ID provided");
                 return BadRequest(new { error = "Product ID is required" });
             }
 
-            var success = await _productRepository.DeleteProductAsync(id);
-            if (!success)
-            {
-                _logger.LogWarning("Product not found for deletion - ProductId: {ProductId}", id);
-                return NotFound(new { error = "Product not found" });
-            }
-
-            _logger.LogInformation("Product deleted successfully - ProductId: {ProductId}", id);
-            return NoContent();
+            var skus = await skuRepository.GetSkusByProductIdAsync(productId);
+            return Ok(skus.ToListResponse());
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting product - ProductId: {ProductId}", id);
+            logger.LogError(ex, "Error getting SKUs for product - ProductId: {ProductId}", productId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Obtém todas as imagens de um produto
+    /// </summary>
+    /// <param name="productId">ID do produto</param>
+    /// <returns>Lista de imagens do produto</returns>
+    [HttpGet("{productId}/images")]
+    [ProducesResponseType(typeof(ProductImagesListResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetProductImages(string productId)
+    {
+        logger.LogInformation("Getting images for product - ProductId: {ProductId}", productId);
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(productId))
+            {
+                logger.LogWarning("Invalid product ID provided");
+                return BadRequest(new { error = "Product ID is required" });
+            }
+
+            var images = await productRepository.GetImagesByProductIdAsync(productId);
+            if (images == null || images.Count == 0)
+            {
+                logger.LogDebug("No images found for product - ProductId: {ProductId}", productId);
+                return NotFound(new { error = "No images found for this product" });
+            }
+
+            logger.LogInformation("Retrieved {Count} images for product - ProductId: {ProductId}", images.Count, productId);
+            return Ok(images.ToListResponse());
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting images for product - ProductId: {ProductId}", productId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Obtém todos os fornecedores de um produto
+    /// </summary>
+    /// <param name="productId">ID do produto</param>
+    /// <returns>Lista de fornecedores vinculados ao produto com nome</returns>
+    [HttpGet("{productId}/suppliers")]
+    [ProducesResponseType(typeof(ProductSupplierListResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetProductSuppliers(string productId)
+    {
+        logger.LogInformation("Getting suppliers for product - ProductId: {ProductId}", productId);
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(productId))
+            {
+                logger.LogWarning("Invalid product ID provided");
+                return BadRequest(new { error = "Product ID is required" });
+            }
+
+            var productsSupplier = await productSupplierRepository.GetSuppliersByProductIdAsync(productId);
+            if (productsSupplier == null || productsSupplier.Count == 0)
+            {
+                logger.LogDebug("No suppliers found for product - ProductId: {ProductId}", productId);
+                return NotFound(new { error = "No suppliers found for this product" });
+            }
+
+            var enrichedSuppliers = new List<dynamic>();
+            foreach (var product in productsSupplier)
+            {
+                var supplierDetails = await supplierRepository.GetSupplierAsync(product.SupplierId);
+                
+                enrichedSuppliers.Add(new
+                {
+                    supplierId = supplierDetails.Id,
+                    supplierName = supplierDetails?.Name ?? "Unknown",
+                    minPrice = product.MinPrice,
+                    maxPrice = product.MaxPrice
+                });
+            }
+
+            logger.LogInformation("Retrieved {Count} suppliers for product - ProductId: {ProductId}", 
+                enrichedSuppliers.Count, productId);
+            
+            return Ok(new
+            {
+                total = enrichedSuppliers.Count,
+                items = enrichedSuppliers
+            });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting suppliers for product - ProductId: {ProductId}", productId);
             return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
         }
     }

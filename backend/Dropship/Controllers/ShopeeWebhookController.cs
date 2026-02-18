@@ -70,6 +70,12 @@ public class ShopeeWebhookController(
             });
         }
     }
+
+    [HttpGet("/sellers/{email}/store/code")]
+    public async Task<IActionResult> MockResponseTest([FromRoute] string email, [FromQuery] string code, [FromQuery(Name = "shop_id")] long shopId)
+    {
+        return Ok(await shopeeApiService.GetCachedAccessTokenAsync(shopId, code));
+    }
     
     /// <summary>
     /// Webhook para receber eventos do Shopee

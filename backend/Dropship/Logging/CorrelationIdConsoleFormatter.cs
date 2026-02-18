@@ -72,9 +72,8 @@ public sealed class CorrelationIdConsoleFormatter : ConsoleFormatter
         // Exception se houver
         if (logEntry.Exception != null)
         {
-            sb.AppendLine();
             sb.AppendLine("Exception:");
-            sb.AppendLine(logEntry.Exception.ToString());
+            sb.AppendLine(logEntry.Exception.ToString().Replace("\n",""));
         }
 
         textWriter.Write(sb.ToString());
@@ -103,12 +102,12 @@ public sealed class CorrelationIdConsoleFormatter : ConsoleFormatter
 
     private static string GetLogLevelString(LogLevel level) => level switch
     {
-        LogLevel.Trace => "TRACE",
+        LogLevel.Trace => "TRACE",  
         LogLevel.Debug => "DEBUG",
-        LogLevel.Information => "INFO ",
+        LogLevel.Information => "INFO",
         LogLevel.Warning => "WARN ",
         LogLevel.Error => "ERROR",
         LogLevel.Critical => "FATAL",
-        _ => "UNKN "
+        _ => "UNKN"
     };
 }

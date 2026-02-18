@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 
 namespace Dropship.Services.Helpers;
@@ -15,6 +17,49 @@ public static class ShopeeApiHelper
     public static long GetCurrentTimestamp()
     {
         return DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+    }
+
+    /// <summary>
+    /// Gera assinatura HMAC SHA256 para requisições à API (public endpoints)
+    /// Base string: {partner_id}{path}{timestamp}
+    /// </summary>
+    /// <param name="partnerId">ID do parceiro Shopee</param>
+    /// <param name="partnerKey">Chave do parceiro Shopee</param>
+    /// <param name="path">Path da API (ex: /api/v2/shop/auth_partner)</param>
+    /// <param name="timestamp">Timestamp Unix em segundos</param>
+    /// <returns>Assinatura HMAC SHA256 em hexadecimal lowercase</returns>
+    public static string GenerateSign(string partnerId, string partnerKey, string path, long timestamp)
+    {
+        var tmpBaseString = $"{partnerId}{path}{timestamp}";
+        var baseString = Encoding.UTF8.GetBytes(tmpBaseString);
+        var key = Encoding.UTF8.GetBytes(partnerKey);
+
+        using var hmac = new HMACSHA256(key);
+        var hash = hmac.ComputeHash(baseString);
+        return BitConverter.ToString(hash).Replace("-", "").ToLower();
+    }
+
+    /// <summary>
+    /// Gera assinatura HMAC SHA256 para requisições à API (shop-level endpoints)
+    /// Base string: {partner_id}{path}{timestamp}{access_token}{shop_id}
+    /// Ref: https://open.shopee.com/documents/v2/v2.shop.get_shop_info
+    /// </summary>
+    /// <param name="partnerId">ID do parceiro Shopee</param>
+    /// <param name="partnerKey">Chave do parceiro Shopee</param>
+    /// <param name="path">Path da API (ex: /api/v2/shop/get_shop_info)</param>
+    /// <param name="timestamp">Timestamp Unix em segundos</param>
+    /// <param name="accessToken">Token de acesso da loja</param>
+    /// <param name="shopId">ID da loja</param>
+    /// <returns>Assinatura HMAC SHA256 em hexadecimal lowercase</returns>
+    public static string GenerateSignWithShop(string partnerId, string partnerKey, string path, long timestamp, string accessToken, long shopId)
+    {
+        var tmpBaseString = $"{partnerId}{path}{timestamp}{accessToken}{shopId}";
+        var baseString = Encoding.UTF8.GetBytes(tmpBaseString);
+        var key = Encoding.UTF8.GetBytes(partnerKey);
+
+        using var hmac = new HMACSHA256(key);
+        var hash = hmac.ComputeHash(baseString);
+        return BitConverter.ToString(hash).Replace("-", "").ToLower();
     }
 
     /// <summary>
