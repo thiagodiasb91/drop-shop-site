@@ -28,6 +28,7 @@ public class ProductSellerRepository
         string marketplace,
         long storeId,
         decimal price,
+        string supplierId,
         int skuCount)
     {
         _logger.LogInformation("Creating product-seller META - ProductId: {ProductId}, SellerId: {SellerId}, Marketplace: {Marketplace}",
@@ -40,7 +41,7 @@ public class ProductSellerRepository
             var record = new ProductSellerDomain
             {
                 Pk = $"Seller#{marketplace}#{sellerId}",
-                Sk = $"Product#{productId}",
+                Sk = $"Product#{productId}#Supplier#{supplierId}",
                 EntityType = "product_seller",
                 ProductId = productId,
                 ProductName = productName,
@@ -48,6 +49,7 @@ public class ProductSellerRepository
                 Marketplace = marketplace,
                 StoreId = storeId,
                 SkuCount = skuCount,
+                SupplierId = supplierId,
                 Price = price,
                 CreatedAt = DateTime.UtcNow
             };
@@ -60,6 +62,7 @@ public class ProductSellerRepository
                 { "product_id", new AttributeValue { S = record.ProductId } },
                 { "product_name", new AttributeValue { S = record.ProductName } },
                 { "seller_id", new AttributeValue { S = record.SellerId } },
+                { "supplier_id", new AttributeValue() { S = supplierId} },
                 { "marketplace", new AttributeValue { S = record.Marketplace } },
                 { "store_id", new AttributeValue { N = record.StoreId.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
                 { "sku_count", new AttributeValue { N = record.SkuCount.ToString(System.Globalization.CultureInfo.InvariantCulture) } },

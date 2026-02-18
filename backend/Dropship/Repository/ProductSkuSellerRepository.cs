@@ -66,6 +66,7 @@ public class ProductSkuSellerRepository(DynamoDbRepository repository, ILogger<P
             { "entity_type", new AttributeValue { S = domain.EntityType } },
             { "product_id", new AttributeValue { S = domain.ProductId } },
             { "sku", new AttributeValue { S = domain.Sku } },
+            { "supplier_id", new AttributeValue() { S = domain.SupplierId} },
             { "seller_id", new AttributeValue { S = domain.SellerId } },
             { "marketplace", new AttributeValue { S = domain.Marketplace } },
             { "store_id", new AttributeValue { N = domain.StoreId.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
@@ -162,52 +163,10 @@ public class ProductSkuSellerRepository(DynamoDbRepository repository, ILogger<P
             throw;
         }
     }
-
-    /// <summary>
-    /// Atualiza a quantidade de um SKU (via sistema automaticamente)
-    /// </summary>
-    public async Task<ProductSkuSellerDomain?> UpdateQuantityAsync(
-        string productId,
-        string sku,
-        string sellerId,
-        string marketplace,
-        long quantity)
-    {
-        logger.LogInformation("Updating seller quantity - ProductId: {ProductId}, SKU: {Sku}, Quantity: {Quantity}",
-            productId, sku, quantity);
-
-        try
-        {
-            var key = new Dictionary<string, AttributeValue>
-            {
-                { "PK", new AttributeValue { S = $"Product#{productId}" } },
-                { "SK", new AttributeValue { S = $"Sku#{sku}#Seller#{marketplace}#{sellerId}" } }
-            };
-
-            var updateExpression = "SET quantity = :qty, updated_at = :updated_at";
-            var expressionAttributeValues = new Dictionary<string, AttributeValue>
-            {
-                { ":qty", new AttributeValue { N = quantity.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
-                { ":updated_at", new AttributeValue { S = DateTime.UtcNow.ToString("O") } }
-            };
-
-            await repository.UpdateItemAsync(key, updateExpression, expressionAttributeValues);
-
-            var item = await repository.GetItemAsync(key);
-            return item != null ? ProductSkuSellerMapper.ToDomain(item) : null;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error updating quantity - ProductId: {ProductId}, SKU: {Sku}",
-                productId, sku);
-            throw;
-        }
-    }
-
     /// <summary>
     /// Remove um vendedor de um SKU
     /// </summary>
-    public async Task<bool> RemoveSellerFromSkuAsync(string productId, string sku, string sellerId, string marketplace)
+    public async Task<bool> RemoveSellerFromSkuAsync(string productId, string sku, string sellerId, string marketplace, string supplierId)
     {
         logger.LogInformation("Removing seller from SKU - ProductId: {ProductId}, SKU: {Sku}, SellerId: {SellerId}",
             productId, sku, sellerId);
@@ -217,7 +176,7 @@ public class ProductSkuSellerRepository(DynamoDbRepository repository, ILogger<P
             var key = new Dictionary<string, AttributeValue>
             {
                 { "PK", new AttributeValue { S = $"Product#{productId}" } },
-                { "SK", new AttributeValue { S = $"Sku#{sku}#Seller#{marketplace}#{sellerId}" } }
+                { "SK", new AttributeValue { S = $"Sku#{sku}#Seller#{marketplace}#{sellerId}#Suppliers#{supplierId}" } }
             };
 
             await repository.DeleteItemAsync(key);

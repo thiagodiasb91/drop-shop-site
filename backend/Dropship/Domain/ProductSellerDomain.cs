@@ -15,6 +15,7 @@ public class ProductSellerDomain
     public string ProductId { get; set; } = default!;
     public string ProductName { get; set; } = default!;
     public string SellerId { get; set; } = default!;
+    public string SupplierId { get; set; } = string.Empty; // ID do fornecedor (opcional)
     
     // Marketplace
     public string Marketplace { get; set; } = default!;
@@ -55,6 +56,7 @@ public static class ProductSellerMapper
             ProductId = item.ContainsKey("product_id") ? item["product_id"].S : "",
             ProductName = item.ContainsKey("product_name") ? item["product_name"].S : "",
             SellerId = item.ContainsKey("seller_id") ? item["seller_id"].S : "",
+            SupplierId = item.ContainsKey("supplier_id") ? item["supplier_id"].S : "",
 
             // Marketplace
             Marketplace = item.ContainsKey("marketplace") ? item["marketplace"].S : "",

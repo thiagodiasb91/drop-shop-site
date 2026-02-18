@@ -69,12 +69,13 @@ public class SellersController(ILogger<SellersController> logger,
     /// <param name="productId">ID do produto que deve existir no banco de dados</param>
     /// <param name="request">Dados do vínculo (preço, marketplace, store_id, SKU mappings)</param>
     /// <returns>Lista de SKUs vinculados</returns>
-    [HttpPost("products/{productId}")]
+    [HttpPost("products/{productId}/suppliers/{supplierId}")]
     [ProducesResponseType(typeof(ProductSkuSellerListResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> LinkSellerToProduct(
         string productId,
+        string supplierId,
         [FromBody] LinkSellerToProductRequest request)
     {
         var sellerId = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "resourceId")?.Value;
@@ -84,10 +85,10 @@ public class SellersController(ILogger<SellersController> logger,
 
         try
         {
-            if (string.IsNullOrWhiteSpace(productId) || string.IsNullOrWhiteSpace(sellerId))
+            if (string.IsNullOrWhiteSpace(productId) || string.IsNullOrWhiteSpace(sellerId) || string.IsNullOrWhiteSpace(supplierId))
             {
-                logger.LogWarning("Invalid product or seller ID provided");
-                return BadRequest(new { error = "Product ID and Seller ID are required" });
+                logger.LogWarning("Invalid product, supplierId or seller ID provided");
+                return BadRequest(new { error = "Product ID, supplierId and Seller ID are required" });
             }
 
             // Validar que o produto existe
@@ -107,9 +108,6 @@ public class SellersController(ILogger<SellersController> logger,
             }
 
             var seller = await sellerRepository.GetSellerByIdAsync(sellerId);
-            
-            
-            // Mapear SKUs com dados do marketplace e criar domains usando Factory
             var skusToPublish = new List<ProductSkuSellerDomain>();
             foreach (var mapping in skus)
             {
@@ -122,9 +120,10 @@ public class SellersController(ILogger<SellersController> logger,
                     sellerId,
                     "shopee",
                     seller.ShopId,
-                    request.Price,
+                    skuMapping?.Price ?? request.Price,
                     mapping.Color,
-                    mapping.Size
+                    mapping.Size,
+                    supplierId
                 );
                 skusToPublish.Add(domain);
             }
@@ -140,6 +139,7 @@ public class SellersController(ILogger<SellersController> logger,
                 "shopee",
                 seller.ShopId,
                 request.Price,
+                supplierId,
                 linkedRecords.Count
             );
 
@@ -170,7 +170,7 @@ public class SellersController(ILogger<SellersController> logger,
     /// <param name="productId">ID do produto</param>
     /// <param name="request">Novo preço</param>
     /// <returns>Lista de SKUs com preço atualizado</returns>
-    [HttpPut("products/{productId}")]
+    [HttpPut("products/{productId}/suppliers/{supplierId}")]
     [ProducesResponseType(typeof(ProductSkuSellerListResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -191,7 +191,7 @@ public class SellersController(ILogger<SellersController> logger,
             }
 
             // Obter todos os SKUs do vendedor neste produto
-            var skus = await productSkuSellerRepository.GetSkusBySellerAsync(productId, sellerId, "shopee");
+            var skus = await productSkuSellerRepository.GetSkusBySellerAsync(productId, sellerId);
             if (skus == null || skus.Count == 0)
             {
                 logger.LogWarning("No SKUs found for seller product - ProductId: {ProductId}", productId);
@@ -325,11 +325,11 @@ public class SellersController(ILogger<SellersController> logger,
     /// </summary>
     /// <param name="productId">ID do produto</param>
     /// <returns>Status de sucesso</returns>
-    [HttpDelete("products/{productId}")]
+    [HttpDelete("products/{productId}/suppliers/{supplierId}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> RemoveSellerFromProduct(string productId)
+    public async Task<IActionResult> RemoveSellerFromProduct(string productId, string supplierId)
     {
         var sellerId = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "resourceId")?.Value;
         logger.LogInformation(
@@ -351,7 +351,7 @@ public class SellersController(ILogger<SellersController> logger,
             foreach (var sellerSku in sellerSkus)
             {
                 await productSkuSellerRepository.RemoveSellerFromSkuAsync(
-                    productId, sellerSku.Sku, sellerId, "shopee");
+                    productId, sellerSku.Sku, sellerId, "shopee", supplierId);
             }
 
             // Remover registro META do vendedor no produto

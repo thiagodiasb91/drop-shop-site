@@ -16,6 +16,7 @@ public class ProductSkuSellerDomain
     public string ProductId { get; set; } = default!;
     public string Sku { get; set; } = default!;
     public string SellerId { get; set; } = default!;
+    public string SupplierId { get; set; } = string.Empty; // ID do fornecedor (opcional)
 
     public string Color { get; set; } = default!;
     public string Size { get; set; } = default!;
@@ -49,7 +50,7 @@ public static class ProductSkuSellerFactory
         decimal price,
         string color,
         string size,
-        long quantity = 0)
+        string supplierId)
     {
         return new ProductSkuSellerDomain
         {
@@ -59,10 +60,11 @@ public static class ProductSkuSellerFactory
             ProductId = productId,
             Sku = sku,
             SellerId = sellerId,
+            SupplierId = supplierId,
             Marketplace = marketplace,
             StoreId = storeId,
             Price = price,
-            Quantity = quantity,
+            Quantity = 0,
             Color = color,
             Size = size,
             CreatedAt = DateTime.UtcNow,
@@ -97,6 +99,7 @@ public static class ProductSkuSellerMapper
             ProductId = item.ContainsKey("product_id") ? item["product_id"].S : "",
             Sku = item.ContainsKey("sku") ? item["sku"].S : "",
             SellerId = item.ContainsKey("seller_id") ? item["seller_id"].S : "",
+            SupplierId = item.ContainsKey("supplier_id") ? item["supplier_id"].S : "",
 
             // Marketplace
             Marketplace = item.ContainsKey("marketplace") ? item["marketplace"].S : "",
