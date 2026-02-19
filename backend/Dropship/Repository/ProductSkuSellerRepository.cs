@@ -166,7 +166,7 @@ public class ProductSkuSellerRepository(DynamoDbRepository repository, ILogger<P
     /// <summary>
     /// Remove um vendedor de um SKU
     /// </summary>
-    public async Task<bool> RemoveSellerFromSkuAsync(string productId, string sku, string sellerId, string marketplace, string supplierId)
+    public async Task<bool> RemoveSellerFromSkuAsync(string productId, string sku, string sellerId, string marketplace)
     {
         logger.LogInformation("Removing seller from SKU - ProductId: {ProductId}, SKU: {Sku}, SellerId: {SellerId}",
             productId, sku, sellerId);
@@ -176,7 +176,7 @@ public class ProductSkuSellerRepository(DynamoDbRepository repository, ILogger<P
             var key = new Dictionary<string, AttributeValue>
             {
                 { "PK", new AttributeValue { S = $"Product#{productId}" } },
-                { "SK", new AttributeValue { S = $"Sku#{sku}#Seller#{marketplace}#{sellerId}#Suppliers#{supplierId}" } }
+                { "SK", new AttributeValue { S = $"Sku#{sku}#Seller#{marketplace}#{sellerId}" } }
             };
 
             await repository.DeleteItemAsync(key);

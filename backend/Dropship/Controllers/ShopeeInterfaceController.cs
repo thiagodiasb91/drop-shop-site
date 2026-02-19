@@ -620,6 +620,74 @@ public class ShopeeInterfaceController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Atualiza o preço de um item/produto ou de modelos específicos
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="itemId">ID do item</param>
+    /// <param name="priceList">Lista de preços com original_price (e opcionalmente model_id para variações)</param>
+    /// <remarks>
+    /// Exemplos de priceList:
+    /// 
+    /// 1. Item sem variações:
+    /// [
+    ///   { "original_price": 100.00 }
+    /// ]
+    /// 
+    /// 2. Item com variações (múltiplos modelos):
+    /// [
+    ///   { "model_id": 111, "original_price": 100.00 },
+    ///   { "model_id": 222, "original_price": 150.00 }
+    /// ]
+    /// </remarks>
+    [HttpPut("items/{itemId}/price")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> UpdatePrice(
+        [FromQuery] long shopId,
+        [FromRoute] long itemId,
+        [FromBody] UpdatePriceRequest request)
+    {
+        _logger.LogInformation("[SHOPEE-TEST] UpdatePrice - ShopId: {ShopId}, ItemId: {ItemId}, PriceCount: {PriceCount}",
+            shopId, itemId, request.PriceList?.Count ?? 0);
+
+        try
+        {
+            if (shopId <= 0)
+            {
+                return BadRequest(new { error = "Valid shopId is required" });
+            }
+
+            if (itemId <= 0)
+            {
+                return BadRequest(new { error = "Valid itemId is required" });
+            }
+
+            if (request?.PriceList == null || request.PriceList.Count == 0)
+            {
+                return BadRequest(new { error = "priceList is required and cannot be empty" });
+            }
+
+            // Validar que cada item em priceList tem original_price válido
+            foreach (var price in request.PriceList)
+            {
+                if (price.OriginalPrice <= 0)
+                {
+                    return BadRequest(new { error = "Each price in priceList must have 'original_price' greater than 0" });
+                }
+            }
+
+            var result = await _shopeeApiService.UpdatePriceAsync(shopId, itemId, request.PriceList);
+            return Ok(result.RootElement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error updating price - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
     #endregion
 
     #region Order Endpoints

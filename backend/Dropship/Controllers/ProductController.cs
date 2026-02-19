@@ -16,7 +16,8 @@ public class ProductController(
     SkuRepository skuRepository,
     SupplierRepository supplierRepository,
     ProductSupplierRepository productSupplierRepository,
-    ILogger<ProductController> logger)
+    ILogger<ProductController> logger,
+    ProductSkuSupplierRepository productSkuSupplierRepository)
     : ControllerBase
 {
     // ...existing code...
@@ -215,16 +216,26 @@ public class ProductController(
             }
 
             var enrichedSuppliers = new List<dynamic>();
+            var productVariation = await skuRepository.GetSkusByProductIdAsync(productId);
             foreach (var product in productsSupplier)
             {
                 var supplierDetails = await supplierRepository.GetSupplierAsync(product.SupplierId);
+                
+                var skus = await productSkuSupplierRepository.GetSkusBySupplier(productId, supplierDetails.Id);
                 
                 enrichedSuppliers.Add(new
                 {
                     supplierId = supplierDetails.Id,
                     supplierName = supplierDetails?.Name ?? "Unknown",
                     minPrice = product.MinPrice,
-                    maxPrice = product.MaxPrice
+                    maxPrice = product.MaxPrice,
+                    skus = skus.Select(s => new
+                    {
+                        s.Sku,
+                        s.Price,
+                        color = productVariation.FirstOrDefault(p => p.Sku == s.Sku)?.Color ?? "Unknown",
+                        size = productVariation.FirstOrDefault(p => p.Sku == s.Sku)?.Size ?? "Unknown"
+                    }).ToList()
                 });
             }
 

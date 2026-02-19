@@ -354,7 +354,7 @@ public class SellersController(ILogger<SellersController> logger,
             foreach (var sellerSku in sellerSkus)
             {
                 await productSkuSellerRepository.RemoveSellerFromSkuAsync(
-                    productId, sellerSku.Sku, sellerId, "shopee", supplierId);
+                    productId, sellerSku.Sku, sellerId, "shopee");
             }
 
             // Remover registro META do vendedor no produto

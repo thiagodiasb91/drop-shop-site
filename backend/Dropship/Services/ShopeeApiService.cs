@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using Dropship.Responses;
 using Dropship.Services.Helpers;
+using Dropship.Requests;
 
 namespace Dropship.Services;
 
@@ -1091,6 +1092,125 @@ public class ShopeeApiService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting model - ShopId: {ShopId}, ItemId: {ItemId}, ModelId: {ModelId}", shopId, itemId, modelId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Atualiza o preço de um item/produto ou de modelos específicos
+    /// Endpoint: POST /api/v2/product/update_price
+    /// Ref: https://open.shopee.com/documents/v2/v2.product.update_price
+    /// 
+    /// Pode ser usado para:
+    /// 1. Atualizar preço do item inteiro (sem modelos)
+    /// 2. Atualizar preço de modelos específicos (variações)
+    /// 
+    /// Exemplo 1 - Item sem variações:
+    /// {
+    ///   "item_id": 123456789,
+    ///   "price_list": [
+    ///     { "original_price": 100.00 }
+    ///   ]
+    /// }
+    /// 
+    /// Exemplo 2 - Item com variações:
+    /// {
+    ///   "item_id": 123456789,
+    ///   "price_list": [
+    ///     { "model_id": 111, "original_price": 100.00 },
+    ///     { "model_id": 222, "original_price": 150.00 }
+    ///   ]
+    /// }
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="itemId">ID do item</param>
+    /// <param name="priceList">Lista de preços com model_id (opcional) e original_price</param>
+    /// <returns>JSON response com confirmação da atualização</returns>
+    public async Task<JsonDocument> UpdatePriceAsync(
+        long shopId,
+        long itemId,
+        List<PriceListDto> priceList)
+    {
+        _logger.LogInformation("Updating price - ShopId: {ShopId}, ItemId: {ItemId}, PriceCount: {PriceCount}",
+            shopId, itemId, priceList.Count);
+
+        try
+        {
+            if (priceList == null || priceList.Count == 0)
+            {
+                throw new ArgumentException("priceList cannot be empty");
+            }
+
+            // Validar que cada item tem original_price
+            foreach (var price in priceList)
+            {
+                if (price.OriginalPrice <= 0)
+                {
+                    throw new ArgumentException("OriginalPrice must be greater than 0");
+                }
+            }
+
+            var accessToken = await GetCachedAccessTokenAsync(shopId);
+            var timestamp = ShopeeApiHelper.GetCurrentTimestamp();
+            const string path = "/api/v2/product/update_price";
+            var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
+
+            var url = $"{urlHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
+
+            // Converter PriceListDto para Dictionary para serialização correta
+            var priceListDictionary = priceList.Select(p => 
+            {
+                var dict = new Dictionary<string, object>
+                {
+                    ["original_price"] = p.OriginalPrice
+                };
+                
+                if (p.ModelId.HasValue && p.ModelId.Value > 0)
+                {
+                    dict["model_id"] = p.ModelId.Value;
+                }
+                
+                return dict;
+            }).ToList();
+
+            var updateData = new Dictionary<string, object>
+            {
+                ["item_id"] = itemId,
+                ["price_list"] = priceListDictionary
+            };
+
+            var jsonToPost = JsonSerializer.Serialize(updateData, new JsonSerializerOptions 
+            { 
+                WriteIndented = false,
+                PropertyNameCaseInsensitive = false
+            });
+            _logger.LogInformation("JsonToPost: {jsonToPost}", jsonToPost);
+            
+            var content = new StringContent(
+                jsonToPost,
+                Encoding.UTF8,
+                "application/json");
+
+            _logger.LogDebug("UpdatePrice URL - ShopId: {ShopId}, ItemId: {ItemId}, Body: {Body}", 
+                shopId, itemId, JsonSerializer.Serialize(updateData));
+
+            var response = await _httpClient.PostAsync(url, content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            _logger.LogDebug("UpdatePrice Response - StatusCode: {StatusCode}, Content: {Content}",
+                response.StatusCode, responseContent);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Failed to update price: {response.StatusCode} - {responseContent}");
+            }
+
+            _logger.LogInformation("Price updated successfully - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+            return JsonDocument.Parse(responseContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating price - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
             throw;
         }
     }
