@@ -3,6 +3,7 @@ using Amazon.SQS.Model;
 using System.Text.Json;
 using Dropship.Repository;
 using Dropship.Domain;
+using Dropship.Requests;
 
 namespace Dropship.Services;
 
@@ -342,5 +343,18 @@ public class ShopeeService(
                 productSeller.ProductId, productSeller.SellerId);
             throw;
         }
+    }
+
+    public async Task UpdatePrice(ProductSkuSellerDomain productSkuSeller, decimal newPrice)
+    {
+        var seller = await sellerRepository.GetSellerByIdAsync(productSkuSeller.SellerId);
+        
+        await shopeeApiService.UpdatePriceAsync(seller.ShopId, long.Parse(productSkuSeller.MarketplaceProductId), [
+            new PriceListDto()
+            {
+                ModelId = long.Parse(productSkuSeller.MarketplaceModelId),
+                OriginalPrice = newPrice
+            }
+        ]);
     }
 }

@@ -6,7 +6,7 @@ public static class AuthConfig
     public static readonly string CLIENT_ID = Environment.GetEnvironmentVariable("COGNITO_CLIENT_ID") ?? "1ovcuufeei9bbg5vkf059obj4p";
     public static readonly string USER_POOL_ID = Environment.GetEnvironmentVariable("USER_POOL_ID") ?? "us-east-1_OUGR0GKR6";
     public static readonly string SESSION_SECRET = Environment.GetEnvironmentVariable("SESSION_SECRET") ?? "session-secret-bff";
-    public static readonly int SESSION_TTL = int.TryParse(Environment.GetEnvironmentVariable("SESSION_TTL"), out var ttl) ? ttl : 1440;
+    public static readonly int SESSION_TTL = int.TryParse(Environment.GetEnvironmentVariable("SESSION_TTL"), out var ttl) ? ttl : 2880;
     
     public static readonly string TOKEN_URL = $"https://{COGNITO_DOMAIN}/oauth2/token";
     

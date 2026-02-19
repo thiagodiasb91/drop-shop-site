@@ -238,6 +238,14 @@ public class SupplierController(SupplierRepository supplierRepository,
                 return BadRequest(new { error = "Product has no SKUs" });
             }
 
+            var productSupplier = await productSupplierRepository.GetProductBySupplier(supplierId, productId);
+
+            if (productSupplier is not null)
+            {
+                logger.LogWarning("Product already linked to supplier - ProductId: {ProductId}, SupplierId: {SupplierId}", productId, supplierId);
+                return BadRequest(new { error = "Product already linked to supplier" });
+            }
+            
             var productSkuSuppliers = new List<ProductSkuSupplierDomain>();
             foreach (var sku in skus)
             {
@@ -609,7 +617,7 @@ public class SupplierController(SupplierRepository supplierRepository,
     [HttpDelete("products/{productId}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> RemoveSupplierFromSku(string productId)
+    public async Task<IActionResult> RemoveSupplierFromProduct(string productId)
     {
         var supplierId = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "resourceId")?.Value;
         logger.LogInformation(

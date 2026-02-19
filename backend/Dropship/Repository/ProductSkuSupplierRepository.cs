@@ -66,8 +66,9 @@ public class ProductSkuSupplierRepository
             { "sku", new AttributeValue { S = record.Sku } },
             { "supplier_id", new AttributeValue { S = record.SupplierId } },
             { "sku_supplier", new AttributeValue { S = record.SkuSupplier} },
-            { "price", new AttributeValue { N = record.Price.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
-            { "quantity", new AttributeValue { N = record.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture) } }
+            { "price", new AttributeValue { N = record.Price.ToString() } },
+            { "quantity", new AttributeValue { N = record.Quantity.ToString() } },
+            { "created_at", new AttributeValue { S = DateTime.UtcNow.ToString("O") } }
         };
 
         await _repository.PutItemAsync(item);

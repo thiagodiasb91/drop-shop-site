@@ -159,6 +159,48 @@ public class ProductSupplierRepository(DynamoDbRepository repository,
             throw;
         }
     }
+    
+    /// <summary>
+    /// Obtém todos os produtos fornecidos por um fornecedor específico
+    /// </summary>
+    public async Task<ProductSupplierDomain?> GetProductBySupplier(string supplierId, string productId)
+    {
+        logger.LogInformation("Getting products for supplier - SupplierId: {SupplierId} - ProductId: {ProductId}", supplierId, productId);
+
+        try
+        {
+            var expressionAttributeValues = new Dictionary<string, AttributeValue>
+            {
+                { ":pk", new AttributeValue { S = $"Supplier#{supplierId}" } },
+                { ":sk", new AttributeValue { S = $"Product#{productId}" } }
+            };
+
+            var items = await repository.QueryTableAsync(
+                keyConditionExpression: "PK = :pk AND SK = :sk",
+                expressionAttributeValues: expressionAttributeValues
+            );
+
+            if (items == null || items.Count == 0)
+            {
+                logger.LogDebug("No products found for supplier - SupplierId: {SupplierId} - ProductId {ProductId}", supplierId, productId);
+                return null;
+            }
+
+            var products = items
+                .Select(ProductSupplierMapper.ToDomain)
+                .ToList();
+
+            logger.LogInformation("Found {Count} products for supplier - SupplierId: {SupplierId}",
+                products.Count, supplierId);
+
+            return products.First();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting products for supplier - SupplierId: {SupplierId}", supplierId);
+            throw;
+        }
+    }
 
     /// <summary>
     /// Remove um produto da lista de produtos fornecidos por um fornecedor

@@ -92,6 +92,13 @@ public class SellersController(ILogger<SellersController> logger,
                 return BadRequest(new { error = "Product ID, supplierId and Seller ID are required" });
             }
 
+            var productSeller = await productSellerRepository.GetProductSellerAsync(sellerId, supplierId, "shopee", productId);
+            
+            if(productSeller is not null)
+            {
+                return BadRequest(new { error = "Seller already linked to this product" });
+            }
+            
             // Validar que o produto existe
             var product = await productRepository.GetProductByIdAsync(productId);
             if (product == null)
@@ -133,7 +140,7 @@ public class SellersController(ILogger<SellersController> logger,
             var linkedRecords = await productSkuSellerRepository.LinkSellerToProductAsync(skusToPublish);
 
             // Criar registro META para busca rápida de produtos por vendedor
-            var productSeller = await productSellerRepository.CreateProductSellerAsync(
+            productSeller = await productSellerRepository.CreateProductSellerAsync(
                 productId,
                 product.Name,
                 sellerId,
@@ -305,6 +312,10 @@ public class SellersController(ILogger<SellersController> logger,
             var updated = await productSkuSellerRepository.UpdatePriceAsync(
                 productId, sku, sellerId, "shopee", request.Price);
 
+            var skuSeller = await productSkuSellerRepository.GetProductSkuSellerAsync(productId, sku, sellerId, "shopee");
+            
+            await shopeeService.UpdatePrice(skuSeller, request.Price);
+            
             if (updated == null)
             {
                 logger.LogWarning("Record not found - ProductId: {ProductId}, SKU: {Sku}", productId, sku);
