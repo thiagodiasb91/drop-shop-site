@@ -335,6 +335,47 @@ public class ShopeeInterfaceController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Deleta um item/produto existente
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="itemId">ID do item a ser deletado</param>
+    /// <remarks>
+    /// Nota: Esta operação é irreversível. O item será completamente removido da loja.
+    /// Certifique-se de que deseja deletar o item antes de fazer a requisição.
+    /// </remarks>
+    [HttpDelete("items/{itemId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> DeleteItem(
+        [FromQuery] long shopId,
+        [FromRoute] long itemId)
+    {
+        _logger.LogInformation("[SHOPEE-TEST] DeleteItem - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+
+        try
+        {
+            if (shopId <= 0)
+            {
+                return BadRequest(new { error = "Valid shopId is required" });
+            }
+
+            if (itemId <= 0)
+            {
+                return BadRequest(new { error = "Valid itemId is required" });
+            }
+
+            var result = await _shopeeApiService.DeleteItemAsync(shopId, itemId);
+            return Ok(result.RootElement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error deleting item - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
     #endregion
 
     #region Model/Variation Endpoints
@@ -527,6 +568,54 @@ public class ShopeeInterfaceController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[SHOPEE-TEST] Error updating model - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Deleta um modelo/variação de um item
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="itemId">ID do item</param>
+    /// <param name="modelId">ID do modelo a ser deletado</param>
+    /// <remarks>
+    /// Nota: Se o item possui apenas um modelo, ele não poderá ser deletado.
+    /// A API retornará um erro neste caso.
+    /// </remarks>
+    [HttpDelete("items/{itemId}/models/{modelId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> DeleteModel(
+        [FromQuery] long shopId,
+        [FromRoute] long itemId,
+        [FromRoute] long modelId)
+    {
+        _logger.LogInformation("[SHOPEE-TEST] DeleteModel - ShopId: {ShopId}, ItemId: {ItemId}, ModelId: {ModelId}", shopId, itemId, modelId);
+
+        try
+        {
+            if (shopId <= 0)
+            {
+                return BadRequest(new { error = "Valid shopId is required" });
+            }
+
+            if (itemId <= 0)
+            {
+                return BadRequest(new { error = "Valid itemId is required" });
+            }
+
+            if (modelId <= 0)
+            {
+                return BadRequest(new { error = "Valid modelId is required" });
+            }
+
+            var result = await _shopeeApiService.DeleteModelAsync(shopId, itemId, modelId);
+            return Ok(result.RootElement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error deleting model - ShopId: {ShopId}, ItemId: {ItemId}, ModelId: {ModelId}", shopId, itemId, modelId);
             return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
         }
     }

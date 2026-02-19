@@ -187,7 +187,6 @@ public class SupplierRepository
 
         var suppliers = items
             .Select(SupplierMapper.ToDomain)
-            .OrderBy(s => s.Priority)  
             .ToList();
 
         return suppliers;

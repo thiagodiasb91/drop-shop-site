@@ -10,7 +10,7 @@ namespace Dropship.Controllers;
 [Route("sellers")]
 public class SellersController(ILogger<SellersController> logger,
                             SellerRepository sellerRepository,
-                            UserRepository userRepository,
+                            ShopeeApiService shopeeApiService,
                             ShopeeService shopeeService,
                             ProductRepository productRepository,
                             SkuRepository skuRepository,
@@ -67,6 +67,7 @@ public class SellersController(ILogger<SellersController> logger,
     /// A quantidade é atualizada automaticamente via sistema
     /// </summary>
     /// <param name="productId">ID do produto que deve existir no banco de dados</param>
+    /// <param name="supplierId"></param>
     /// <param name="request">Dados do vínculo (preço, marketplace, store_id, SKU mappings)</param>
     /// <returns>Lista de SKUs vinculados</returns>
     [HttpPost("products/{productId}/suppliers/{supplierId}")]
@@ -324,6 +325,7 @@ public class SellersController(ILogger<SellersController> logger,
     /// O vendedor é obtido automaticamente da claim "resourceId" do usuário autenticado
     /// </summary>
     /// <param name="productId">ID do produto</param>
+    /// <param name="supplierId"></param>
     /// <returns>Status de sucesso</returns>
     [HttpDelete("products/{productId}/suppliers/{supplierId}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -344,8 +346,9 @@ public class SellersController(ILogger<SellersController> logger,
                 return BadRequest(new { error = "Product ID and Seller ID are required" });
             }
 
+            var product = await productSellerRepository.GetProductSellerAsync(sellerId, supplierId, "shopee", productId);
             // Obter todos os SKUs do vendedor neste produto
-            var sellerSkus = await productSkuSellerRepository.GetSkusBySellerAsync(productId, sellerId, "shopee");
+            var sellerSkus = await productSkuSellerRepository.GetSkusBySellerAsync(productId, sellerId);
             
             // Remover cada SKU do vendedor
             foreach (var sellerSku in sellerSkus)
@@ -355,11 +358,13 @@ public class SellersController(ILogger<SellersController> logger,
             }
 
             // Remover registro META do vendedor no produto
-            await productSellerRepository.RemoveProductSellerAsync(sellerId, "shopee", productId);
+            await productSellerRepository.RemoveProductSellerAsync(sellerId, supplierId, "shopee", productId);
 
             logger.LogInformation("Seller removed successfully from product - ProductId: {ProductId}, SellerId: {SellerId}, RemovedSKUs: {Count}",
                 productId, sellerId, sellerSkus.Count);
 
+            await shopeeApiService.DeleteItemAsync(product.StoreId, product.MarketplaceItemId);
+            
             return NoContent();
         }
         catch (Exception ex)

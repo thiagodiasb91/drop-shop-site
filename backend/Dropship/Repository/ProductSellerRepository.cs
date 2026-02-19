@@ -63,6 +63,7 @@ public class ProductSellerRepository
                 { "product_name", new AttributeValue { S = record.ProductName } },
                 { "seller_id", new AttributeValue { S = record.SellerId } },
                 { "supplier_id", new AttributeValue() { S = supplierId} },
+                { "price", new AttributeValue { N = record.Price.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
                 { "marketplace", new AttributeValue { S = record.Marketplace } },
                 { "store_id", new AttributeValue { N = record.StoreId.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
                 { "sku_count", new AttributeValue { N = record.SkuCount.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
@@ -127,7 +128,7 @@ public class ProductSellerRepository
     /// <summary>
     /// Obtém um registro específico de Product-Seller
     /// </summary>
-    public async Task<ProductSellerDomain?> GetProductSellerAsync(string sellerId, string marketplace, string productId)
+    public async Task<ProductSellerDomain?> GetProductSellerAsync(string sellerId, string supplierId, string marketplace, string productId)
     {
         _logger.LogInformation("Getting product-seller record - SellerId: {SellerId}, ProductId: {ProductId}",
             sellerId, productId);
@@ -137,7 +138,7 @@ public class ProductSellerRepository
             var key = new Dictionary<string, AttributeValue>
             {
                 { "PK", new AttributeValue { S = $"Seller#{marketplace}#{sellerId}" } },
-                { "SK", new AttributeValue { S = $"Product#{productId}" } }
+                { "SK", new AttributeValue { S = $"Product#{productId}#Supplier#{supplierId}" } }
             };
 
             var item = await _repository.GetItemAsync(key);
@@ -190,7 +191,7 @@ public class ProductSellerRepository
     /// <summary>
     /// Remove um produto da lista de produtos vinculados a um vendedor
     /// </summary>
-    public async Task<bool> RemoveProductSellerAsync(string sellerId, string marketplace, string productId)
+    public async Task<bool> RemoveProductSellerAsync(string sellerId, string supplierId, string marketplace, string productId)
     {
         _logger.LogInformation("Removing product from seller - SellerId: {SellerId}, ProductId: {ProductId}",
             sellerId, productId);
@@ -200,7 +201,7 @@ public class ProductSellerRepository
             var key = new Dictionary<string, AttributeValue>
             {
                 { "PK", new AttributeValue { S = $"Seller#{marketplace}#{sellerId}" } },
-                { "SK", new AttributeValue { S = $"Product#{productId}" } }
+                { "SK", new AttributeValue { S = $"Product#{productId}#Supplier#{supplierId}" } }
             };
 
             await _repository.DeleteItemAsync(key);

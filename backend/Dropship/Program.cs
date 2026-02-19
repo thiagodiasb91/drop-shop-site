@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
+using System.Globalization;
 using Amazon.CognitoIdentityProvider;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
@@ -17,6 +18,19 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Logging.Console;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure culture to use English format (dot as decimal separator)
+var cultureInfo = new CultureInfo("en-US")
+{
+    NumberFormat = new NumberFormatInfo
+    {
+        NumberDecimalSeparator = ".",
+        CurrencyDecimalSeparator = ".",
+        PercentDecimalSeparator = "."
+    }
+};
+CultureInfo.DefaultThreadCurrentCulture = cultureInfo;
+CultureInfo.DefaultThreadCurrentUICulture = cultureInfo;
 
 // Configure built-in logging with CorrelationId at the start of each message
 builder.Logging.ClearProviders();

@@ -733,6 +733,66 @@ public class ShopeeApiService
         }
     }
 
+    /// <summary>
+    /// Deleta um item/produto existente
+    /// Endpoint: POST /api/v2/product/delete_item
+    /// Ref: https://open.shopee.com/documents/v2/v2.product.delete_item
+    /// 
+    /// Esta operação remove completamente um produto da loja.
+    /// Após deleção, o item não poderá ser recuperado.
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="itemId">ID do item a ser deletado</param>
+    /// <returns>JSON response com confirmação da deleção</returns>
+    public async Task<JsonDocument> DeleteItemAsync(long shopId, long itemId)
+    {
+        _logger.LogInformation("Deleting item - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+
+        try
+        {
+            var accessToken = await GetCachedAccessTokenAsync(shopId);
+            var timestamp = ShopeeApiHelper.GetCurrentTimestamp();
+            const string path = "/api/v2/product/delete_item";
+            var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
+
+            var url = $"{urlHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
+
+            var deleteData = new Dictionary<string, object>
+            {
+                ["item_id"] = itemId
+            };
+
+            var jsonToPost = JsonSerializer.Serialize(deleteData);
+            _logger.LogInformation("JsonToPost: {jsonToPost}", jsonToPost);
+            
+            var content = new StringContent(
+                jsonToPost,
+                Encoding.UTF8,
+                "application/json");
+
+            _logger.LogDebug("DeleteItem URL - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+
+            var response = await _httpClient.PostAsync(url, content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            _logger.LogDebug("DeleteItem Response - StatusCode: {StatusCode}, Content: {Content}",
+                response.StatusCode, responseContent);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Failed to delete item: {response.StatusCode} - {responseContent}");
+            }
+
+            _logger.LogInformation("Item deleted successfully - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+            return JsonDocument.Parse(responseContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting item - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+            throw;
+        }
+    }
+
     #endregion
 
     #region Model/Variation Methods
@@ -969,6 +1029,68 @@ public class ShopeeApiService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating model - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Deleta um modelo/variação de um item
+    /// Endpoint: POST /api/v2/product/delete_model
+    /// Ref: https://open.shopee.com/documents/v2/v2.product.delete_model
+    /// 
+    /// Esta operação remove um modelo específico (variação) de um item.
+    /// Se o item possui apenas um modelo, ele não poderá ser deletado.
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="itemId">ID do item</param>
+    /// <param name="modelId">ID do modelo a ser deletado</param>
+    /// <returns>JSON response com confirmação da deleção</returns>
+    public async Task<JsonDocument> DeleteModelAsync(long shopId, long itemId, long modelId)
+    {
+        _logger.LogInformation("Deleting model - ShopId: {ShopId}, ItemId: {ItemId}, ModelId: {ModelId}", shopId, itemId, modelId);
+
+        try
+        {
+            var accessToken = await GetCachedAccessTokenAsync(shopId);
+            var timestamp = ShopeeApiHelper.GetCurrentTimestamp();
+            const string path = "/api/v2/product/delete_model";
+            var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
+
+            var url = $"{urlHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
+
+            var deleteData = new Dictionary<string, object>
+            {
+                ["item_id"] = itemId,
+                ["model_id"] = modelId
+            };
+
+            var jsonToPost = JsonSerializer.Serialize(deleteData);
+            _logger.LogInformation("JsonToPost: {jsonToPost}", jsonToPost);
+            
+            var content = new StringContent(
+                jsonToPost,
+                Encoding.UTF8,
+                "application/json");
+
+            _logger.LogDebug("DeleteModel URL - ShopId: {ShopId}, ItemId: {ItemId}, ModelId: {ModelId}", shopId, itemId, modelId);
+
+            var response = await _httpClient.PostAsync(url, content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            _logger.LogDebug("DeleteModel Response - StatusCode: {StatusCode}, Content: {Content}",
+                response.StatusCode, responseContent);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Failed to delete model: {response.StatusCode} - {responseContent}");
+            }
+
+            _logger.LogInformation("Model deleted successfully - ShopId: {ShopId}, ItemId: {ItemId}, ModelId: {ModelId}", shopId, itemId, modelId);
+            return JsonDocument.Parse(responseContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting model - ShopId: {ShopId}, ItemId: {ItemId}, ModelId: {ModelId}", shopId, itemId, modelId);
             throw;
         }
     }
