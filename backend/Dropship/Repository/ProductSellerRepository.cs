@@ -84,7 +84,7 @@ public class ProductSellerRepository
             throw;
         }
     }
-
+    
     /// <summary>
     /// Obtém todos os produtos vinculados a um vendedor em um marketplace específico
     /// </summary>
@@ -152,41 +152,6 @@ public class ProductSellerRepository
         }
     }
 
-    /// <summary>
-    /// Atualiza a contagem de SKUs de um produto-vendedor
-    /// </summary>
-    public async Task<ProductSellerDomain?> UpdateSkuCountAsync(string sellerId, string marketplace, string productId, int skuCount)
-    {
-        _logger.LogInformation("Updating SKU count - SellerId: {SellerId}, ProductId: {ProductId}, Count: {Count}",
-            sellerId, productId, skuCount);
-
-        try
-        {
-            var key = new Dictionary<string, AttributeValue>
-            {
-                { "PK", new AttributeValue { S = $"Seller#{marketplace}#{sellerId}" } },
-                { "SK", new AttributeValue { S = $"Product#{productId}" } }
-            };
-
-            var updateExpression = "SET sku_count = :count, updated_at = :updated_at";
-            var expressionAttributeValues = new Dictionary<string, AttributeValue>
-            {
-                { ":count", new AttributeValue { N = skuCount.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
-                { ":updated_at", new AttributeValue { S = DateTime.UtcNow.ToString("O") } }
-            };
-
-            await _repository.UpdateItemAsync(key, updateExpression, expressionAttributeValues);
-
-            var item = await _repository.GetItemAsync(key);
-            return item != null ? ProductSellerMapper.ToDomain(item) : null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating SKU count - SellerId: {SellerId}, ProductId: {ProductId}",
-                sellerId, productId);
-            throw;
-        }
-    }
 
     /// <summary>
     /// Remove um produto da lista de produtos vinculados a um vendedor
@@ -291,6 +256,39 @@ public class ProductSellerRepository
         {
             _logger.LogError(ex, "Error updating marketplace model ID - ProductId: {ProductId}, SKU: {Sku}",
                 productId, sku);
+            throw;
+        }
+    }
+
+    public async Task UpdatePrice(ProductSellerDomain productSeller)
+    {
+        _logger.LogInformation("Updating price - ProductId: {ProductId}, SellerId: {SellerId}, NewPrice: {NewPrice}",
+            productSeller.ProductId, productSeller.SellerId, productSeller.Price);
+
+        try
+        {
+            var key = new Dictionary<string, AttributeValue>
+            {
+                { "PK", new AttributeValue { S = productSeller.Pk } },
+                { "SK", new AttributeValue { S = productSeller.Sk } }
+            };
+
+            var updateExpression = "SET price = :price, updated_at = :updated_at";
+            var expressionAttributeValues = new Dictionary<string, AttributeValue>
+            {
+                { ":price", new AttributeValue { N = productSeller.Price.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
+                { ":updated_at", new AttributeValue { S = DateTime.UtcNow.ToString("O") } }
+            };
+
+            await _repository.UpdateItemAsync(key, updateExpression, expressionAttributeValues);
+
+            _logger.LogInformation("Price updated - ProductId: {ProductId}, SellerId: {SellerId}, NewPrice: {NewPrice}",
+                productSeller.ProductId, productSeller.SellerId, productSeller.Price);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating price - ProductId: {ProductId}, SellerId: {SellerId}",
+                productSeller.ProductId, productSeller.SellerId);
             throw;
         }
     }

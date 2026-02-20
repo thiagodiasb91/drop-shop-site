@@ -347,6 +347,22 @@ public class ShopeeService(
         }
     }
 
+    public async Task UpdatePrice(List<ProductSkuSellerDomain> productsSkuSeller, decimal newPrice)
+    {
+        var productSkuSeller = productsSkuSeller.FirstOrDefault();
+        
+        var seller = await sellerRepository.GetSellerByIdAsync(productSkuSeller.SellerId);
+        
+        await shopeeApiService.UpdatePriceAsync(seller.ShopId, long.Parse(productSkuSeller.MarketplaceProductId), 
+            productsSkuSeller.Select( x => 
+            new PriceListDto
+            {
+                ModelId = long.Parse(x.MarketplaceModelId),
+                OriginalPrice = newPrice
+            }).ToList()
+        );
+    }
+    
     public async Task UpdatePrice(ProductSkuSellerDomain productSkuSeller, decimal newPrice)
     {
         var seller = await sellerRepository.GetSellerByIdAsync(productSkuSeller.SellerId);

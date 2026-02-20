@@ -188,7 +188,8 @@ public class SellersController(ILogger<SellersController> logger,
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateSellerProduct(
-        string productId,
+        [FromRoute] string productId,
+        [FromRoute] string supplierId,
         [FromBody] UpdateSellerPriceRequest request)
     {
         var sellerId = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "resourceId")?.Value;
@@ -203,6 +204,13 @@ public class SellersController(ILogger<SellersController> logger,
                 return BadRequest(new { error = "Product ID and Seller ID are required" });
             }
 
+            var productSeller = await productSellerRepository.GetProductSellerAsync(sellerId, supplierId, "shopee", productId);
+            if (productSeller == null)            
+            {
+                logger.LogWarning("Seller not linked to product - ProductId: {ProductId}, SellerId: {SellerId}", productId, sellerId);
+                return NotFound(new { error = "Seller not linked to this product" });
+            }   
+            
             // Obter todos os SKUs do vendedor neste produto
             var skus = await productSkuSellerRepository.GetSkusBySellerAsync(productId, sellerId);
             if (skus == null || skus.Count == 0)
@@ -216,20 +224,24 @@ public class SellersController(ILogger<SellersController> logger,
             foreach (var sku in skus)
             {
                 var updated = await productSkuSellerRepository.UpdatePriceAsync(sku, request.Price);
+                
                 if (updated != null)
                 {
                     updatedSkus.Add(updated);
                 }
             }
-
+            await shopeeService.UpdatePrice(skus, request.Price);
+            
             if (updatedSkus.Count == 0)
             {
                 logger.LogWarning("Failed to update any SKUs - ProductId: {ProductId}", productId);
                 return NotFound(new { error = "Failed to update product SKUs" });
             }
 
-            logger.LogInformation("Seller product price updated - ProductId: {ProductId}, SellerId: {SellerId}, UpdatedSKUs: {Count}",
-                productId, sellerId, updatedSkus.Count);
+            productSeller.Price = request.Price;
+            await productSellerRepository.UpdatePrice(productSeller);
+            
+            logger.LogInformation("Seller product price updated - ProductId: {ProductId}, SellerId: {SellerId}, UpdatedSKUs: {Count}", productId, sellerId, updatedSkus.Count);
 
             return Ok(updatedSkus.ToListResponse());
         }
