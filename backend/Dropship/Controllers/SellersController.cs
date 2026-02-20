@@ -99,6 +99,12 @@ public class SellersController(ILogger<SellersController> logger,
                 return BadRequest(new { error = "Seller already linked to this product" });
             }
             
+            var productSupplier = await productSupplierRepository.GetProductBySupplier(supplierId, productId);
+            if (productSupplier == null)
+            {
+                return BadRequest(new { error = "Product not found for this supplier" });
+            }
+            
             // Validar que o produto existe
             var product = await productRepository.GetProductByIdAsync(productId);
             if (product == null)
@@ -119,7 +125,6 @@ public class SellersController(ILogger<SellersController> logger,
             var skusToPublish = new List<ProductSkuSellerDomain>();
             foreach (var mapping in skus)
             {
-                // Validar que cada SKU existe no produto
                 var skuMapping = request.SkuMappings.FirstOrDefault(s => s.Sku == mapping.Sku);
                 
                 var domain = ProductSkuSellerFactory.Create(
@@ -358,14 +363,18 @@ public class SellersController(ILogger<SellersController> logger,
             }
 
             var product = await productSellerRepository.GetProductSellerAsync(sellerId, supplierId, "shopee", productId);
+            
+            if (product is null)
+            {
+                return NotFound(new { error = "Seller not linked to this product" });
+            }
             // Obter todos os SKUs do vendedor neste produto
             var sellerSkus = await productSkuSellerRepository.GetSkusBySellerAsync(productId, sellerId);
             
             // Remover cada SKU do vendedor
             foreach (var sellerSku in sellerSkus)
             {
-                await productSkuSellerRepository.RemoveSellerFromSkuAsync(
-                    productId, sellerSku.Sku, sellerId, "shopee");
+                await productSkuSellerRepository.RemoveSellerFromSkuAsync(productId, sellerSku.Sku, sellerId, "shopee");
             }
 
             // Remover registro META do vendedor no produto
@@ -399,9 +408,9 @@ public class SellersController(ILogger<SellersController> logger,
 
         try
         {
-            var skus = await productSupplierRepository.GetAllProductsWithSupplier();
+            var products = await productSupplierRepository.GetAllProductsWithSupplier();
             
-            return Ok(skus.ToListResponse());
+            return Ok(products.ToListResponse());
         }
         catch (Exception ex)
         {

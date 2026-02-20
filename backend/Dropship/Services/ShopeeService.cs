@@ -194,7 +194,7 @@ public class ShopeeService(
 
                 image = new
                 {
-                    image_id_list = imagesId
+                    image_id_list = imagesId.Take(10).ToArray()
                 },
 
                 brand = new
@@ -242,7 +242,8 @@ public class ShopeeService(
                     variation_option_list = colors.Select(color => new
                     {
                         variation_option_id = 0,
-                        variation_option_name = color
+                        variation_option_name = color,
+                        image_id = productImages.FirstOrDefault(img => img.Color == color)?.ImageId ?? ""
                     }).ToArray()
                 },
                 new
@@ -253,7 +254,8 @@ public class ShopeeService(
                     variation_option_list = sizes.Select(size => new
                     {
                         variation_option_id = 0,
-                        variation_option_name = size
+                        variation_option_name = size,
+                        image_id = ""
                     }).ToArray()
                 }
             };
