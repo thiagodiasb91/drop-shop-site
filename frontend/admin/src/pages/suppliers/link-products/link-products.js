@@ -73,7 +73,7 @@ export function getData() {
       console.log('page.supplier-products.loadLinkedProducts.called', this.supplierId)
       const linkedProducts = await SupplierService.getLinkedProducts(this.supplierId)
       console.log('page.supplier-products.loadLinkedProducts.response', linkedProducts.response)
-      this.linkedProducts = linkedProducts.response || []
+      this.linkedProducts = linkedProducts.ok ? linkedProducts.response : []
     },
     async loadProducts(reset = false) {
       if (reset) {
@@ -89,7 +89,7 @@ export function getData() {
         for (const p of products.response) {
           console.log('page.supplier-products.loadProducts.linkedProducts', this.linkedProducts)
 
-          const isLinked = this.linkedProducts.some(lp => lp.productId === p.id)
+          const isLinked = this.linkedProducts?.some(lp => lp.productId === p.id)
           
           const productObj = {
             ...p,

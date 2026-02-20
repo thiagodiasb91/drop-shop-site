@@ -1,4 +1,5 @@
 import html from "./dashboard.html?raw"
+import AuthService from "../../../services/auth.service"
 
 export function getData() {
     return {
@@ -12,14 +13,39 @@ export function getData() {
             recentOrders: [],
             suppliers: []
         },
+        loggedInfo: null,
+        steps: [
+            {
+                title: 'Vincular Produtos',
+                desc: 'Conecte seus produtos da Shopee aos nossos fornecedores parceiros.',
+                icon: 'ph-link',
+                link: '/sellers/products', // Ajuste conforme suas rotas
+                done: false
+            },
+            {
+                title: 'Verificar Pagamentos Pendentes',
+                desc: 'Verifique os valores e prazos para pagamento.',
+                icon: 'ph-wallet',
+                link: '/sellers/payments/pending',
+                done: false
+            },
+            {
+                title: 'Primeira Venda',
+                desc: 'Aguarde sincronizarmos seu primeiro pedido aprovado.',
+                icon: 'ph-rocket-launch',
+                link: null,
+                done: false
+            }
+        ],
 
         async init() {
+            this.loggedInfo = await AuthService.me()
             await this.fetchData();
         },
 
         async fetchData() {
             console.log(`Buscando dados do vendedor para o período: ${this.period}`);
-            
+
             // MOCK - Dados simulados para o vendedor
             this.stats = {
                 salesGmv: 4500.00,       // Total vendido na Shopee
@@ -44,6 +70,12 @@ export function getData() {
                 style: 'currency',
                 currency: 'BRL'
             }).format(value);
+        },
+
+        openSupport() {
+            const phone = "5511999999999"; // Seu número de suporte
+            const message = encodeURIComponent(`Olá! Sou o vendedor ${this.loggedInfo.user.email} e preciso de ajuda com o setup inicial.`);
+            window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
         }
     }
 }

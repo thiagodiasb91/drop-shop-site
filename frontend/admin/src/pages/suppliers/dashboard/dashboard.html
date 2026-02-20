@@ -1,106 +1,172 @@
 <div x-data="getData()" class="p-4 md:p-6 space-y-6">
-    
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-            <h2 class="text-xl font-bold text-white">Painel do Fornecedor</h2>
-            <p class="text-sm text-slate-400">Gestão de estoque e ordens de saída</p>
-        </div>
-        <div class="flex items-center gap-3">
-            <span class="text-xs text-slate-500">Atualizado agora</span>
-            <button @click="fetchData()" class="p-2 bg-slate-800 rounded-full hover:bg-slate-700 transition-colors">
-                <i class="fa-solid fa-rotate text-indigo-400"></i>
-            </button>
-        </div>
-    </div>
+    <div class="max-w-3xl w-full">
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-slate-800 p-4 rounded-xl border border-indigo-500 shadow-lg shadow-indigo-500/10">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-medium text-slate-400 uppercase">A despachar</span>
-                <i class="fa-solid fa-truck-fast text-indigo-400"></i>
+        <div class="text-center mb-12">
+            <div
+                class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-emerald-500/10 text-emerald-500 mb-4 border border-emerald-500/20">
+                <i class="ph ph-buildings text-4xl"></i>
             </div>
-            <div class="text-2xl font-bold text-white" x-text="stats.pendingShipment"></div>
-            <div class="text-[10px] text-indigo-400 mt-1 font-bold uppercase cursor-pointer" @click="spaNavigate($event, '/orders')">
-                Ver etiquetas →
-            </div>
+            <h1 class="text-3xl font-bold text-white mb-2 italic">Painel do Fornecedor</h1>
+            <p class="text-slate-400">Olá, <span class="text-emerald-400" x-text="loggedInfo?.user.email"></span>.
+                Pronto para expandir suas vendas através dos nossos lojistas?</p>
         </div>
 
-        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-medium text-slate-400 uppercase">Receita Bruta</span>
-                <i class="fa-solid fa-wallet text-emerald-500"></i>
-            </div>
-            <div class="text-2xl font-bold" x-text="formatCurrency(stats.monthlyRevenue)"></div>
-            <div class="text-xs text-slate-500 mt-1">Base: Preço de Custo</div>
-        </div>
-
-        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-medium text-slate-400 uppercase">SKUs Esgotados</span>
-                <i class="fa-solid fa-triangle-exclamation text-red-500"></i>
-            </div>
-            <div class="text-2xl font-bold" x-text="stats.outOfStockCount"></div>
-            <div class="text-xs text-red-400 mt-1">Ações necessárias no Kardex</div>
-        </div>
-
-        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-medium text-slate-400 uppercase">Vendedores</span>
-                <i class="fa-solid fa-store text-blue-500"></i>
-            </div>
-            <div class="text-2xl font-bold" x-text="stats.activeSellers"></div>
-            <div class="text-xs text-slate-500 mt-1">Vendendo seus produtos</div>
-        </div>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-2 bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-            <div class="p-4 border-b border-slate-700 flex justify-between items-center">
-                <h3 class="font-bold text-sm">Movimentações Recentes (Kardex)</h3>
-                <button class="text-xs bg-slate-700 px-3 py-1 rounded hover:bg-slate-600">Exportar CSV</button>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm text-left">
-                    <thead class="bg-slate-900/50 text-slate-400">
-                        <tr>
-                            <th class="p-3 font-medium">SKU / Variação</th>
-                            <th class="p-3 font-medium">Tipo</th>
-                            <th class="p-3 font-medium text-center">Qtd</th>
-                            <th class="p-3 font-medium">Origem/Vendedor</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-700">
-                        <template x-for="move in stats.recentKardex" :key="move.id">
-                            <tr class="hover:bg-slate-700/30">
-                                <td class="p-3 uppercase text-xs font-mono" x-text="move.sku"></td>
-                                <td class="p-3 text-xs">
-                                    <span :class="move.type === 'IN' ? 'text-emerald-400' : 'text-orange-400'" 
-                                          x-text="move.type === 'IN' ? '↑ Entrada' : '↓ Saída'"></span>
-                                </td>
-                                <td class="p-3 text-center font-bold" x-text="move.quantity"></td>
-                                <td class="p-3 text-slate-400 text-xs" x-text="move.origin"></td>
-                            </tr>
-                        </template>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
-            <h3 class="font-bold mb-4 text-sm">Volume por Vendedor</h3>
-            <div class="space-y-4">
-                <template x-for="seller in stats.topSellers" :key="seller.id">
-                    <div>
-                        <div class="flex justify-between text-xs mb-1">
-                            <span class="text-slate-300 font-medium" x-text="seller.name"></span>
-                            <span class="text-slate-500" x-text="seller.percentage + '%'"></span>
+        <div class="grid gap-4">
+            <template x-for="(step, index) in steps" :key="index">
+                <div
+                    class="bg-slate-800 border border-slate-700 p-5 rounded-2xl flex items-center justify-between group hover:border-emerald-500/50 transition-all duration-300">
+                    <div class="flex items-center gap-5">
+                        <div
+                            class="flex-shrink-0 w-12 h-12 rounded-xl bg-slate-900 flex items-center justify-center text-slate-500 group-hover:text-emerald-400 transition-colors">
+                            <i :class="'ph ' + step.icon + ' text-2xl'"></i>
                         </div>
-                        <div class="w-full bg-slate-900 rounded-full h-1.5">
-                            <div class="bg-indigo-500 h-1.5 rounded-full text-indigo-400" :style="{ width: seller.percentage + '%' }"></div>
+
+                        <div>
+                            <h3 class="font-bold text-slate-200" x-text="step.title"></h3>
+                            <p class="text-sm text-slate-400/80" x-text="step.desc"></p>
                         </div>
                     </div>
-                </template>
+
+                    <div>
+                        <template x-if="step.link">
+                            <a :href="step.link"
+                                class="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-emerald-600 text-white text-xs font-bold rounded-lg transition-all shadow-lg">
+                                Acessar <i class="ph ph-arrow-right"></i>
+                            </a>
+                        </template>
+                        <template x-if="!step.link">
+                            <span
+                                class="text-[10px] uppercase font-black text-slate-600 tracking-widest px-3 py-1 border border-slate-700 rounded-full">
+                                Em breve
+                            </span>
+                        </template>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <div
+            class="mt-12 p-6 rounded-2xl bg-emerald-600/5 border border-emerald-500/10 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="text-center md:text-left">
+                <h4 class="text-sm font-bold text-slate-200">Suporte ao Fornecedor Parceiro</h4>
+                <p class="text-xs text-slate-500">Dúvidas sobre integração de estoque ou logística de coleta?</p>
             </div>
+            <button @click="openSupport()"
+                class="flex items-center gap-2 px-5 py-2 rounded-full border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all text-xs font-bold">
+                <i class="ph ph-whatsapp-logo text-base"></i>
+                Falar com consultor
+            </button>
+        </div>
+
+    </div>
+    <!-- <div>
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <h2 class="text-xl font-bold text-white">Painel do Fornecedor</h2>
+                <p class="text-sm text-slate-400">Gestão de estoque e ordens de saída</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="text-xs text-slate-500">Atualizado agora</span>
+                <button @click="fetchData()" class="p-2 bg-slate-800 rounded-full hover:bg-slate-700 transition-colors">
+                    <i class="fa-solid fa-rotate text-indigo-400"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-slate-800 p-4 rounded-xl border border-indigo-500 shadow-lg shadow-indigo-500/10">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-medium text-slate-400 uppercase">A despachar</span>
+                    <i class="fa-solid fa-truck-fast text-indigo-400"></i>
+                </div>
+                <div class="text-2xl font-bold text-white" x-text="stats.pendingShipment"></div>
+                <div class="text-[10px] text-indigo-400 mt-1 font-bold uppercase cursor-pointer"
+                    @click="spaNavigate($event, '/orders')">
+                    Ver etiquetas →
+                </div>
+            </div>
+
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-medium text-slate-400 uppercase">Receita Bruta</span>
+                    <i class="fa-solid fa-wallet text-emerald-500"></i>
+                </div>
+                <div class="text-2xl font-bold" x-text="formatCurrency(stats.monthlyRevenue)"></div>
+                <div class="text-xs text-slate-500 mt-1">Base: Preço de Custo</div>
+            </div>
+
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-medium text-slate-400 uppercase">SKUs Esgotados</span>
+                    <i class="fa-solid fa-triangle-exclamation text-red-500"></i>
+                </div>
+                <div class="text-2xl font-bold" x-text="stats.outOfStockCount"></div>
+                <div class="text-xs text-red-400 mt-1">Ações necessárias no Kardex</div>
+            </div>
+
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-medium text-slate-400 uppercase">Vendedores</span>
+                    <i class="fa-solid fa-store text-blue-500"></i>
+                </div>
+                <div class="text-2xl font-bold" x-text="stats.activeSellers"></div>
+                <div class="text-xs text-slate-500 mt-1">Vendendo seus produtos</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                <div class="p-4 border-b border-slate-700 flex justify-between items-center">
+                    <h3 class="font-bold text-sm">Movimentações Recentes (Kardex)</h3>
+                    <button class="text-xs bg-slate-700 px-3 py-1 rounded hover:bg-slate-600">Exportar CSV</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-slate-900/50 text-slate-400">
+                            <tr>
+                                <th class="p-3 font-medium">SKU / Variação</th>
+                                <th class="p-3 font-medium">Tipo</th>
+                                <th class="p-3 font-medium text-center">Qtd</th>
+                                <th class="p-3 font-medium">Origem/Vendedor</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-700">
+                            <template x-for="move in stats.recentKardex" :key="move.id">
+                                <tr class="hover:bg-slate-700/30">
+                                    <td class="p-3 uppercase text-xs font-mono" x-text="move.sku"></td>
+                                    <td class="p-3 text-xs">
+                                        <span :class="move.type === 'IN' ? 'text-emerald-400' : 'text-orange-400'"
+                                            x-text="move.type === 'IN' ? '↑ Entrada' : '↓ Saída'"></span>
+                                    </td>
+                                    <td class="p-3 text-center font-bold" x-text="move.quantity"></td>
+                                    <td class="p-3 text-slate-400 text-xs" x-text="move.origin"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
+                <h3 class="font-bold mb-4 text-sm">Volume por Vendedor</h3>
+                <div class="space-y-4">
+                    <template x-for="seller in stats.topSellers" :key="seller.id">
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-300 font-medium" x-text="seller.name"></span>
+                                <span class="text-slate-500" x-text="seller.percentage + '%'"></span>
+                            </div>
+                            <div class="w-full bg-slate-900 rounded-full h-1.5">
+                                <div class="bg-indigo-500 h-1.5 rounded-full text-indigo-400"
+                                    :style="{ width: seller.percentage + '%' }"></div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div> -->
+</div>
 
 <!-- Volume de Pedidos por Vendedor: Ranking de quais vendedores estão tracionando mais o seu estoque.
 

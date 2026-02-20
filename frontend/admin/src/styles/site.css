@@ -543,3 +543,9 @@ span.right-allign {
   outline: none;
   border-color: #6366f1;
 }
+
+i.ph {
+    display: inline-block;
+    line-height: 1;
+    vertical-align: middle;
+}

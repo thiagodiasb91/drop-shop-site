@@ -4,6 +4,16 @@ import CacheHelper from "../utils/cache.helper.js"
 
 const SellersService = {
   basePath: `${ENV.API_BASE_URL}/sellers`,
+  async getProductSkus(productId) {
+    const res = await fetch(`${this.basePath}/products/${productId}/skus`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${CacheHelper.get("session_token")}`
+      },
+    });
+    return responseHandler(res);
+  },
   async getProductsWithSuppliers() {
     console.log("SellersService.getProductsWithSuppliers.request")
 
@@ -24,7 +34,7 @@ const SellersService = {
       `${this.basePath}/products`,
       {
         method: "GET",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${CacheHelper.get("session_token")}`
         },
@@ -33,22 +43,33 @@ const SellersService = {
 
     return responseHandler(res)
   },
-  async linkProduct(productId, supplierId) {
-    const res = await fetch(`${this.basePath}/products/${productId}/link`, {
+  async linkProduct(productId, supplierId, salePrice) {
+    const res = await fetch(`${this.basePath}/products/${productId}/suppliers/${supplierId}`, {
       method: "POST",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${CacheHelper.get("session_token")}`
       },
-      body: JSON.stringify({ supplierId })
+      body: JSON.stringify({ "price": salePrice })
+    });
+    return responseHandler(res);
+  },
+  async updateProductLink(productId, supplierId, salePrice) {
+    const res = await fetch(`${this.basePath}/products/${productId}/suppliers/${supplierId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${CacheHelper.get("session_token")}`
+      },
+      body: JSON.stringify({ "price": salePrice })
     });
     return responseHandler(res);
   },
 
-  async unlinkProduct(productId) {
-    const res = await fetch(`${this.basePath}/products/${productId}`, {
+  async unlinkProduct(productId, supplierId) {
+    const res = await fetch(`${this.basePath}/products/${productId}/suppliers/${supplierId}`, {
       method: "DELETE",
-      headers: { 
+      headers: {
         "Authorization": `Bearer ${CacheHelper.get("session_token")}`
       },
     });

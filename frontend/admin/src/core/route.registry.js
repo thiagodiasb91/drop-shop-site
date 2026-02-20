@@ -88,12 +88,18 @@ export const routes = {
   "/sellers/stock": {
     allowedRoles: ['seller'],
     title: "Estoque",
+    hideMenu: true,
     js: () => import("../pages/sellers/view-stock/view-stock.js"),
   },
   "/sellers/products": {
     allowedRoles: ['seller'],
     title: "Meus Produtos",
     js: () => import("../pages/sellers/link-products/link-products.js"),
+  },
+  "/sellers/payments/pending": {
+    allowedRoles: ['seller'],
+    title: "Pagamentos Pendentes",
+    js: () => import("../pages/sellers/payments-pending/payments-pending.js"),
   },
   "/orders": {
     title: "Pedidos",
