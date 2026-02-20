@@ -1,181 +1,202 @@
 import html from "./link-products.html?raw"
+import SellersService from "../../../services/sellers.services"
+import ProductsService from "../../../services/products.services"
 
-export function getData(){
+export function getData() {
   return {
     loading: true,
 
     search: '',
     filter: 'all',
-
+    originalLinks: new Map(),
     products: [],
-    originalLinks: new Set(),
-
-    page: 0,
-    pageSize: 6,
-    nextCursor: true,
-
-    init() {
-      setTimeout(() => {
-        this.loadProducts()
-        this.loading = false
-      }, 600)
+    showErrors: false,
+    saving: false,
+    async init() {
+      await this.refresh();
     },
 
-    loadProducts() {
-      if (!this.nextCursor) return
+    async refresh() {
+      this.loading = true;
+      const [resLinkedProducts, resProductsWithSuppliers] = await Promise.all([
+        SellersService.getLinkedProducts(),
+        SellersService.getProductsWithSuppliers()
+      ]);
 
-      const newProducts = generateMockProducts(this.page, this.pageSize)
-
-      newProducts.forEach(p => {
-        if (p.linked) {
-          this.originalLinks.add(p.id)
-        }
-      })
-
-      this.products.push(...newProducts)
-
-      this.page++
-      if (this.page >= 3) this.nextCursor = false
-    },
-
-    /* ======================
-       COMPUTED – HEADER
-    ====================== */
-
-    get totalProducts() {
-      return this.products.length
-    },
-
-    get linkedProducts() {
-      return this.products.filter(p => p.linked).length
-    },
-
-    get syncStats() {
-      const synced = this.products.filter(p => p.linked && p.synced).length
-      const pending = this.products.filter(p => p.linked && !p.synced).length
-      return { synced, pending }
-    },
-
-    get includedCount() {
-      return this.products.filter(
-        p => p.linked && !this.originalLinks.has(p.id)
-      ).length
-    },
-
-    get removedCount() {
-      return this.products.filter(
-        p => !p.linked && this.originalLinks.has(p.id)
-      ).length
-    },
-
-    get hasChanges() {
-      return this.includedCount > 0 || this.removedCount > 0
-    },
-
-    /* ======================
-       FILTER / SEARCH
-    ====================== */
-
-    get filteredProducts() {
-      let list = this.products
-
-      if (this.filter === 'linked') {
-        list = list.filter(p => p.linked)
-      }
-
-      if (this.filter === 'unlinked') {
-        list = list.filter(p => !p.linked)
-      }
-
-      if (this.search.trim()) {
-        const q = this.search.toLowerCase()
-
-        list = list.filter(p =>
-          p.name.toLowerCase().includes(q) ||
-          p.description.toLowerCase().includes(q) ||
-          p.id.toLowerCase().includes(q) ||
-          p.marketplaceId.toLowerCase().includes(q) ||
-          p.skus.some(sku =>
-            sku.id.toLowerCase().includes(q) ||
-            sku.label.toLowerCase().includes(q)
-          )
+      if (resProductsWithSuppliers.ok) {
+        const linkedProducts = resLinkedProducts.ok ? resLinkedProducts.response : [];
+        this.originalLinks = new Map(
+          linkedProducts.map(p => [p.productId, {
+            supplierId: p.supplierId,
+            salePrice: p.price || null
+          }])
         )
+
+        this.products = resProductsWithSuppliers.response.map(p => {
+          const original = this.originalLinks.get(p.id);
+
+          return {
+            ...p,
+            expanded: !!original,
+            selectedSupplierId: original?.supplierId || null,
+            salePrice: original?.salePrice || null,
+            suppliers: [],
+            loadingSuppliers: false,
+            hasError: false
+          }
+        });
+        this.showErrors = false;
+
+        const loadInitialSuppliers = this.products
+          .filter(p => p.selectedSupplierId)
+          .map(p => this.fetchSuppliers(p));
+
+        await Promise.all(loadInitialSuppliers);
+
       }
-
-      return list
+      this.loading = false;
     },
+    async fetchSuppliers(product) {
+      if (product.suppliers.length > 0) return;
 
-    getTotalSkuProducts(product) {
-      return product.skus.reduce((sum, sku) => sum + sku.stock, 0)
+      product.loadingSuppliers = true;
+      const res = await ProductsService.getProductSuppliers(product.id);
+
+      if (res.ok) {
+        product.suppliers = res.response.map(s => {
+          const min = s.skus.reduce((acc, sku) => Math.min(acc, sku.price), Infinity);
+          const max = s.skus.reduce((acc, sku) => Math.max(acc, sku.price), -Infinity);
+          return {
+            ...s,
+            priceDisplay: min === max ? `R$ ${min.toFixed(2)}` : `R$ ${min.toFixed(2)} - ${max.toFixed(2)}`
+          };
+        });
+      }
+      product.loadingSuppliers = false;
+    },
+    async handleCheckboxToggle(product, isChecked) {
+      if (isChecked) {
+        if (!product.selectedSupplierId && product.suppliers.length > 0) {
+          product.selectedSupplierId = product.suppliers[0].supplierId;
+        }
+
+        product.expanded = true;
+
+        await this.fetchSuppliers(product);
+
+        if (!product.selectedSupplierId && product.suppliers.length > 0) {
+          product.selectedSupplierId = product.suppliers[0].supplierId;
+        }
+      } else {
+        product.selectedSupplierId = null;
+        product.expanded = false;
+        product.hasError = false;
+      }
+    },
+    async toggleExpand(product) {
+      product.expanded = !product.expanded;
+      if (product.expanded) {
+        await this.fetchSuppliers(product);
+      }
     },
     /* ======================
        ACTIONS
     ====================== */
+    get includedCount() {
+      return this.products.filter(p => p.selectedSupplierId && !this.originalLinks.has(p.id)).length;
+    },
+    get removedCount() {
+      return this.products.filter(p => !p.selectedSupplierId && this.originalLinks.has(p.id)).length;
+    },
+    get updatedCount() {
+      return this.products.filter(p => {
+        const original = this.originalLinks.get(p.id);
+        return p.selectedSupplierId &&
+          original &&
+          p.selectedSupplierId === original.supplierId &&
+          p.salePrice !== original.salePrice;
+      }).length;
+    },
+    get hasChanges() {
+      return this.includedCount > 0 || this.removedCount > 0 || this.updatedCount > 0;
+    },
+    async cancel() {
+      await this.refresh();
+    },
 
-    saveLinks() {
-      if (!this.hasChanges) return
+    get filteredProducts() {
+      const q = this.search.toLowerCase();
+      return this.products.filter(p => p.name.toLowerCase().includes(q) || p.id.includes(q));
+    },
+    async saveLinks() {
+      this.loading = true;
+      let hasInvalid = false;
+      this.products.forEach(p => {
+        if (p.selectedSupplierId && (!p.salePrice)) {
+          p.hasError = true;
+          p.expanded = true;
+          hasInvalid = true;
+          p.errorText = "Preço obrigatório faltando";
+        } else if (p.selectedSupplierId && (p.salePrice < 1 || p.salePrice > 499999)) {
+          p.hasError = true;
+          p.expanded = true;
+          hasInvalid = true;
+          p.errorText = "Preço deve ser entre R$ 1,00 e R$ 499.999,00";
+        } else {
+          p.hasError = false;
+        }
+      });
 
-      const included = this.products
-        .filter(p => p.linked && !this.originalLinks.has(p.id))
-        .map(p => p.id)
+      if (hasInvalid) {
+        this.showErrors = true;
+        Alpine.store('toast').open('Por favor, corrija os erros antes de salvar.', 'error');
+        this.loading = false;
+        return;
+      }
 
-      const removed = this.products
-        .filter(p => !p.linked && this.originalLinks.has(p.id))
-        .map(p => p.id)
+      this.saving = true;
 
-      console.log('INCLUIR:', included)
-      console.log('REMOVER:', removed)
+      const toLink = this.products.filter(p => p.selectedSupplierId && !this.originalLinks.has(p.id));
+      const toUpdate = this.products.filter(p => {
+        const orig = this.originalLinks.get(p.id);
+        return orig && p.selectedSupplierId && (p.selectedSupplierId !== orig.supplierId || Number(p.salePrice) !== Number(orig.salePrice));
+      });
+      const toUnlink = this.products.filter(p => !p.selectedSupplierId && this.originalLinks.has(p.id));
+      const promises = [
+        ...toLink?.map(p => {
+          console.log(`Linkando ${p.id} para ${p.selectedSupplierId} com preço ${p.salePrice}`)
+          return SellersService.linkProduct(p.id, p.selectedSupplierId, p.salePrice);
+        }),
+        ...toUpdate?.map(p => {
+          console.log(`Atualizando link ${p.id} para ${p.selectedSupplierId} com preço ${p.salePrice}`)
+          return SellersService.updateProductLink(p.id, p.selectedSupplierId, p.salePrice);
+        }),
+        ...toUnlink?.map(p => {
+          console.log(`Removendo link ${p.id}`)
+          const originalData = this.originalLinks.get(p.id);
+          console.log(`Removendo link do produto ${p.id} com o fornecedor ${originalData.supplierId}`);
+          return SellersService.unlinkProduct(p.id, originalData.supplierId);
+        })
+      ];
 
-      // simula sucesso
-      this.originalLinks = new Set(
-        this.products.filter(p => p.linked).map(p => p.id)
-      )
-
-      alert('Vínculos salvos com sucesso (mock)')
+      try {
+        console.log("Executando as seguintes operações:");
+        await Promise.all(promises);
+        Alpine.store('toast').open('Vínculos atualizados com sucesso', 'success');
+        await this.refresh();
+      } catch (e) {
+        console.error("Erro ao processar salvamento:", e);
+        Alpine.store('toast').open('Erro ao salvar algumas alterações', 'error');
+      } finally {
+        this.saving = false;
+        this.loading = false;
+      }
     },
 
     goBack() {
       history.back()
     }
   }
-}
-function generateMockProducts(page, size) {
-  const baseIndex = page * size
-
-  return Array.from({ length: size }).map((_, i) => {
-    const index = baseIndex + i + 1
-    const linked = Math.random() > 0.5
-    const synced = linked && Math.random() > 0.3
-
-    const skus = generateMockSkus(index)
-
-    return {
-      id: `PROD-${1000 + index}`,
-      marketplaceId: `MP-${5000 + index}`,
-      name: `Camiseta Premium ${index}`,
-      description: `Camiseta de algodão fio 30.1 — ref ${index}`,
-      expanded: false,
-      linked,
-      synced,
-      skus
-    }
-  })
-}
-
-function generateMockSkus(productIndex) {
-  const variations = [
-    { color: 'Preto', size: 'P' },
-    { color: 'Preto', size: 'M' },
-    { color: 'Preto', size: 'G' },
-    { color: 'Branco', size: 'M' },
-    { color: 'Branco', size: 'G' }
-  ]
-
-  return variations.map((v, i) => ({
-    id: `SKU-${productIndex}-${i + 1}`,
-    label: `${v.color} / ${v.size}`,
-    stock: Math.floor(Math.random() * 40)
-  }))
 }
 
 export function render() {

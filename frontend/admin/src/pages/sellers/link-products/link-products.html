@@ -1,199 +1,146 @@
-<div x-data="getData" class="min-h-screen bg-slate-900 px-4 py-6 md:px-8 text-slate-100">
+<div x-data="getData" class="min-h-screen bg-slate-900 px-4 py-6 text-slate-100">
 
-  <!-- LOADING -->
   <div x-show="loading" class="flex justify-center py-20">
     <div class="h-8 w-8 animate-spin rounded-full border-2 border-slate-600 border-t-slate-200"></div>
   </div>
 
   <div x-show="!loading" class="mx-auto max-w-7xl space-y-6">
-
-    <!-- HEADER -->
-    <header class="flex flex-col gap-2">
-      <h1 class="text-2xl font-semibold">Vincular produtos</h1>
-      <p class="text-sm text-slate-400">
-        Selecione os produtos que você deseja vender no marketplace
-      </p>
+    <header>
+      <h1 class="text-2xl font-semibold">Vincular Produtos ao Fornecedor</h1>
+      <p class="text-sm text-slate-400">Escolha os produtos do catálogo e o fornecedor de sua preferência.</p>
     </header>
 
-    <!-- TOOLBAR -->
-    <div class="flex flex-col gap-4 rounded-lg bg-slate-800 p-4 md:flex-row md:items-center md:justify-between">
-      <input type="text" placeholder="Buscar por nome, ID do produto ou SKU" x-model="search" class="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm
-               placeholder-slate-500 focus:border-indigo-500 focus:outline-none md:max-w-sm" />
-
-      <div class="flex gap-2">
-        <template x-for="tab in ['all','linked','unlinked']">
-          <button @click="filter = tab" class="rounded-md px-3 py-1.5 text-sm font-medium transition" :class="filter === tab
-              ? 'bg-indigo-600 text-white'
-              : 'bg-slate-700 text-slate-300 hover:bg-slate-600'" x-text="tab === 'all'
-              ? 'Todos'
-              : tab === 'linked'
-                ? 'Vinculados'
-                : 'Não vinculados'">
-          </button>
-        </template>
-      </div>
+    <div class="bg-slate-800 p-4 rounded-lg">
+      <input type="text" x-model="search" placeholder="Buscar produto no catálogo..."
+        class="w-full max-w-sm rounded border border-slate-700 bg-slate-900 px-3 py-2 text-sm">
     </div>
 
-    <!-- LISTA -->
-    <div class="space-y-4">
+    <div class="grid gap-4">
       <template x-for="product in filteredProducts" :key="product.id">
+        <div class="rounded-lg border overflow-hidden transition-all duration-300" :class="{
+      'border-slate-700 bg-slate-800': !product.hasError,
+      'border-rose-500 bg-rose-500/10 ring-2 ring-rose-500/20': product.hasError
+    }">
 
-        <div class="rounded-lg bg-slate-800 border border-slate-700">
+          <div class="p-4 flex items-center justify-between bg-slate-800">
+            <div class="flex items-center gap-4">
+              <input type="checkbox" :checked="product.selectedSupplierId !== null"
+                @change="handleCheckboxToggle(product, $el.checked)"
+                class="h-5 w-5 rounded border-slate-600 bg-slate-900 text-indigo-600 focus:ring-indigo-500">
 
-          <!-- PRODUTO HEADER -->
-          <div class="flex items-center justify-between border-b border-slate-700 px-4 py-3">
+              <div class="h-14 w-14 flex-shrink-0 overflow-hidden rounded bg-slate-700 border border-slate-600">
+                <img :src="product.imageUrl || 'https://via.placeholder.com/150?text=Sem+Foto'"
+                  class="h-full w-full object-cover">
+              </div>
 
-            <label class="flex items-start gap-3">
-              <input type="checkbox" x-model="product.linked"
-                class="mt-1 h-4 w-4 rounded border-slate-600 bg-slate-900 text-indigo-600 focus:ring-indigo-500" />
-
-              <div>
-                <p class="text-sm font-medium" x-text="product.name"></p>
-                <p class="text-xs text-slate-400" x-text="product.description"></p>
-
-                <div class="mt-1 flex flex-wrap gap-2 text-xs">
-                  <span class="rounded bg-slate-700 px-2 py-0.5">
-                    Produto ID: <strong x-text="product.id"></strong>
-                  </span>
-
-                  <span x-show="product.marketplaceId" class="rounded bg-slate-700 px-2 py-0.5">
-                    Marketplace ID: <strong x-text="product.marketplaceId"></strong>
+              <div class="cursor-pointer" @click="toggleExpand(product)">
+                <h3 class="font-bold text-slate-100 leading-snug" x-text="product.name"></h3>
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] text-slate-500 font-mono" x-text="product.id"></span>
+                  <span x-text="product.errorText" x-show="product.hasError"
+                    class="text-[10px] text-rose-400 font-black uppercase animate-pulse">
                   </span>
                 </div>
               </div>
-            </label>
-
-            <!-- BADGES -->
-            <div class="flex flex-wrap items-center gap-2 text-xs">
-              <span class="rounded-full px-3 py-1 font-medium" :class="product.synced
-                  ? 'bg-emerald-500/10 text-emerald-400'
-                  : 'bg-amber-500/10 text-amber-400'">
-                <span x-text="product.synced ? 'Sincronizado' : 'Pendente sync'"></span>
-              </span>
-
-              <span class="rounded-full bg-slate-700 px-3 py-1">
-                Estoque total:
-                <strong x-text="getTotalSkuProducts(product)"></strong>
-              </span>
             </div>
-            <button @click="product.expanded = !product.expanded" class="text-xs text-indigo-400 hover:text-indigo-300">
-              <span x-show="!product.expanded">Ver SKUs</span>
-              <span x-show="product.expanded">Ocultar SKUs</span>
+
+            <button @click="toggleExpand(product)" class="flex items-center gap-2 text-xs font-medium text-indigo-400">
+              <span x-text="product.expanded ? 'Ocultar' : 'Ver fornecedores'"></span>
+              <i class="ph ph-caret-down transition-transform" :class="product.expanded ? 'rotate-180' : ''"></i>
             </button>
-
           </div>
 
-          <!-- SKUS -->
-          <div x-show="product.expanded" x-transition class="bg-slate-850 px-4 py-4 space-y-3">
-            <!-- HEADER DESKTOP -->
-            <div class="hidden md:grid md:grid-cols-4 gap-3 text-xs text-slate-400 uppercase">
-              <span>Variação</span>
-              <span>ID SKU</span>
-              <span>Estoque</span>
-              <span>Status</span>
+          <div x-show="product.expanded" x-cloak x-collapse
+            class="border-t border-slate-700 bg-slate-900/40 p-4 space-y-6">
+
+            <div class="rounded-lg p-4 transition-colors"
+              :class="product.hasError ? 'bg-rose-500/10 border border-rose-500/30' : 'bg-indigo-500/5 border border-indigo-500/20'">
+              <div class="flex items-center justify-between gap-4">
+                <div>
+                  <label class="block text-[10px] font-black uppercase tracking-widest"
+                    :class="product.hasError ? 'text-rose-400' : 'text-indigo-400'">
+                    Seu Preço de Venda (R$) *
+                  </label>
+                  <p class="text-[10px] text-slate-500">Informe o valor de venda para este produto.</p>
+                </div>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-sm"
+                    :class="product.hasError ? 'text-rose-500' : 'text-slate-500'">R$</span>
+                  <input type="number" step="0.01" x-model="product.salePrice"
+                    @input="if(product.salePrice > 0) product.hasError = false"
+                    :class="product.hasError ? 'border-rose-500' : 'border-slate-600'"
+                    class="w-32 pl-9 pr-3 py-1.5 bg-slate-800 border rounded text-emerald-400 font-bold focus:ring-1 focus:ring-indigo-500">
+                </div>
+              </div>
             </div>
 
-            <template x-for="sku in product.skus" :key="sku.id">
-              <div class="grid gap-2 text-sm md:grid-cols-4 md:items-center">
+            <div class="space-y-4">
+              <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Fornecedores e
+                Variações:</label>
 
-                <!-- VARIAÇÃO -->
-                <div>
-                  <span class="md:hidden block text-xs text-slate-400 mb-1">
-                    Variação
-                  </span>
-                  <span x-text="sku.label"></span>
+              <template x-if="product.loadingSuppliers">
+                <div class="text-xs text-slate-500 animate-pulse italic">Buscando detalhes do catálogo...</div>
+              </template>
+
+              <template x-for="sup in product.suppliers" :key="sup.supplierId">
+                <div class="rounded border transition-all overflow-hidden"
+                  :class="product.selectedSupplierId === sup.supplierId ? 'border-indigo-500 bg-indigo-500/5' : 'border-slate-700'">
+
+                  <label class="flex items-center justify-between p-3 cursor-pointer hover:bg-slate-800/50">
+                    <div class="flex items-center gap-3">
+                      <input type="radio" :name="'sup_'+product.id" :value="sup.supplierId"
+                        x-model="product.selectedSupplierId" class="text-indigo-600 bg-slate-900 border-slate-600">
+                      <span class="text-sm font-bold text-slate-200" x-text="sup.supplierName"></span>
+                    </div>
+                    <span class="text-sm font-mono text-emerald-400 font-bold" x-text="sup.priceDisplay"></span>
+                  </label>
+
+                  <div class="p-3 border-t border-slate-700/50 grid grid-cols-2 md:grid-cols-4 gap-2 bg-slate-900/40">
+                    <template x-for="sku in sup.skus" :key="sku.sku">
+                      <div class="bg-slate-800/40 p-2 rounded border border-slate-700/30 text-[10px]">
+                        <div class="text-slate-400 font-mono truncate" x-text="sku.sku"></div>
+                        <div class="flex justify-between mt-1">
+                          <span class="text-slate-300" x-text="(sku.color || '') + ' ' + (sku.size || '')"></span>
+                          <span class="font-bold text-indigo-300" x-text="'R$ ' + sku.price.toFixed(2)"></span>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
                 </div>
-
-                <!-- ID SKU -->
-                <div class="text-xs text-slate-400">
-                  <span class="md:hidden block mb-1">ID SKU</span>
-                  <span class="rounded bg-slate-700 px-2 py-0.5 text-slate-200">
-                    <span x-text="sku.id"></span>
-                  </span>
-                </div>
-
-                <!-- ESTOQUE -->
-                <div>
-                  <span class="md:hidden block text-xs text-slate-400 mb-1">
-                    Estoque
-                  </span>
-                  <span x-text="sku.stock"></span>
-                </div>
-
-                <!-- STATUS -->
-                <div>
-                  <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium" :class="sku.synced
-            ? 'bg-emerald-500/10 text-emerald-400'
-            : 'bg-amber-500/10 text-amber-400'" x-text="sku.synced ? 'Sincronizado' : 'Pendente'"></span>
-                </div>
-
-              </div>
-            </template>
+              </template>
+            </div>
           </div>
-
-
         </div>
       </template>
     </div>
-
-    <!-- PAGINAÇÃO -->
-    <div x-show="nextCursor" class="flex justify-center pt-4">
-      <button @click="loadProducts()" class="rounded-md bg-slate-700 px-4 py-2 text-sm hover:bg-slate-600">
-        Carregar mais
-      </button>
-    </div>
-
   </div>
 
-  <!-- AÇÕES -->
-  <div x-show="!loading"
-    class="fixed bottom-0 left-0 right-0 border-t border-slate-700 bg-slate-800 p-4 md:static md:border-0 md:bg-transparent">
-
-    <div class="mx-auto flex max-w-7xl justify-between md:justify-end gap-3">
-      <button @click="goBack()"
-        class="rounded-md border border-slate-600 px-4 py-2 text-sm text-slate-300 hover:bg-slate-700">
-        Voltar
-      </button>
-
-      <button @click="saveLinks()" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500">
-        Salvar vínculos
-      </button>
-    </div>
-  </div>
-  <!-- ACTION BAR STICKY -->
-  <div x-show="hasChanges" x-transition
-    class="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-700 bg-slate-900/95 backdrop-blur">
-    <div class="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-3
-              md:flex-row md:items-center md:justify-between md:px-8">
-
-      <!-- INFO -->
-      <div class="text-sm text-slate-300">
-        <template x-if="includedCount > 0">
-          <span class="mr-3 text-emerald-400">
-            +<span x-text="includedCount"></span> incluídos
-          </span>
-        </template>
-
-        <template x-if="removedCount > 0">
-          <span class="text-rose-400">
-            −<span x-text="removedCount"></span> removidos
-          </span>
-        </template>
+  <div x-show="hasChanges" x-transition:enter="transition ease-out duration-300"
+    x-transition:enter-start="translate-y-full"
+    class="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-700 bg-slate-900/95 backdrop-blur p-4">
+    <div class="mx-auto max-w-7xl flex items-center justify-between">
+      <div x-show="hasChanges" ...>
+        <div class="text-sm">
+          <span x-show="includedCount > 0" class="text-emerald-400 mr-4 font-bold">+ <span
+              x-text="includedCount"></span> novos</span>
+          <span x-show="updatedCount > 0" class="text-amber-400 mr-4 font-bold">↺ <span x-text="updatedCount"></span>
+            preços alterados</span>
+          <span x-show="removedCount > 0" class="text-rose-400 font-bold">− <span x-text="removedCount"></span>
+            remoções</span>
+        </div>
       </div>
-
-      <!-- ACTIONS -->
       <div class="flex gap-3">
-        <button @click="goBack()"
-          class="rounded-md border border-slate-600 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800">
-          Cancelar
-        </button>
+        <button @click="cancel()" class="px-4 py-2 text-sm text-slate-400 hover:text-slate-200">Cancelar</button>
+        <button @click="saveLinks()" :disabled="saving"
+          class="flex items-center gap-2 rounded bg-indigo-600 px-6 py-2 text-sm font-bold text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed">
 
-        <button @click="saveLinks()" class="rounded-md bg-indigo-600 px-5 py-2 text-sm font-medium hover:bg-indigo-500">
-          Salvar vínculos
+          <template x-if="saving">
+            <i class="ph ph-circle-notch animate-spin"></i>
+          </template>
+
+          <span x-text="saving ? 'Salvando...' : 'Salvar Alterações'"></span>
         </button>
       </div>
-
     </div>
   </div>
-
 </div>

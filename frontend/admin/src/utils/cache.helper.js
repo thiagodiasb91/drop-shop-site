@@ -1,14 +1,13 @@
 const CacheHelper = {
   get(name) {
-    // let cached;
     const cached = sessionStorage.getItem(name)    
     try{
       const response = JSON.parse(cached)
-      // console.log("cache.get.response.json", name, response)
+      console.log("cache.get.response.json", name, response)
       return response
     }
     catch{
-      // console.log("cache.get.response", name, cached)
+      console.log("cache.get.response", name, cached)
       return cached
     }
   },

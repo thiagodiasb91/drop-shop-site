@@ -14,7 +14,7 @@ export function menu() {
       window.addEventListener('popstate', () => {
         this.currentPath = window.location.pathname;
       });
-      console.log("core.menu.init.items", this.menuItems)
+      console.log("core.menu.init.response", this.menuItems)
     },
     buildMenu(user) {
       console.log("core.menu.buildMenu.called", routes)

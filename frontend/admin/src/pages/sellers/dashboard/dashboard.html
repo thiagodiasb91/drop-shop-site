@@ -1,111 +1,185 @@
 <div x-data="getData()" class="p-4 md:p-6 space-y-6">
-    
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-            <h2 class="text-xl font-bold text-white">Minha Operação</h2>
-            <p class="text-sm text-slate-400">Resumo de vendas e repasses aos fornecedores</p>
+    <div class="max-w-3xl w-full">
+
+        <div class="text-center mb-12">
+            <div
+                class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-indigo-500/10 text-indigo-500 mb-4 border border-indigo-500/20">
+                <i class="ph ph-hand-waving text-4xl"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-white mb-2">Olá, <span class="text-emerald-400" x-text="loggedInfo?.user.email"></span>!</h1>
+            <p class="text-slate-400">Seja bem-vindo à sua nova central de operações. Vamos deixar tudo pronto?</p>
         </div>
-        <div class="bg-slate-800 p-1 rounded-lg flex gap-1 border border-slate-700">
-            <button @click="period = 'today'; fetchData()" :class="period === 'today' ? 'bg-indigo-600 text-white' : 'text-slate-400'" class="px-3 py-1 text-xs rounded-md transition-all">Hoje</button>
-            <button @click="period = '7d'; fetchData()" :class="period === '7d' ? 'bg-indigo-600 text-white' : 'text-slate-400'" class="px-3 py-1 text-xs rounded-md transition-all">7 Dias</button>
-            <button @click="period = '30d'; fetchData()" :class="period === '30d' ? 'bg-indigo-600 text-white' : 'text-slate-400'" class="px-3 py-1 text-xs rounded-md transition-all">Mês</button>
+
+        <div class="grid gap-4">
+            <template x-for="(step, index) in steps" :key="index">
+                <div
+                    class="bg-slate-800 border border-slate-700 p-5 rounded-2xl flex items-center justify-between group hover:border-indigo-500/50 transition-all duration-300">
+                    <div class="flex items-center gap-5">
+                        <div
+                            class="flex-shrink-0 w-12 h-12 rounded-xl bg-slate-900 flex items-center justify-center text-slate-500 group-hover:text-indigo-400 transition-colors">
+                            <i :class="'ph ' + step.icon + ' text-2xl'"></i>
+                        </div>
+
+                        <div>
+                            <h3 class="font-bold text-slate-200" x-text="step.title"></h3>
+                            <p class="text-sm text-slate-500" x-text="step.desc"></p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <template x-if="step.link">
+                            <a :href="step.link"
+                                class="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-indigo-600 text-white text-xs font-bold rounded-lg transition-all">
+                                Começar <i class="ph ph-arrow-right"></i>
+                            </a>
+                        </template>
+                        <template x-if="!step.link">
+                            <span
+                                class="text-[10px] uppercase font-black text-slate-600 tracking-widest px-3 py-1 border border-slate-700 rounded-full">
+                                Em breve
+                            </span>
+                        </template>
+                    </div>
+                </div>
+            </template>
         </div>
+
+        <div
+            class="mt-12 p-6 rounded-2xl bg-indigo-600/5 border border-indigo-500/10 flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
+            <div>
+                <h4 class="text-sm font-bold text-slate-200">Precisa de ajuda para configurar?</h4>
+                <p class="text-xs text-slate-500">Nosso suporte técnico está disponível para te auxiliar no setup
+                    inicial.</p>
+            </div>
+            <button @click="openSupport()"
+                class="flex items-center gap-2 px-5 py-2 rounded-full border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all text-xs font-bold">
+                <i class="ph ph-whatsapp-logo text-base"></i>
+                Falar com consultor
+            </button>
+        </div>
+
     </div>
+    <!-- <div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-medium text-slate-400 uppercase">Vendas (Shopee)</span>
-                <i class="fa-brands fa-shopee text-orange-500"></i>
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <h2 class="text-xl font-bold text-white">Minha Operação</h2>
+                <p class="text-sm text-slate-400">Resumo de vendas e repasses aos fornecedores</p>
             </div>
-            <div class="text-2xl font-bold" x-text="formatCurrency(stats.salesGmv)"></div>
-            <div class="text-xs text-slate-500 mt-1" x-text="stats.orderCount + ' pedidos realizados'"></div>
+            <div class="bg-slate-800 p-1 rounded-lg flex gap-1 border border-slate-700">
+                <button @click="period = 'today'; fetchData()"
+                    :class="period === 'today' ? 'bg-indigo-600 text-white' : 'text-slate-400'"
+                    class="px-3 py-1 text-xs rounded-md transition-all">Hoje</button>
+                <button @click="period = '7d'; fetchData()"
+                    :class="period === '7d' ? 'bg-indigo-600 text-white' : 'text-slate-400'"
+                    class="px-3 py-1 text-xs rounded-md transition-all">7 Dias</button>
+                <button @click="period = '30d'; fetchData()"
+                    :class="period === '30d' ? 'bg-indigo-600 text-white' : 'text-slate-400'"
+                    class="px-3 py-1 text-xs rounded-md transition-all">Mês</button>
+            </div>
         </div>
 
-        <div class="bg-slate-800 p-4 rounded-xl border border-indigo-500/50 shadow-lg shadow-indigo-500/10">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-medium text-indigo-400 uppercase">A pagar (Custo)</span>
-                <i class="fa-solid fa-hand-holding-dollar text-indigo-400"></i>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-medium text-slate-400 uppercase">Vendas (Shopee)</span>
+                    <i class="fa-brands fa-shopee text-orange-500"></i>
+                </div>
+                <div class="text-2xl font-bold" x-text="formatCurrency(stats.salesGmv)"></div>
+                <div class="text-xs text-slate-500 mt-1" x-text="stats.orderCount + ' pedidos realizados'"></div>
             </div>
-            <div class="text-2xl font-bold text-indigo-100" x-text="formatCurrency(stats.pendingPayment)"></div>
-            <button @click="spaNavigate($event, '/orders-group')" class="text-[10px] text-indigo-400 mt-2 hover:underline font-bold uppercase tracking-wider">Pagar agora →</button>
+
+            <div class="bg-slate-800 p-4 rounded-xl border border-indigo-500/50 shadow-lg shadow-indigo-500/10">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-medium text-indigo-400 uppercase">A pagar (Custo)</span>
+                    <i class="fa-solid fa-hand-holding-dollar text-indigo-400"></i>
+                </div>
+                <div class="text-2xl font-bold text-indigo-100" x-text="formatCurrency(stats.pendingPayment)"></div>
+                <button @click="spaNavigate($event, '/orders-group')"
+                    class="text-[10px] text-indigo-400 mt-2 hover:underline font-bold uppercase tracking-wider">Pagar
+                    agora →</button>
+            </div>
+
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-medium text-slate-400 uppercase">Estoque Crítico</span>
+                    <i class="fa-solid fa-boxes-stacked text-amber-500"></i>
+                </div>
+                <div class="text-2xl font-bold" x-text="stats.lowStockAlerts"></div>
+                <div class="text-xs text-amber-500 mt-1">Produtos sem estoque no fornecedor</div>
+            </div>
+
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-medium text-slate-400 uppercase">Lucro Est. (Líquido)</span>
+                    <i class="fa-solid fa-chart-line text-emerald-500"></i>
+                </div>
+                <div class="text-2xl font-bold text-emerald-400" x-text="formatCurrency(stats.estimatedProfit)"></div>
+                <div class="text-[10px] text-slate-500 mt-1 italic">Descontado custo e taxas aprox.</div>
+            </div>
         </div>
 
-        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-medium text-slate-400 uppercase">Estoque Crítico</span>
-                <i class="fa-solid fa-boxes-stacked text-amber-500"></i>
-            </div>
-            <div class="text-2xl font-bold" x-text="stats.lowStockAlerts"></div>
-            <div class="text-xs text-amber-500 mt-1">Produtos sem estoque no fornecedor</div>
-        </div>
-
-        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-medium text-slate-400 uppercase">Lucro Est. (Líquido)</span>
-                <i class="fa-solid fa-chart-line text-emerald-500"></i>
-            </div>
-            <div class="text-2xl font-bold text-emerald-400" x-text="formatCurrency(stats.estimatedProfit)"></div>
-            <div class="text-[10px] text-slate-500 mt-1 italic">Descontado custo e taxas aprox.</div>
-        </div>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-2 bg-slate-800 rounded-xl border border-slate-700">
-            <div class="p-4 border-b border-slate-700 flex justify-between">
-                <h3 class="font-bold">Últimos Pedidos Sincronizados</h3>
-                <button @click="spaNavigate($event, '/orders')" class="text-xs text-indigo-400 hover:underline">Ver lista completa</button>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead class="text-slate-500 border-b border-slate-700/50">
-                        <tr>
-                            <th class="p-3 text-left">Pedido ID</th>
-                            <th class="p-3 text-left">Data</th>
-                            <th class="p-3 text-left">Status Shopee</th>
-                            <th class="p-3 text-right">Custo Repasse</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-700/50">
-                        <template x-for="order in stats.recentOrders" :key="order.id">
-                            <tr class="hover:bg-slate-700/20">
-                                <td class="p-3 font-mono text-xs text-slate-300" x-text="order.shopeeId"></td>
-                                <td class="p-3 text-slate-400" x-text="order.date"></td>
-                                <td class="p-3">
-                                    <span :class="{
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 bg-slate-800 rounded-xl border border-slate-700">
+                <div class="p-4 border-b border-slate-700 flex justify-between">
+                    <h3 class="font-bold">Últimos Pedidos Sincronizados</h3>
+                    <button @click="spaNavigate($event, '/orders')" class="text-xs text-indigo-400 hover:underline">Ver
+                        lista completa</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="text-slate-500 border-b border-slate-700/50">
+                            <tr>
+                                <th class="p-3 text-left">Pedido ID</th>
+                                <th class="p-3 text-left">Data</th>
+                                <th class="p-3 text-left">Status Shopee</th>
+                                <th class="p-3 text-right">Custo Repasse</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-700/50">
+                            <template x-for="order in stats.recentOrders" :key="order.id">
+                                <tr class="hover:bg-slate-700/20">
+                                    <td class="p-3 font-mono text-xs text-slate-300" x-text="order.shopeeId"></td>
+                                    <td class="p-3 text-slate-400" x-text="order.date"></td>
+                                    <td class="p-3">
+                                        <span :class="{
                                         'bg-blue-500/10 text-blue-500': order.status === 'READY_TO_SHIP',
                                         'bg-emerald-500/10 text-emerald-500': order.status === 'SHIPPED'
                                     }" class="px-2 py-0.5 rounded text-[10px] font-bold" x-text="order.status"></span>
-                                </td>
-                                <td class="p-3 text-right font-medium" x-text="formatCurrency(order.costPrice)"></td>
-                            </tr>
-                        </template>
-                    </tbody>
-                </table>
+                                    </td>
+                                    <td class="p-3 text-right font-medium" x-text="formatCurrency(order.costPrice)">
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
 
-        <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
-            <h3 class="font-bold mb-4 text-sm uppercase tracking-widest text-slate-500">Meus Fornecedores</h3>
-            <div class="space-y-4">
-                <template x-for="supplier in stats.suppliers" :key="supplier.id">
-                    <div class="flex items-center justify-between p-3 bg-slate-900/40 rounded-lg">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold" x-text="supplier.name[0]"></div>
-                            <div>
-                                <div class="text-sm font-medium" x-text="supplier.name"></div>
-                                <div class="text-[10px] text-slate-500" x-text="supplier.activeProducts + ' produtos vinculados'"></div>
+            <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
+                <h3 class="font-bold mb-4 text-sm uppercase tracking-widest text-slate-500">Meus Fornecedores</h3>
+                <div class="space-y-4">
+                    <template x-for="supplier in stats.suppliers" :key="supplier.id">
+                        <div class="flex items-center justify-between p-3 bg-slate-900/40 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold"
+                                    x-text="supplier.name[0]"></div>
+                                <div>
+                                    <div class="text-sm font-medium" x-text="supplier.name"></div>
+                                    <div class="text-[10px] text-slate-500"
+                                        x-text="supplier.activeProducts + ' produtos vinculados'"></div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xs font-bold" x-text="formatCurrency(supplier.pendingValue)"></div>
+                                <div class="text-[9px] text-slate-500">pendente</div>
                             </div>
                         </div>
-                        <div class="text-right">
-                            <div class="text-xs font-bold" x-text="formatCurrency(supplier.pendingValue)"></div>
-                            <div class="text-[9px] text-slate-500">pendente</div>
-                        </div>
-                    </div>
-                </template>
+                    </template>
+                </div>
             </div>
         </div>
-    </div>
+    </div> -->
 </div>
 
 <!-- 

@@ -1,4 +1,6 @@
 import html from "./update-stock.html?raw"
+import ProductsService from "../../../services/products.services";
+import SuppliersService from "../../../services/suppliers.services";
 
 export function getData() {
   return {
@@ -10,24 +12,9 @@ export function getData() {
     hasChanges: false,
     changedCount: 0,
 
-    init() {
+    async init() {
       // mock grande
-      this.products = Array.from({ length: 20 }).map((_, pIndex) => ({
-        id: `prod-${pIndex}`,
-        name: `Produto ${pIndex + 1}`,
-        open: false,
-        skus: Array.from({ length: 6 }).map((_, sIndex) => ({
-          id: `sku-${pIndex}-${sIndex}`,
-          supplierSku: `SUP-${pIndex}-${sIndex}`,
-          attributes: {
-            cor: ['Azul', 'Preto', 'Branco'][sIndex % 3],
-            tamanho: [38, 39, 40, 41, 42, 43][sIndex]
-          },
-          stock: Math.floor(Math.random() * 50),
-          originalStock: null,
-          changed: false
-        }))
-      }));
+      this.products = await this.fetchProducts()
 
       // guarda estoque original
       this.products.forEach(p =>
@@ -37,6 +24,40 @@ export function getData() {
       );
 
       this.loading = false;
+    },
+
+    async fetchProducts() {
+      const productsResponse = await SuppliersService.getLinkedProducts();
+      const products = productsResponse.response || [];
+      let response = []
+      for (const p of products) {
+        const skusResponse = await ProductsService.getSkusByProductId(p.productId);
+        const skus = skusResponse.response || [];
+        const linkedSkuResponse = await SuppliersService.getLinkedProductSkus(p.productId);
+        const linkedSkus = linkedSkuResponse.response || [];
+        p.skus = []
+
+        for (const s of skus) {
+          const linkedSku = linkedSkus.find(ls => ls.sku === s.sku);
+          p.skus.push({
+            sku: linkedSku.sku,
+            skuSupplier: linkedSku.skuSupplier,
+            color: s.color,
+            size: s.size,
+            stock: linkedSku.quantity 
+          })
+        }
+
+        p.open = (linkedSkus.length > 0)
+
+        response.push({
+          id: p.productId,
+          name: p.product_name,
+          open: p.open,
+          skus: p.skus
+        })
+      }
+      return response;        
     },
 
     markAsChanged(sku) {
@@ -53,28 +74,44 @@ export function getData() {
       this.hasChanges = this.changedCount > 0;
     },
 
-    saveAll() {
-      const payload = this.products.flatMap(p =>
+    async saveAll() {
+      this.loading = true;
+      const stocksToSave = this.products.flatMap(p =>
         p.skus
           .filter(s => s.changed)
           .map(s => ({
-            skuId: s.id,
+            productId: p.id,
+            sku: s.sku,
             stock: s.stock
           }))
       );
 
-      console.log('SALVANDO ESTOQUE', payload);
+      const promises = []
 
-      // simula sucesso
-      this.products.forEach(p =>
-        p.skus.forEach(s => {
-          s.originalStock = s.stock;
-          s.changed = false;
-        })
-      );
+      for (const p of this.products) {
+        for (const s of p.skus) {
+          if (s.changed)
+            promises.push(SuppliersService.updateProductStock(p.id, s.sku, s.stock))
+        }
+      }
 
+      const res = await Promise.all(promises);
+      console.log("saveAll.updateProductStock.response", res)
+
+      const countErrors = res.filter(r => !r.ok).length;
+
+      if (countErrors > 0) {
+        console.error(`Erro ao salvar ${countErrors} SKU(s)`);
+        Alpine.store('toast').open(`Erro ao salvar ${countErrors} alterações.`, 'error');
+        this.loading = false;
+        return
+      }
+
+      this.products = await this.fetchProducts()
+      
       this.updateChanges();
-      Alpine.store('toast').open(`${payload.length} SKU(s) salvo(s) com sucesso`, 'success');
+      this.loading = false;
+      Alpine.store('toast').open(`${stocksToSave.length} SKU(s) salvo(s) com sucesso`, 'success');
     },
 
     get filteredProducts() {

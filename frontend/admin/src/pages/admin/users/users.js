@@ -24,12 +24,12 @@ export function getData() {
       console.log("pages.users.fetchUsers.getAllUsers", res)
 
       if (!res.ok) {
-        console.error("pages.users.fetchUsers.getAllUsers.error", res.data)
+        console.error("pages.users.fetchUsers.getAllUsers.error", res.response)
         Alpine.store('toast').open('Erro ao consultar usuários.', 'error');
         return
       }
 
-      this.users = res.data.map(u => ({ ...u, saving: false }));
+      this.users = res.response.map(u => ({ ...u, saving: false }));
       this.loading = false
     },
 

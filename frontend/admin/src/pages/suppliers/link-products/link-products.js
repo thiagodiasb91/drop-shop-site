@@ -3,6 +3,7 @@ import { router, back, navigate } from "../../../core/router.js"
 import SupplierService from "../../../services/suppliers.services.js"
 import productService from "../../../services/products.services.js"
 import AuthService from "../../../services/auth.service.js"
+import ProductsService from "../../../services/products.services.js"
 
 export function getData() {
   return {
@@ -14,6 +15,7 @@ export function getData() {
     filter: 'all',
     nextCursor: null,
     loading: true,
+    originalSkuData: {},
 
     async init() {
       console.log('page.supplier-products.init.called')
@@ -49,6 +51,7 @@ export function getData() {
           return
         }
         this.supplierId = supplierId
+        await this.fetchSupplier()
       }
       else {
         console.log(`${log_prefix}.loggedInfo.roleNotAllowed`, loggedInfo.role)
@@ -60,81 +63,205 @@ export function getData() {
       }
 
       console.log(`${log_prefix}.supplierId`, this.supplierId)
-      await this.fetchSupplier()
       return
     },
-
-    buildSkus(variations) {
-      const result = []
-
-      const walk = (index, current) => {
-        if (index === variations.length) {
-          result.push({
-            key: JSON.stringify(current),
-            attributes: current,
-            supplierSku: '',
-            costPrice: ''
-          })
-          return
-        }
-
-        const variation = variations[index]
-        for (const option of variation.options) {
-          walk(index + 1, {
-            ...current,
-            [variation.name]: option
-          })
-        }
+    async fetchSupplier() {
+      const supplier = await SupplierService.get(this.supplierId)
+      this.supplierEmail = supplier?.email || ''
+    },
+    async loadLinkedProducts() {
+      console.log('page.supplier-products.loadLinkedProducts.called', this.supplierId)
+      const linkedProducts = await SupplierService.getLinkedProducts(this.supplierId)
+      console.log('page.supplier-products.loadLinkedProducts.response', linkedProducts.response)
+      this.linkedProducts = linkedProducts.ok ? linkedProducts.response : []
+    },
+    async loadProducts(reset = false) {
+      if (reset) {
+        this.products = []
+        this.originalLinks = new Set();
+        this.originalSkuData = {};
       }
 
-      walk(0, {})
-      return result
-    },
+      try {
+        const products = await productService.getAll()
+        console.log('page.supplier-products.loadProducts.products', products)
 
-    formatSkuAttributes(attrs) {
-      return Object.entries(attrs)
-        .map(([k, v]) => `${k}: ${v}`)
-        .join(' / ')
-    },
+        for (const p of products.response) {
+          console.log('page.supplier-products.loadProducts.linkedProducts', this.linkedProducts)
 
-    saveLinks() {
-      const selected = this.products.filter(p => p.selected)
+          const isLinked = this.linkedProducts?.some(lp => lp.productId === p.id)
+          
+          const productObj = {
+            ...p,
+            selected: isLinked,
+            skus: [],
+            loadingSkus: false,
+            skusLoaded: false
+          }
+          
+          this.products.push(productObj);
 
-      if (!selected.length) {
+          // Se já estava vinculado, carregamos os SKUs de imediato para exibição
+          if (isLinked) {
+            this.originalLinks.add(p.id);
+            await this.fetchProductSkus(productObj);
+          }
+        }
+      }
+      catch (ex) {
+        console.error('page.supplier-products.loadProducts.error', ex)
         Alpine.store('toast').open(
-          'Selecione ao menos um produto',
+          'Erro ao carregar produtos',
           'error'
         )
-        return
       }
+    },
+    async fetchProductSkus(productRef) {
+      const product = this.products.find(p => p.id === productRef.id);
+      if (product.skusLoaded || product.loadingSkus) return;
+      
+      product.loadingSkus = true;
+      console.log(`Carregando SKUs para o produto: ${product.id}`);
+      try {
+        // 1. Busca SKUs da plataforma
+        const platformSkusRes = await productService.getSkusByProductId(product.id);
+        const platformSkus = platformSkusRes.response || [];
+
+        // 2. Busca SKUs do fornecedor (se estiver vinculado)
+        let supplierSkus = [];
+        if (this.originalLinks.has(product.id)) {
+          try {
+            const supplierRes = await SupplierService.getLinkedProductSkus(product.id);
+            supplierSkus = supplierRes.response || [];
+          } catch (err) {
+            console.warn("Produto marcado como vinculado, mas falhou ao buscar detalhes no fornecedor", err);
+          }
+        }
+
+        // 3. Mapeia e cruza os dados
+        product.skus = platformSkus.map(s => {
+          const linked = supplierSkus.find(ls => ls.sku === s.sku);
+          const data = {
+            key: s.sku,
+            color: s.color,
+            size: s.size,
+            platformSku: s.sku,
+            skuSupplier: linked ? linked.skuSupplier : '', 
+            costPrice: linked ? linked.price : ''
+          };
+
+          // Salva estado original para o "HasChanges" funcionar
+          this.originalSkuData[s.sku] = {
+            skuSupplier: data.skuSupplier,
+            costPrice: data.costPrice
+          };
+
+          return data;
+        });
+
+       product.skusLoaded = true;
+      } catch (err) {
+        console.error('Erro crítico ao carregar variações:', err);
+        Alpine.store('toast').open('Não foi possível carregar as variações deste produto.', 'error');
+        product.selected = false; 
+      } finally {
+        product.loadingSkus = false;
+        console.log(`Fim do carregamento para: ${product.id}`);
+      }
+    },
+    async toggleProduct(product) {
+      if (product.selected) {
+        await this.fetchProductSkus(product);
+      }
+    },
+    async saveLinks() {
+      this.loading = true;
+
+      const selected = this.products.filter(p => p.selected)
+      const supplierSkus = []
 
       for (const p of selected) {
         for (const sku of p.skus) {
-          if (!sku.supplierSku || !sku.costPrice) {
+          if (!sku.skuSupplier || !sku.costPrice) {
             Alpine.store('toast').open(
               'Preencha todos os SKUs e preços',
               'error'
             )
+            this.loading = false;
             return
           }
+          if (supplierSkus.includes(sku.skuSupplier)){
+            Alpine.store('toast').open(
+              `Existem registros com sku repetido (sku fornecedor= '${sku.skuSupplier}')`,
+              'error'
+            )
+            this.loading = false;
+            return
+          }
+          supplierSkus.push(sku.skuSupplier)
+      
         }
       }
 
-      const payload = {
-        supplierId: this.supplierId,
-        products: selected.map(p => ({
-          productId: p.id,
-          skus: p.skus
-        }))
+      try {
+        const promises = [];
+
+        for (const p of this.products) {
+          const isCurrentlySelected = p.selected;
+          const wasOriginallyLinked = this.originalLinks.has(p.id);
+
+          // 1. DELETAR: Estava vinculado e foi desmarcado
+          if (!isCurrentlySelected && wasOriginallyLinked) {
+            promises.push(SupplierService.unlinkProduct(p.id));
+          }
+
+          // 2. CRIAR: Não estava vinculado e foi marcado agora
+          else if (isCurrentlySelected && !wasOriginallyLinked) {
+            const payload = {
+              skus: p.skus.map(s => ({
+                sku: s.platformSku,
+                skuSupplier: s.skuSupplier,
+                price: parseFloat(s.costPrice) || 0
+              }))
+            };
+            promises.push(SupplierService.linkProduct(p.id, payload));
+          }
+
+          // 3. ATUALIZAR: Já estava vinculado e teve alteração interna nos SKUs
+          else if (isCurrentlySelected && wasOriginallyLinked) {
+            p.skus.forEach(sku => {
+              const original = this.originalSkuData[sku.platformSku];
+              if (original && (sku.skuSupplier !== original.skuSupplier || sku.costPrice !== original.costPrice)) {
+                promises.push(SupplierService.updateSkuSupplierAndPrice(p.id, sku.platformSku, sku.skuSupplier, parseFloat(sku.costPrice || 0)));
+              }
+            });
+          }
+        }
+
+        await Promise.all(promises);
+        Alpine.store('toast').open('Alterações salvas com sucesso!', 'success');
+
+        // Recarrega para sincronizar o originalSkuData com o banco
+        await this.loadLinkedProducts();
+        await this.loadProducts(true);
+
+      } catch (ex) {
+        console.error(ex);
+        Alpine.store('toast').open('Erro ao salvar algumas alterações.', 'error');
+      } finally {
+        this.loading = false;
       }
 
-      console.log('Payload:', payload)
-
-      Alpine.store('toast').open('Vínculos salvos com sucesso')
+      Alpine.store('toast').open('Vínculos salvos com sucesso', 'success')
+    },
+    cancel() {
+      // Simplesmente recarrega os produtos do estado original
+      this.loadProducts(true);
+      Alpine.store('toast').open('Alterações descartadas.', 'info');
     },
     get filteredProducts() {
       let list = this.products
-      if (this.filter === 'linked') {
+      if (this.filter === 'isLinked') {
         list = list.filter(p => p.selected)
       }
 
@@ -151,67 +278,62 @@ export function getData() {
 
       return list
     },
-
-    goBack() {
-      back()
-    },
-    async fetchSupplier() {
-      this.supplier = SupplierService.get(this.supplierId) || {
-        id: null,
-        email: null
-      }
-    },
-
-    async loadProducts(reset = false) {
-      if (reset) {
-        this.products = []
-        this.nextCursor = null
-      }
-
-      const data = productService.getAll()
-      console.log('page.supplier-products.loadProducts.data', data)
-
-      data.items.forEach(p => {
-        const baseSkus = this.buildSkus(p.variations)
-        console.log('page.supplier-products.loadProducts.baseSkus', baseSkus)
-
-
-        const linked = this.linkedProducts.find(
-          lp => lp.productId === p.id
+    applyPriceToAll(product, price) {
+      if (!price || price < 0) {
+        Alpine.store('toast').open(
+          'Informe um valor válido para continuar',
+          'error'
         )
-        console.log('page.supplier-products.loadProducts.linked', linked)
+        return
+      }
+      product.skus.forEach(sku => {
+        sku.costPrice = price;
+      });
 
-        if (linked) {
-          // produto já vinculado
-          baseSkus.forEach(sku => {
-            const found = linked.skus.find(
-              l =>
-                JSON.stringify(l.attributes) ===
-                JSON.stringify(sku.attributes)
-            )
+      Alpine.store('toast').open(
+        `Preço R$ ${price} aplicado a todos os SKUs de ${product.name}`, 
+        'info');
+    },
+    get includedCount() {
+      return this.products.filter(p => p.selected && !this.originalLinks.has(p.id)).length;
+    },
 
-            if (found) {
-              sku.supplierSku = found.supplierSku
-              sku.costPrice = found.costPrice
+    get removedCount() {
+      return this.products.filter(p => !p.selected && this.originalLinks.has(p.id)).length;
+    },
+
+    get includedSkuCount() {
+      return this.products
+        .filter(p => p.selected && !this.originalLinks.has(p.id))
+        .reduce((sum, p) => sum + p.skus.length, 0);
+    },
+
+    get removedSkuCount() {
+      return this.products
+        .filter(p => !p.selected && this.originalLinks.has(p.id))
+        .reduce((sum, p) => sum + p.skus.length, 0);
+    },
+    get updatedSkusCount() {
+      let count = 0;
+      this.products.forEach(p => {
+        // Apenas produtos que já estavam vinculados e permanecem selecionados podem ser "atualizados"
+        if (p.selected && this.originalLinks.has(p.id)) {
+          p.skus.forEach(sku => {
+            const original = this.originalSkuData[sku.platformSku];
+            if (original && (sku.skuSupplier !== original.skuSupplier || sku.costPrice !== original.costPrice)) {
+              count++;
             }
-          })
+          });
         }
-
-        this.products.push({
-          ...p,
-          selected: !!linked,
-          skus: baseSkus
-        })
-      })
-
-
-      this.nextCursor = data.nextCursor
+      });
+      return count;
     },
-    async loadLinkedProducts() {
-      console.log('page.supplier-products.loadLinkedProducts.called')
-      // mock backend GET /suppliers/:supplierId/products
-      this.linkedProducts = SupplierService.getLinkedProducts(this.supplierId)
+
+    get hasChanges() {
+      // Agora inclui a contagem de SKUs editados
+      return this.includedCount > 0 || this.removedCount > 0 || this.updatedSkusCount > 0;
     },
+
   }
 }
 

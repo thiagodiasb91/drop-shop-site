@@ -2,6 +2,7 @@ import html from "./initial-setup.html?raw"
 import AuthService from "../../../services/auth.service.js"
 import SuppliersService from "../../../services/suppliers.services.js"
 import CacheHelper from "../../../utils/cache.helper.js"
+import { navigate } from "../../../core/router.js"
 
 function setStep (_this, step) {
   _this.step = {
@@ -40,9 +41,9 @@ export function getData() {
       console.log("page.suppliers.initial-setup.init.called")
       const logged = await AuthService.me()
       this.userEmail = logged.user.email
-      // this.form = {
-      //   name: logged.user.name,
-      // }
+      if(this.validate()){
+        this.goToRedirect()
+      }
     },
     async submit() {
       if (this.step.loading) return;
@@ -57,7 +58,7 @@ export function getData() {
       const res = await SuppliersService.save(this.form)
 
       if (!res.ok) {
-        console.error("pages.suppliers.initial-setup.save.error", res.data)
+        console.error("pages.suppliers.initial-setup.save.error", res.response)
         Alpine.store('toast').open(
           "Houve um erro ao tentar configurar o fornecedor. Tente novamente.",
           "error")
@@ -70,19 +71,22 @@ export function getData() {
       console.log("pages.suppliers.initial-setup.renewToken.response", renewResponse)
 
       if (!renewResponse.ok) {
-        console.error("pages.suppliers.initial-setup.renewToken.error", renewResponse.data)
+        console.error("pages.suppliers.initial-setup.renewToken.error", renewResponse.response)
         this.message = "Houve um erro ao tentar renovar o seu token. Tente novamente."
         this.loading = false
         return
       }
 
-      CacheHelper.set("session_token", renewResponse.data.sessionToken)
+      CacheHelper.set("session_token", renewResponse.response.sessionToken)
 
       console.log("pages.suppliers.initial-setup.sessionToken.set")
 
       await AuthService.me(true)
       
+    },
+    goToRedirect(){
       setStep(this, 'redirect')
+      setTimeout(() => navigate("/"), 5000);
     },
     validate() {
       let valid = true;

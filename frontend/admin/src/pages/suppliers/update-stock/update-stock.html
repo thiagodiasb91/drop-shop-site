@@ -1,7 +1,4 @@
-<div
-  x-data="getData"
-  class="min-h-screen bg-[#0f172a] px-4 py-6 pb-28 md:px-8 text-slate-100"
->
+<div x-data="getData" class="min-h-screen bg-[#0f172a] px-4 py-6 pb-28 md:px-8 text-slate-100">
   <!-- LOADING -->
   <div x-show="loading" class="flex justify-center py-20">
     <div class="h-8 w-8 animate-spin rounded-full border-2 border-slate-600 border-t-slate-200"></div>
@@ -21,12 +18,8 @@
 
     <!-- TOOLBAR -->
     <div class="flex flex-col gap-4 rounded-lg bg-slate-800 p-4 shadow md:flex-row md:items-center md:justify-between">
-      <input
-        type="text"
-        placeholder="Buscar produto, cor ou tamanho"
-        x-model="search"
-        class="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder-slate-500 focus:border-indigo-500 focus:outline-none md:max-w-sm"
-      />
+      <input type="text" placeholder="Buscar produto, cor ou tamanho" x-model="search"
+        class="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder-slate-500 focus:border-indigo-500 focus:outline-none md:max-w-sm" />
     </div>
 
     <!-- LISTA DE PRODUTOS -->
@@ -35,10 +28,8 @@
         <div class="rounded-lg bg-slate-800 shadow">
 
           <!-- PRODUTO -->
-          <button
-            @click="product.open = !product.open"
-            class="flex w-full items-center justify-between border-b border-slate-700 px-4 py-3 text-left hover:bg-slate-700"
-          >
+          <button @click="product.open = !product.open"
+            class="flex w-full items-center justify-between border-b border-slate-700 px-4 py-3 text-left hover:bg-slate-700">
             <div>
               <p class="font-medium" x-text="product.name"></p>
               <p class="text-xs text-slate-400">
@@ -53,43 +44,42 @@
 
           <!-- SKUs -->
           <div x-show="product.open" x-transition class="px-4 py-4 space-y-3">
-            <template x-for="sku in product.skus" :key="sku.id">
+            <template x-for="sku in product.skus" :key="sku.sku">
               <div class="grid gap-3 rounded-md border border-slate-700 bg-slate-900 p-3 md:grid-cols-4">
 
                 <!-- VARIAÇÕES -->
                 <div class="md:col-span-2 space-y-1">
                   <p class="text-sm font-medium text-slate-200">
-                    <template x-for="(value, key) in sku.attributes" :key="key">
-                      <span class="mr-2">
-                        <span class="text-slate-400" x-text="key"></span>:
-                        <span x-text="value"></span>
-                      </span>
-                    </template>
+                    <span class="mr-2">
+                      <span class="text-slate-400" >Cor</span>:
+                      <span x-text="sku.color"></span>
+                    </span>
+                    <span class="mr-2">
+                      <span class="text-slate-400" >Tamanho</span>:
+                      <span x-text="sku.size"></span>
+                    </span>
                   </p>
 
                   <p class="text-xs text-slate-400">
+                    SKU Plataforma:
+                    <span x-text="sku.sku"></span>
+                  </p>
+                  <p class="text-xs text-slate-400">
                     SKU fornecedor:
-                    <span x-text="sku.supplierSku"></span>
+                    <span x-text="sku.skuSupplier"></span>
                   </p>
                 </div>
 
                 <!-- ESTOQUE -->
                 <div>
                   <label class="text-xs text-slate-400">Estoque</label>
-                  <input
-                    type="number"
-                    x-model.number="sku.stock"
-                    @input="markAsChanged(sku)"
-                    class="mt-1 w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-                  />
+                  <input type="number" x-model.number="sku.stock" @input="markAsChanged(sku)"
+                    class="mt-1 w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none" />
                 </div>
 
                 <!-- STATUS -->
                 <div class="flex items-end justify-end">
-                  <span
-                    x-show="sku.changed"
-                    class="text-xs text-amber-400"
-                  >
+                  <span x-show="sku.changed" class="text-xs text-amber-400">
                     Alterado
                   </span>
                 </div>
@@ -104,21 +94,15 @@
   </div>
 
   <!-- ACTION BAR STICKY -->
-  <div
-    x-show="hasChanges"
-    x-transition
-    class="fixed bottom-0 left-0 right-0 border-t border-slate-700 bg-slate-900/95 backdrop-blur"
-  >
+  <div x-show="hasChanges" x-transition
+    class="fixed bottom-0 left-0 right-0 border-t border-slate-700 bg-slate-900/95 backdrop-blur z-50">
     <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-8">
       <div class="text-sm text-slate-300">
         <span class="font-medium" x-text="changedCount"></span>
         alterações pendentes
       </div>
 
-      <button
-        @click="saveAll()"
-        class="rounded-md bg-indigo-600 px-5 py-2 text-sm font-medium hover:bg-indigo-500"
-      >
+      <button @click="saveAll()" class="rounded-md bg-indigo-600 px-5 py-2 text-sm font-medium hover:bg-indigo-500">
         Salvar estoque
       </button>
     </div>
