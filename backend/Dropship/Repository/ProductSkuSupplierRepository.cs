@@ -129,13 +129,14 @@ public class ProductSkuSupplierRepository
             {
                 { ":pk", new AttributeValue { S = $"Product#{productId}" } },
                 { ":sk_pattern", new AttributeValue { S = $"Sku#" } },
-                { ":supplier", new AttributeValue { S = supplierId } }
+                { ":supplier", new AttributeValue { S = supplierId } },
+                { ":entity_type", new AttributeValue{ S = "product_sku_supplier"} }
             };
 
             var items = await _repository.QueryTableAsync(
                 keyConditionExpression: "PK = :pk AND begins_with(SK, :sk_pattern)",
                 expressionAttributeValues: expressionAttributeValues,
-                filterExpression: "supplier_id = :supplier"
+                filterExpression: "supplier_id = :supplier AND entity_type = :entity_type"
             );
 
             if (items == null || items.Count == 0)

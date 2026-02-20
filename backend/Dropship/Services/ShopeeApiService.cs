@@ -1215,6 +1215,110 @@ public class ShopeeApiService
         }
     }
 
+    /// <summary>
+    /// Atualiza o estoque de um item/produto ou de modelos específicos
+    /// Endpoint: POST /api/v2/product/update_stock
+    /// Ref: https://open.shopee.com/documents/v2/v2.product.update_stock
+    /// 
+    /// Pode ser usado para:
+    /// 1. Atualizar estoque do item inteiro (sem modelos)
+    /// 2. Atualizar estoque de modelos específicos (variações)
+    /// 
+    /// Exemplo 1 - Item sem variações:
+    /// {
+    ///   "item_id": 123456789,
+    ///   "stock_list": [
+    ///     { "stock": 100 }
+    ///   ]
+    /// }
+    /// 
+    /// Exemplo 2 - Item com variações:
+    /// {
+    ///   "item_id": 123456789,
+    ///   "stock_list": [
+    ///     { "model_id": 111, "stock": 100 },
+    ///     { "model_id": 222, "stock": 150 }
+    ///   ]
+    /// }
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="itemId">ID do item</param>
+    /// <param name="modelId"></param>
+    /// <param name="quantity"></param>
+    /// <returns>JSON response com confirmação da atualização</returns>
+    public async Task<JsonDocument> UpdateStockAsync(
+        long shopId,
+        long itemId,
+        long modelId,
+        int quantity)
+    {
+        _logger.LogInformation("Updating stock - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+
+        try
+        {
+            var accessToken = await GetCachedAccessTokenAsync(shopId);
+            var timestamp = ShopeeApiHelper.GetCurrentTimestamp();
+            const string path = "/api/v2/product/update_stock";
+            var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
+
+            var url = $"{urlHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
+
+            var updateData = new
+            {
+                item_id = itemId,
+                stock_list = new[]
+                {
+                    new
+                    {
+                        model_id = modelId,
+                        seller_stock = new[]
+                        {
+                            new
+                            {
+                                stock = quantity,
+                                location_id = "BRZ"
+                            }
+                        }
+                    }
+                }
+            };
+
+            var jsonToPost = JsonSerializer.Serialize(updateData, new JsonSerializerOptions 
+            { 
+                WriteIndented = false,
+                PropertyNameCaseInsensitive = false
+            });
+            _logger.LogInformation("JsonToPost: {jsonToPost}", jsonToPost);
+            
+            var content = new StringContent(
+                jsonToPost,
+                Encoding.UTF8,
+                "application/json");
+
+            _logger.LogDebug("UpdateStock URL - ShopId: {ShopId}, ItemId: {ItemId}, Body: {Body}", 
+                shopId, itemId, JsonSerializer.Serialize(updateData));
+
+            var response = await _httpClient.PostAsync(url, content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            _logger.LogDebug("UpdateStock Response - StatusCode: {StatusCode}, Content: {Content}",
+                response.StatusCode, responseContent);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Failed to update stock: {response.StatusCode} - {responseContent}");
+            }
+
+            _logger.LogInformation("Stock updated successfully - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+            return JsonDocument.Parse(responseContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating stock - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+            throw;
+        }
+    }
+
     #endregion
 
     #region Order Methods

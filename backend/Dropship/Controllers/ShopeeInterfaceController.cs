@@ -688,6 +688,74 @@ public class ShopeeInterfaceController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Atualiza estoque de um item/produto ou de modelos específicos
+    /// Endpoint: POST /api/v2/product/update_stock
+    /// Ref: https://open.shopee.com/documents/v2/v2.product.update_stock
+    /// 
+    /// Pode ser usado para:
+    /// 1. Atualizar estoque do item inteiro (sem modelos)
+    /// 2. Atualizar estoque de modelos específicos (variações)
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="itemId">ID do item</param>
+    /// <param name="modelId"></param>
+    /// <param name="request">Request contendo lista de estoques</param>
+    /// <remarks>
+    /// Exemplo 1 - Item sem variações:
+    /// {
+    ///   "stock_list": [
+    ///     { "stock": 100 }
+    ///   ]
+    /// }
+    /// 
+    /// Exemplo 2 - Item com variações:
+    /// {
+    ///   "stock_list": [
+    ///     { "model_id": 111, "stock": 100 },
+    ///     { "model_id": 222, "stock": 150 }
+    ///   ]
+    /// }
+    /// </remarks>
+    [HttpPut("items/{itemId}/models/{modelId}/stock")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> UpdateStock(
+        [FromQuery] long shopId,
+        [FromRoute] long itemId,
+        [FromRoute] long modelId,
+        [FromBody] UpdateStockRequest request)
+    {
+        _logger.LogInformation("[SHOPEE-TEST] UpdateStock - ShopId: {ShopId}, ItemId: {ItemId}, ModelId: {ModelId}", shopId, itemId, modelId);
+
+        try
+        {
+            if (shopId <= 0)
+            {
+                return BadRequest(new { error = "Valid shopId is required" });
+            }
+
+            if (itemId <= 0)
+            {
+                return BadRequest(new { error = "Valid itemId is required" });
+            }
+
+            if (modelId <= 0)
+            {
+                return BadRequest(new { error = "ModelId is required and cannot be empty" });
+            }
+
+            var result = await _shopeeApiService.UpdateStockAsync(shopId, itemId, modelId, request.Quantity);
+            return Ok(result.RootElement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error updating stock - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
     #endregion
 
     #region Order Endpoints

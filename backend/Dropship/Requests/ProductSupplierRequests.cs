@@ -40,7 +40,7 @@ public class UpdateSupplierPricingRequest
     public decimal? price { get; set; }
 
     [Range(0, long.MaxValue, ErrorMessage = "Quantity cannot be negative")]
-    public long? Quantity { get; set; }
+    public int? Quantity { get; set; }
     
     public string? SkuSupplier { get; set; }
 }

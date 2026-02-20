@@ -1,5 +1,6 @@
 using Amazon.DynamoDBv2.Model;
 using Dropship.Domain;
+using StackExchange.Redis;
 
 namespace Dropship.Repository;
 
@@ -126,22 +127,16 @@ public class ProductSkuSellerRepository(DynamoDbRepository repository, ILogger<P
     /// <summary>
     /// Atualiza o preço de um SKU
     /// </summary>
-    public async Task<ProductSkuSellerDomain?> UpdatePriceAsync(
-        string productId,
-        string sku,
-        string sellerId,
-        string marketplace,
-        decimal price)
+    public async Task<ProductSkuSellerDomain?> UpdatePriceAsync(ProductSkuSellerDomain domain, decimal price)
     {
-        logger.LogInformation("Updating seller price - ProductId: {ProductId}, SKU: {Sku}, Price: {Price}",
-            productId, sku, price);
+        logger.LogInformation("Updating seller price - ProductId: {ProductId}, SKU: {Sku}, Price: {Price}", domain.ProductId, domain.Sku, price);
 
         try
         {
             var key = new Dictionary<string, AttributeValue>
             {
-                { "PK", new AttributeValue { S = $"Product#{productId}" } },
-                { "SK", new AttributeValue { S = $"Sku#{sku}#Seller#{marketplace}#{sellerId}" } }
+                { "PK", new AttributeValue { S = domain.Pk } },
+                { "SK", new AttributeValue { S = domain.Sk } }
             };
 
             var updateExpression = "SET price = :price, updated_at = :updated_at";
@@ -158,11 +153,45 @@ public class ProductSkuSellerRepository(DynamoDbRepository repository, ILogger<P
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error updating price - ProductId: {ProductId}, SKU: {Sku}",
-                productId, sku);
+            logger.LogError(ex, "Error updating price - ProductId: {ProductId}, SKU: {Sku}", domain.ProductId, domain.Sku);
             throw;
         }
     }
+    
+    /// <summary>
+    /// Atualiza o preço de um SKU
+    /// </summary>
+    public async Task<ProductSkuSellerDomain?> UpdateStockAsync(ProductSkuSellerDomain domain, int quantity)
+    {
+        logger.LogInformation("Updating seller price - ProductId: {ProductId}, SKU: {Sku}, Price: {Price}", domain.ProductId, domain.Sku, domain.Price);
+
+        try
+        {
+            var key = new Dictionary<string, AttributeValue>
+            {
+                { "PK", new AttributeValue { S = domain.Pk } },
+                { "SK", new AttributeValue { S = domain.Sk } }
+            };
+
+            var updateExpression = "SET quantity = :quantity, updated_at = :updated_at";
+            var expressionAttributeValues = new Dictionary<string, AttributeValue>
+            {
+                { ":quantity", new AttributeValue { N = quantity.ToString() } },
+                { ":updated_at", new AttributeValue { S = DateTime.UtcNow.ToString("O") } }
+            };
+
+            await repository.UpdateItemAsync(key, updateExpression, expressionAttributeValues);
+
+            var item = await repository.GetItemAsync(key);
+            return item != null ? ProductSkuSellerMapper.ToDomain(item) : null;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error updating price - ProductId: {ProductId}, SKU: {Sku}", domain.ProductId, domain.Sku);
+            throw;
+        }
+    }
+    
     /// <summary>
     /// Remove um vendedor de um SKU
     /// </summary>
@@ -213,6 +242,38 @@ public class ProductSkuSellerRepository(DynamoDbRepository repository, ILogger<P
 
             var item = await repository.GetItemAsync(key);
             return item != null ? ProductSkuSellerMapper.ToDomain(item) : null;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting product-sku-seller record - ProductId: {ProductId}, SKU: {Sku}",
+                productId, sku);
+            throw;
+        }
+    }
+    
+    /// <summary>
+    /// Obtém um registro específico de Product-SKU-Seller
+    /// </summary>
+    public async Task<List<ProductSkuSellerDomain>?> GetProductSkuSellerBySupplier(
+        string productId, string sku, string marketplace, string supplierId)
+    {
+        logger.LogInformation("Getting product-sku-seller record - ProductId: {ProductId}, SKU: {Sku}, Supplier: {SupplierId}",
+            productId, sku, supplierId);
+
+        try
+        {
+            var items = await repository.QueryTableAsync(
+                keyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+                expressionAttributeValues: new Dictionary<string, AttributeValue>
+                {
+                    { ":pk", new AttributeValue { S = $"Product#{productId}" } },
+                    { ":sk", new AttributeValue { S = $"Sku#{sku}#Seller#{marketplace}" } },
+                    { ":supplier_id", new AttributeValue { S = supplierId } }
+                },
+                filterExpression: "supplier_id = :supplier_id"
+            );
+                
+            return items != null ? items.Select(ProductSkuSellerMapper.ToDomain).ToList() : null;
         }
         catch (Exception ex)
         {

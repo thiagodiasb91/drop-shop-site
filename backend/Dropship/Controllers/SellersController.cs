@@ -215,8 +215,7 @@ public class SellersController(ILogger<SellersController> logger,
             var updatedSkus = new List<ProductSkuSellerDomain>();
             foreach (var sku in skus)
             {
-                var updated = await productSkuSellerRepository.UpdatePriceAsync(
-                    productId, sku.Sku, sellerId, "shopee", request.Price);
+                var updated = await productSkuSellerRepository.UpdatePriceAsync(sku, request.Price);
                 if (updated != null)
                 {
                     updatedSkus.Add(updated);
@@ -314,8 +313,15 @@ public class SellersController(ILogger<SellersController> logger,
                 return BadRequest(new { error = "Product ID, SKU, and Seller ID are required" });
             }
 
-            var updated = await productSkuSellerRepository.UpdatePriceAsync(
-                productId, sku, sellerId, "shopee", request.Price);
+            var skuItem = await productSkuSellerRepository.GetProductSkuSellerAsync(productId, sku, sellerId, "shopee");
+            
+            if (skuItem == null)
+            {
+                logger.LogWarning("SKU not found for seller - ProductId: {ProductId}, SKU: {Sku}, SellerId: {SellerId}", productId, sku, sellerId);
+                return NotFound(new { error = "SKU not found for this seller in this product" });
+            }
+            
+            var updated = await productSkuSellerRepository.UpdatePriceAsync(skuItem, request.Price);
 
             var skuSeller = await productSkuSellerRepository.GetProductSkuSellerAsync(productId, sku, sellerId, "shopee");
             

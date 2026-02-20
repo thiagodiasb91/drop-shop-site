@@ -216,6 +216,7 @@ builder.Services.AddScoped<KardexService>();
 builder.Services.AddScoped<PaymentService>();
 builder.Services.AddScoped<AuthenticationService>();
 builder.Services.AddScoped<ShopeeService>();
+builder.Services.AddScoped<StockServices>();
 builder.Services.AddMemoryCache();
 builder.Services.AddAuthorization();
 

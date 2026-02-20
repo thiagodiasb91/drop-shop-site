@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using Dropship.Repository;
 using Dropship.Requests;
 using Dropship.Responses;
+using Dropship.Services;
+using JetBrains.Annotations;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Dropship.Controllers;
@@ -13,13 +15,16 @@ namespace Dropship.Controllers;
 [ApiController]
 [Route("suppliers")]
 [Authorize]
-public class SupplierController(SupplierRepository supplierRepository, 
-                                UserRepository userRepository, 
-                                ProductRepository productRepository,
-                                ProductSkuSupplierRepository productSkuSupplierRepository,
-                                ProductSupplierRepository productSupplierRepository,
-                                SkuRepository skuRepository,
-                                ILogger<SupplierController> logger)
+public class SupplierController(
+    SupplierRepository supplierRepository,
+    UserRepository userRepository,
+    ProductRepository productRepository,
+    ProductSkuSupplierRepository productSkuSupplierRepository,
+    ProductSupplierRepository productSupplierRepository,
+    SkuRepository skuRepository,
+    StockServices stockServices,
+    ILogger<SupplierController> logger,
+    ShopeeService shopeeService)
     : ControllerBase
 {
     /// <summary>
@@ -530,8 +535,11 @@ public class SupplierController(SupplierRepository supplierRepository,
             var updated = await productSkuSupplierRepository.UpdateSkuSupplier(
                 productId, sku, supplierId, request.SkuSupplier, request.price, request.Quantity);
 
+            if(request.Quantity.HasValue)
+                await stockServices.UpdateStockSupplier(supplierId, productId, sku, request.Quantity.Value);
+            
             if (updated == null)
-            {
+            { 
                 logger.LogWarning("Product-SKU-Supplier record not found - ProductId: {ProductId}, SKU: {Sku}",
                     productId, sku);
                 return NotFound(new { error = "Product-SKU-Supplier record not found" });
@@ -639,6 +647,7 @@ public class SupplierController(SupplierRepository supplierRepository,
             }
 
             await productSupplierRepository.RemoveProductSupplierAsync(supplierId, productId);
+            
             logger.LogInformation("Supplier removed successfully - ProductId: {ProductId}", productId);
 
             return NoContent();
