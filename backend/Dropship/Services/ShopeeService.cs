@@ -9,33 +9,17 @@ namespace Dropship.Services;
 /// <summary>
 /// Serviço para processar eventos de Shopee
 /// </summary>
-public class ShopeeService
+public class ShopeeService(
+    SellerRepository sellerRepository,
+    UserRepository userRepository,
+    ShopeeApiService shopeeApiService,
+    ProductSellerRepository productSellerRepository,
+    IAmazonSQS sqsClient,
+    ILogger<ShopeeService> logger,
+    ProductRepository productRepository)
 {
-    private readonly SellerRepository _sellerRepository;
-    private readonly UserRepository _userRepository;
-    private readonly ShopeeApiService _shopeeApiService;
-    private readonly HttpClient _httpClient;
-    private readonly IAmazonSQS _sqsClient;
-    private readonly ILogger<ShopeeService> _logger;
     private const string SqsQueueUrl = "https://sqs.us-east-1.amazonaws.com/511758682977/shoppe-new-order-received-queue.fifo";
-    private const string CacheServiceUrl = "https://c069zuj7g8.execute-api.us-east-1.amazonaws.com/test/cache";
-
-    public ShopeeService(
-        SellerRepository sellerRepository,
-        UserRepository userRepository,
-        ShopeeApiService shopeeApiService,
-        HttpClient httpClient,
-        IAmazonSQS sqsClient,
-        ILogger<ShopeeService> logger)
-    {
-        _sellerRepository = sellerRepository;
-        _userRepository = userRepository;
-        _shopeeApiService = shopeeApiService;
-        _httpClient = httpClient;
-        _sqsClient = sqsClient;
-        _logger = logger;
-    }
-
+    
     /// <summary>
     /// Autentica com Shopee usando o authorization code e armazena os tokens
     /// Verifica se o Seller já existe pelo shop_id, se não existir cria um novo
@@ -43,27 +27,27 @@ public class ShopeeService
     /// </summary>
     public async Task AuthenticateShopAsync(string code, long shopId, string email)
     {
-        _logger.LogInformation("Authenticating shop with Shopee - ShopId: {ShopId}, Email: {Email}", shopId, email);
+        logger.LogInformation("Authenticating shop with Shopee - ShopId: {ShopId}, Email: {Email}", shopId, email);
 
         try
         {
             // Validar se o usuário existe
-            var user = await _userRepository.GetUser(email);
+            var user = await userRepository.GetUser(email);
             if (user == null)
             {
-                _logger.LogWarning("User not found - Email: {Email}", email);
+                logger.LogWarning("User not found - Email: {Email}", email);
                 throw new InvalidOperationException($"User with email {email} not found");
             }
 
             // Obter tokens da API Shopee
-            var (accessToken, refreshToken, expiresIn) = await _shopeeApiService.GetTokenShopLevelAsync(code, shopId);
+            var accessToken = await shopeeApiService.GetCachedAccessTokenAsync(shopId, code);
             
-            var existingSeller = await _sellerRepository.GetSellerByShopIdAsync(shopId);
+            var existingSeller = await sellerRepository.GetSellerByShopIdAsync(shopId);
             
             SellerDomain seller;
             if (existingSeller != null)
             {
-                _logger.LogInformation("Seller already exists - ShopId: {ShopId}, SellerId: {SellerId}", 
+                logger.LogInformation("Seller already exists - ShopId: {ShopId}, SellerId: {SellerId}", 
                     shopId, existingSeller.SellerId);
                 seller = existingSeller;
             }
@@ -79,8 +63,8 @@ public class ShopeeService
                     Marketplace = "shopee"
                 };
 
-                var createdSeller = await _sellerRepository.CreateSellerAsync(seller);
-                _logger.LogInformation("Seller created successfully - SellerId: {SellerId}, ShopId: {ShopId}", 
+                var createdSeller = await sellerRepository.CreateSellerAsync(seller);
+                logger.LogInformation("Seller created successfully - SellerId: {SellerId}, ShopId: {ShopId}", 
                     createdSeller.SellerId, shopId);
                 
                 seller = createdSeller;
@@ -88,66 +72,17 @@ public class ShopeeService
 
             // Atualizar usuário com o resource_id (sellerId)
             user.ResourceId = seller.SellerId;
-            await _userRepository.UpdateUserAsync(user);
-            _logger.LogInformation("User updated with resource_id - Email: {Email}, ResourceId: {ResourceId}", 
+            await userRepository.UpdateUserAsync(user);
+            logger.LogInformation("User updated with resource_id - Email: {Email}, ResourceId: {ResourceId}", 
                 email, seller.SellerId);
 
-            // Armazenar tokens no cache
-            await CacheTokensAsync(shopId.ToString(), accessToken, refreshToken, expiresIn);
-
-            _logger.LogInformation("Shop authenticated successfully - ShopId: {ShopId}, Email: {Email}, SellerId: {SellerId}", 
+            logger.LogInformation("Shop authenticated successfully - ShopId: {ShopId}, Email: {Email}, SellerId: {SellerId}", 
                 shopId, email, seller.SellerId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error authenticating shop - ShopId: {ShopId}, Email: {Email}", shopId, email);
+            logger.LogError(ex, "Error authenticating shop - ShopId: {ShopId}, Email: {Email}", shopId, email);
             throw;
-        }
-    }
-
-    /// <summary>
-    /// Armazena tokens no cache
-    /// </summary>
-    private async Task CacheTokensAsync(string shopId, string accessToken, string refreshToken, long expiresIn)
-    {
-        _logger.LogInformation("Caching tokens for shop - ShopId: {ShopId}", shopId);
-
-        try
-        {
-            var expiresAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + expiresIn;
-            
-            var tokenData = new
-            {
-                items = new object[]
-                {
-                    new { key = $"{shopId}_access_token", value = accessToken },
-                    new { key = $"{shopId}_refresh_token", value = refreshToken },
-                    new { key = $"{shopId}_access_token_expires_at", value = expiresAt }
-                }
-            };
-
-            var content = new StringContent(
-                JsonSerializer.Serialize(tokenData),
-                System.Text.Encoding.UTF8,
-                "application/json");
-
-            var response = await _httpClient.PostAsync(CacheServiceUrl, content);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning("Failed to cache tokens - ShopId: {ShopId}, StatusCode: {StatusCode}",
-                    shopId, response.StatusCode);
-                // Não lançar exceção pois os tokens foram obtidos com sucesso
-            }
-            else
-            {
-                _logger.LogInformation("Tokens cached successfully - ShopId: {ShopId}", shopId);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error caching tokens - ShopId: {ShopId}", shopId);
-            // Não lançar exceção pois os tokens foram obtidos com sucesso
         }
     }
 
@@ -157,28 +92,28 @@ public class ShopeeService
     /// </summary>
     public async Task<bool> ProcessOrderReceivedAsync(long shopId, string orderSn, string status)
     {
-        _logger.LogInformation("Processing order received - OrderSn: {OrderSn}, Status: {Status}, ShopId: {ShopId}", 
+        logger.LogInformation("Processing order received - OrderSn: {OrderSn}, Status: {Status}, ShopId: {ShopId}", 
             orderSn, status, shopId);
 
         try
         {
             // Verificar se a loja existe
-            var shopExists = await _sellerRepository.VerifyIfShopExistsAsync(shopId);
+            var shopExists = await sellerRepository.VerifyIfShopExistsAsync(shopId);
             if (!shopExists)
             {
-                _logger.LogWarning("Shop not found: {ShopId}", shopId);
+                logger.LogWarning("Shop not found: {ShopId}", shopId);
                 throw new InvalidOperationException($"Shop {shopId} not found");
             }
 
             // Enviar mensagem para SQS
             await SendOrderToSqsAsync(orderSn, status, shopId.ToString());
 
-            _logger.LogInformation("Order processed successfully - OrderSn: {OrderSn}", orderSn);
+            logger.LogInformation("Order processed successfully - OrderSn: {OrderSn}", orderSn);
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing order: {OrderSn}", orderSn);
+            logger.LogError(ex, "Error processing order: {OrderSn}", orderSn);
             throw;
         }
     }
@@ -188,7 +123,7 @@ public class ShopeeService
     /// </summary>
     private async Task SendOrderToSqsAsync(string orderSn, string status, string shopId)
     {
-        _logger.LogInformation("Sending order to SQS - OrderSn: {OrderSn}, ShopId: {ShopId}", orderSn, shopId);
+        logger.LogInformation("Sending order to SQS - OrderSn: {OrderSn}, ShopId: {ShopId}", orderSn, shopId);
 
         try
         {
@@ -209,14 +144,202 @@ public class ShopeeService
                 MessageGroupId = messageGroupId
             };
 
-            var response = await _sqsClient.SendMessageAsync(sendMessageRequest);
+            var response = await sqsClient.SendMessageAsync(sendMessageRequest);
 
-            _logger.LogInformation("Message sent to SQS - MessageId: {MessageId}, GroupId: {GroupId}", 
+            logger.LogInformation("Message sent to SQS - MessageId: {MessageId}, GroupId: {GroupId}", 
                 response.MessageId, messageGroupId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error sending message to SQS - OrderSn: {OrderSn}", orderSn);
+            logger.LogError(ex, "Error sending message to SQS - OrderSn: {OrderSn}", orderSn);
+            throw;
+        }
+    }
+
+    public async Task UploadProduct(ProductSellerDomain productSeller, List<ProductSkuSellerDomain> productsSkuSellers)
+    {
+        logger.LogInformation("Uploading product - ProductId: {ProductId}, SellerId: {SellerId}, SkuCount: {SkuCount}",
+            productSeller.ProductId, productSeller.SellerId, productsSkuSellers.Count);
+
+        try
+        {
+            var productDefinition = await productRepository.GetProductByIdAsync(productSeller.ProductId);
+            var productImages = await productRepository.GetImagesByProductIdAsync(productSeller.ProductId);
+
+            var imagesId = productImages.Select(x => x.ImageId).Distinct().ToArray();
+            
+            var request = new
+            {
+                original_price = productSeller.Price,
+                description = productDefinition.Description,
+                weight = 0.3m,
+                item_name = productDefinition.Name,
+                dimension = new
+                {
+                    package_length = 10,
+                    package_width = 20,
+                    package_height = 20
+                },
+                logistic_info = new[]
+                {
+                    new
+                    {
+                        logistic_id = 91008,
+                        enabled = true
+                    }
+                },
+
+                category_id = productDefinition.CategoryId,
+
+                image = new
+                {
+                    image_id_list = imagesId
+                },
+
+                brand = new
+                {
+                    brand_id = 0,
+                    original_brand_name = "No Brand"
+                },
+
+                condition = "NEW",
+                item_dangerous = 0,
+
+                seller_stock = new[]
+                {
+                    new
+                    {
+                        stock = 0
+                    }
+                }
+            };
+            
+            logger.LogDebug("Creating product on Shopee - ProductId: {ProductId}", productSeller.ProductId);
+            var productApiResponse = await shopeeApiService.AddItemAsync(productSeller.StoreId, request);
+
+            var itemId = productApiResponse.RootElement.GetProperty("response")
+                                           .GetProperty("item_id")
+                                           .GetInt64();
+
+            productSeller.MarketplaceItemId = itemId;
+            
+            await productSellerRepository.UpdateMarketplaceItemIdAsync(productSeller);
+            logger.LogInformation("Product created - ItemId: {ItemId}, ProductId: {ProductId}", itemId, productSeller.ProductId);
+
+            // Agrupar SKUs por cores e tamanhos
+            var colors = productsSkuSellers.Select( x=> x.Color).Distinct().ToList();
+            var sizes = productsSkuSellers.Select( x=> x.Size).Distinct().ToList();
+          
+            // Construir variações para Shopee
+            var standardiseTierVariation = new[]
+            {
+                new
+                {
+                    variation_id = 0,
+                    variation_group_id = 0,
+                    variation_name = "Cor",
+                    variation_option_list = colors.Select(color => new
+                    {
+                        variation_option_id = 0,
+                        variation_option_name = color
+                    }).ToArray()
+                },
+                new
+                {
+                    variation_id = 0,
+                    variation_group_id = 0,
+                    variation_name = "Tamanho",
+                    variation_option_list = sizes.Select(size => new
+                    {
+                        variation_option_id = 0,
+                        variation_option_name = size
+                    }).ToArray()
+                }
+            };
+
+            // Construir modelos (SKUs com preço e estoque)
+            var models = productsSkuSellers.Select((sku, index) => new
+            {
+                tier_index = new[] { colors.IndexOf(sku.Color), sizes.IndexOf(sku.Size) },
+                model_sku = sku.Sku,
+                original_price = sku.Price,
+                seller_stock = new[]
+                {
+                    new
+                    {
+                        stock = sku.Quantity
+                    }
+                }
+            }).ToArray();
+
+            logger.LogDebug("Initializing tier variations - ItemId: {ItemId}, ColorCount: {ColorCount}, SizeCount: {SizeCount}",
+                itemId, colors.Count, sizes.Count);
+            
+            var responseInitSkus = await shopeeApiService.InitTierVariationAsync(productSeller.StoreId, itemId, standardiseTierVariation, models);
+            
+            logger.LogDebug("Initializing tier variations - ItemId: {ItemId}, ColorCount: {ColorCount}, SizeCount: {SizeCount}",
+                itemId, colors.Count, sizes.Count);
+            
+            // Processar resposta e atualizar model_id dos SKUs
+            if (responseInitSkus.RootElement.TryGetProperty("response", out var responseElement))
+            {
+                if (responseElement.TryGetProperty("model", out var modelsElement))
+                {
+                    var modelsArray = modelsElement.EnumerateArray().ToList();
+                    
+                    logger.LogDebug("Processing {Count} models from Shopee response", modelsArray.Count);
+
+                    // Mapear model_sku para model_id a partir da resposta
+                    var modelIdMap = new Dictionary<string, long>();
+                    foreach (var model in modelsArray)
+                    {
+                        if (model.TryGetProperty("model_sku", out var skuElement) &&
+                            model.TryGetProperty("model_id", out var modelIdElement))
+                        {
+                            var sku = skuElement.GetString();
+                            var modelId = modelIdElement.GetInt64();
+                            modelIdMap[sku] = modelId;
+
+                            logger.LogDebug("Mapped SKU to ModelId - SKU: {Sku}, ModelId: {ModelId}", sku, modelId);
+                        }
+                    }
+
+                    // Atualizar cada ProductSkuSeller com seu model_id
+                    foreach (var productSkuSeller in productsSkuSellers)
+                    {
+                        if (modelIdMap.TryGetValue(productSkuSeller.Sku, out var modelId))
+                        {
+                            productSkuSeller.MarketplaceModelId = modelId.ToString();
+                            productSkuSeller.MarketplaceProductId = itemId.ToString();
+                            
+                            await productSellerRepository.UpdateMarketplaceModelIdAsync(
+                                productSeller.ProductId,
+                                productSkuSeller.Sku,
+                                productSeller.SellerId,
+                                "shopee",
+                                modelId.ToString(),
+                                itemId.ToString()
+                            );
+
+                            logger.LogInformation("Updated SKU with ModelId - SKU: {Sku}, ModelId: {ModelId}, ProductId: {ProductId}",
+                                productSkuSeller.Sku, modelId, productSeller.ProductId);
+                        }
+                        else
+                        {
+                            logger.LogWarning("SKU not found in Shopee response - SKU: {Sku}, ProductId: {ProductId}",
+                                productSkuSeller.Sku, productSeller.ProductId);
+                        }
+                    }
+                }
+            }
+
+            logger.LogInformation("Product uploaded with variations - ItemId: {ItemId}, ProductId: {ProductId}, SkuCount: {SkuCount}",
+                itemId, productSeller.ProductId, productsSkuSellers.Count);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error uploading product - ProductId: {ProductId}, SellerId: {SellerId}",
+                productSeller.ProductId, productSeller.SellerId);
             throw;
         }
     }

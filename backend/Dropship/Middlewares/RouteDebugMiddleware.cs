@@ -14,8 +14,9 @@ public class RouteDebugMiddleware
     {
         await _next(context);
 
-        if (context.Response.StatusCode == StatusCodes.Status404NotFound)
+        if (context.Response.StatusCode == StatusCodes.Status404NotFound && context.Response.Body.Length == 0)
         {
+            
             var path = context.Request.Path.Value;
             var method = context.Request.Method;
 

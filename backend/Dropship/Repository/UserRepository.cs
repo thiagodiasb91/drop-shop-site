@@ -32,7 +32,7 @@ public class UserRepository(IAmazonDynamoDB amazonDynamoDb) : DynamoDbRepository
             { "id", new AttributeValue { S = user.Id } },
             { "email", new AttributeValue { S = user.Email } },
             { "role", new AttributeValue { S = user.Role } },
-            { "entityType", new AttributeValue { S = "user" } }
+            { "entity_type", new AttributeValue { S = "user" } }
         };
 
         await PutItemAsync(item);
@@ -48,7 +48,7 @@ public class UserRepository(IAmazonDynamoDB amazonDynamoDb) : DynamoDbRepository
             { "id", new AttributeValue { S = user.Id } },
             { "email", new AttributeValue { S = user.Email } },
             { "role", new AttributeValue { S = user.Role } },
-            { "entityType", new AttributeValue { S = "user" } }
+            { "entity_type", new AttributeValue { S = "user" } }
         };
 
         if (!string.IsNullOrWhiteSpace(user.ResourceId))
@@ -58,5 +58,19 @@ public class UserRepository(IAmazonDynamoDB amazonDynamoDb) : DynamoDbRepository
 
         await PutItemAsync(item);
         return user;
+    }
+
+    public async Task SetResourceId(string? userEmail, string supplierId)
+    {
+        if (string.IsNullOrWhiteSpace(userEmail))
+            throw new ArgumentException("User email cannot be null or empty", nameof(userEmail));
+        
+        var user = await GetUser(userEmail);
+        
+        if (user == null)
+            throw new InvalidOperationException($"User with email {userEmail} not found");
+        
+        user.ResourceId = supplierId;
+        await UpdateUserAsync(user);
     }
 }

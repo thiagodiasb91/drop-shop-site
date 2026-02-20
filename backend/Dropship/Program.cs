@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Text;
 using System.IdentityModel.Tokens.Jwt;
+using System.Net;
 using Amazon.CognitoIdentityProvider;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
@@ -41,10 +43,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("DefaultCorsPolicy", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "https://d35nbs4n8cbsw3.cloudfront.net", "https://d2rjoik9cb60m4.cloudfront.net")
+        policy.WithOrigins( AuthConfig.RedirectMap.Select( x=> x.Key).ToArray())
               .AllowCredentials()
               .WithHeaders("Content-Type", "X-Amz-Date", "Authorization", "X-Api-Key", "X-Amz-Security-Token")
-              .WithMethods("GET", "POST", "PUT", "OPTIONS");
+              .WithMethods("GET", "POST", "PUT","DELETE", "OPTIONS");
     });
 });
 
@@ -68,7 +70,6 @@ builder.Services.AddAuthentication(options =>
                         IssuerSigningKey = new SymmetricSecurityKey(
                             Encoding.UTF8.GetBytes(AuthConfig.SESSION_SECRET)
                         ),
-
                         ClockSkew = TimeSpan.Zero
                     };
 
@@ -78,9 +79,8 @@ builder.Services.AddAuthentication(options =>
                         OnMessageReceived = context =>
                         {
                             if (context.HttpContext.Request.Method == "OPTIONS")
-                            {
                                 context.NoResult();
-                            }
+                            
                             return Task.CompletedTask;
                         }
                     };
@@ -163,7 +163,28 @@ builder.Services.AddScoped<IAmazonSQS>(_ => new AmazonSQSClient(
     Amazon.RegionEndpoint.USEast1)
 );
 
-builder.Services.AddHttpClient();
+
+ServicePointManager.ServerCertificateValidationCallback += (sender, certificate, chain, errors) => true;
+// Configure HttpClient with SSL certificate validation bypass for development (macOS compatibility)
+builder.Services.AddHttpClient("default")
+    .ConfigurePrimaryHttpMessageHandler(() =>
+    {
+        return new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => true
+        };
+    });
+
+// Registrar HttpClient factory
+builder.Services.AddTransient(sp =>
+{
+    var factory = sp.GetRequiredService<IHttpClientFactory>();
+    return factory.CreateClient("default");
+});
+
+// Registrar CacheService usando DynamoDB para persistir tokens
+builder.Services.AddScoped<ICacheService, DynamoDbCacheService>();
+
 builder.Services.AddScoped<ShopeeApiService>();
 builder.Services.AddScoped<DynamoDbRepository>();
 builder.Services.AddScoped<SupplierRepository>();
@@ -172,6 +193,11 @@ builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<KardexRepository>();
 builder.Services.AddScoped<StockRepository>();
 builder.Services.AddScoped<ProductRepository>();
+builder.Services.AddScoped<SkuRepository>();
+builder.Services.AddScoped<ProductSkuSupplierRepository>();
+builder.Services.AddScoped<ProductSupplierRepository>();
+builder.Services.AddScoped<ProductSkuSellerRepository>();
+builder.Services.AddScoped<ProductSellerRepository>();
 builder.Services.AddScoped<KardexService>();
 builder.Services.AddScoped<PaymentService>();
 builder.Services.AddScoped<AuthenticationService>();
@@ -185,22 +211,21 @@ JwtSecurityTokenHandler.DefaultOutboundClaimTypeMap.Clear();
 var app = builder.Build();
 
 // Enable Swagger/OpenAPI
-//if (app.Environment.IsDevelopment())
-//{
+if (app.Environment.IsDevelopment())
+{
     app.UseSwagger();
     app.UseSwaggerUI(options =>
     {
-        var prefix = !app.Environment.IsDevelopment() ? "/dev" : ""; // o /dev é quando está hospedado na AWS
+        var prefix = !Debugger.IsAttached ? "/dev" : ""; // o /dev é quando está hospedado na AWS
         options.SwaggerEndpoint($"{prefix}/swagger/v1/swagger.json", "Dropship API v1");
         options.RoutePrefix = "swagger";
     });
-//}
+}
 
 // Enable CORS middleware
 
 app.UseMiddleware<CorrelationIdMiddleware>();
-app.UseMiddleware<RequestBodyLoggingMiddleware>();
-app.UseMiddleware<ResponseBodyLoggingMiddleware>();
+app.UseMiddleware<HttpBodyLoggingMiddleware>();
 app.UseMiddleware<RouteDebugMiddleware>();
 
 app.UseRouting();
@@ -209,9 +234,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.UsePathBase("/bff");
 
 app.UseCors("DefaultCorsPolicy");
 
-app.MapGet("/", () => "Dropship working!");
+app.MapGet("/", () => $"Dropship working! {Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}");
 app.Run();
