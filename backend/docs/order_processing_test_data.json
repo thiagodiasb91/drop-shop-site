@@ -1,0 +1,138 @@
+{
+  "test_data": {
+    "seller": {
+      "PK": {"S": "Seller#69611396-ee23-4a96-9161-7c9928679056"},
+      "SK": {"S": "META"},
+      "entityType": {"S": "seller"},
+      "sellerId": {"S": "69611396-ee23-4a96-9161-7c9928679056"},
+      "sellerName": {"S": "Test Seller - Order Processing"},
+      "shop_id": {"N": "341431138"},
+      "marketplace": {"S": "shopee"},
+      "createdAt": {"N": "1740000000"}
+    },
+    "product": {
+      "PK": {"S": "Product#3a60aa94111c491c97c293f990c0eddb"},
+      "SK": {"S": "META#test-product"},
+      "entityType": {"S": "product"},
+      "id": {"S": "3a60aa94111c491c97c293f990c0eddb"},
+      "name": {"S": "Camiseta Teste Processamento Pedidos"},
+      "description": {"S": "Camiseta de teste para validação do fluxo de processamento de pedidos"},
+      "imageUrl": {"S": "https://example.com/image.jpg"},
+      "categoryId": {"N": "106554"},
+      "createdAt": {"S": "2026-02-20T00:00:00Z"}
+    },
+    "sku": {
+      "PK": {"S": "Product#3a60aa94111c491c97c293f990c0eddb"},
+      "SK": {"S": "Sku#CROSS_P"},
+      "entityType": {"S": "sku"},
+      "id": {"S": "sku-001"},
+      "productId": {"S": "3a60aa94111c491c97c293f990c0eddb"},
+      "sku": {"S": "CROSS_P"},
+      "color": {"S": "Azul"},
+      "size": {"S": "P"},
+      "quantity": {"N": "100"},
+      "createdAt": {"S": "2026-02-20T00:00:00Z"}
+    },
+    "supplier": {
+      "PK": {"S": "Supplier#051728cf88c143b5814ec9706ab61ddb"},
+      "SK": {"S": "META"},
+      "entityType": {"S": "supplier"},
+      "supplierId": {"S": "051728cf88c143b5814ec9706ab61ddb"},
+      "supplierName": {"S": "Test Supplier - Order Processing"},
+      "email": {"S": "supplier@test.com"},
+      "phone": {"S": "11999999999"},
+      "createdAt": {"S": "2026-02-20T00:00:00Z"}
+    },
+    "product_sku_supplier_primary": {
+      "PK": {"S": "Product#3a60aa94111c491c97c293f990c0eddb"},
+      "SK": {"S": "Sku#CROSS_P#Supplier#051728cf88c143b5814ec9706ab61ddb"},
+      "entity_type": {"S": "product_sku_supplier"},
+      "entityType": {"S": "product_sku_supplier"},
+      "productId": {"S": "3a60aa94111c491c97c293f990c0eddb"},
+      "product_id": {"S": "3a60aa94111c491c97c293f990c0eddb"},
+      "sku": {"S": "CROSS_P"},
+      "supplierId": {"S": "051728cf88c143b5814ec9706ab61ddb"},
+      "supplier_id": {"S": "051728cf88c143b5814ec9706ab61ddb"},
+      "sku_supplier": {"S": "CROSS_P"},
+      "price": {"N": "49.90"},
+      "production_price": {"N": "49.90"},
+      "quantity": {"N": "80"},
+      "priority": {"N": "1"},
+      "created_at": {"S": "2026-02-20T00:00:00Z"},
+      "createdAt": {"S": "2026-02-20T00:00:00Z"}
+    },
+    "product_sku_supplier_secondary": {
+      "PK": {"S": "Product#3a60aa94111c491c97c293f990c0eddb"},
+      "SK": {"S": "Sku#CROSS_P#Supplier#supplier-secondary-001"},
+      "entity_type": {"S": "product_sku_supplier"},
+      "entityType": {"S": "product_sku_supplier"},
+      "productId": {"S": "3a60aa94111c491c97c293f990c0eddb"},
+      "product_id": {"S": "3a60aa94111c491c97c293f990c0eddb"},
+      "sku": {"S": "CROSS_P"},
+      "supplierId": {"S": "supplier-secondary-001"},
+      "supplier_id": {"S": "supplier-secondary-001"},
+      "sku_supplier": {"S": "CROSS_P"},
+      "price": {"N": "45.00"},
+      "production_price": {"N": "45.00"},
+      "quantity": {"N": "50"},
+      "priority": {"N": "2"},
+      "created_at": {"S": "2026-02-20T00:00:00Z"},
+      "createdAt": {"S": "2026-02-20T00:00:00Z"}
+    }
+  },
+  "curl_commands": {
+    "test_success": "curl -X POST http://localhost:5000/orders/process -H \"Content-Type: application/json\" -d '{\"ordersn\": \"2501080NKAMXA8\", \"status\": \"READY_TO_SHIP\", \"update_time\": 1736323997, \"shop_id\": 341431138}'",
+    "test_wrong_status": "curl -X POST http://localhost:5000/orders/process -H \"Content-Type: application/json\" -d '{\"ordersn\": \"2501080NKAMXA9\", \"status\": \"UNPAID\", \"update_time\": 1736323998, \"shop_id\": 341431138}'",
+    "test_empty_ordersn": "curl -X POST http://localhost:5000/orders/process -H \"Content-Type: application/json\" -d '{\"ordersn\": \"\", \"status\": \"READY_TO_SHIP\", \"update_time\": 1736323997, \"shop_id\": 341431138}'",
+    "test_invalid_shopid": "curl -X POST http://localhost:5000/orders/process -H \"Content-Type: application/json\" -d '{\"ordersn\": \"2501080NKAMXA8\", \"status\": \"READY_TO_SHIP\", \"update_time\": 1736323997, \"shop_id\": 0}'",
+    "test_multiple_items": "curl -X POST http://localhost:5000/orders/process -H \"Content-Type: application/json\" -d '{\"ordersn\": \"2501080NKAMXAC\", \"status\": \"READY_TO_SHIP\", \"update_time\": 1736323997, \"shop_id\": 341431138}'"
+  },
+  "dynamodb_queries": {
+    "verify_supplier_stock_updated": "SELECT * FROM \"catalog-core\" WHERE PK = 'Product#3a60aa94111c491c97c293f990c0eddb' AND SK = 'Sku#CROSS_P#Supplier#051728cf88c143b5814ec9706ab61ddb';",
+    "list_kardex_entries": "SELECT * FROM \"catalog-core\" WHERE PK = 'Kardex#Sku#CROSS_P' ORDER BY SK DESC LIMIT 10;",
+    "list_payment_queue": "SELECT * FROM \"catalog-core\" WHERE PK = 'PaymentQueue#Seller#69611396-ee23-4a96-9161-7c9928679056' AND begins_with(SK, 'PaymentStatus#Pending#');",
+    "list_all_suppliers_for_sku": "SELECT * FROM \"catalog-core\" WHERE SK LIKE 'Sku#CROSS_P#Supplier#%' AND PK = 'Product#3a60aa94111c491c97c293f990c0eddb';",
+    "verify_seller_exists": "SELECT * FROM \"catalog-core\" WHERE PK = 'Seller#69611396-ee23-4a96-9161-7c9928679056' AND SK = 'META';"
+  },
+  "expected_results_after_test": {
+    "kardex_entry": {
+      "description": "Nova entrada de Kardex após processar pedido com 3 unidades",
+      "PK": "Kardex#Sku#CROSS_P",
+      "SK": "{ULID_GERADO}",
+      "entity_type": "kardex",
+      "product_id": "3a60aa94111c491c97c293f990c0eddb",
+      "quantity": 3,
+      "operation": "remove",
+      "ordersn": "2501080NKAMXA8",
+      "supplier_id": "051728cf88c143b5814ec9706ab61ddb",
+      "shop_id": 341431138,
+      "date": "2026-02-20T{HH:MM:SS}Z"
+    },
+    "payment_queue_entry": {
+      "description": "Nova entrada de Payment Queue após processar pedido",
+      "PK": "PaymentQueue#Seller#69611396-ee23-4a96-9161-7c9928679056",
+      "SK": "PaymentStatus#Pending#Supplier#051728cf88c143b5814ec9706ab61ddb#Order#2501080NKAMXA8#Sku#CROSS_P",
+      "entity_type": "paymentQueue",
+      "product_id": "3a60aa94111c491c97c293f990c0eddb",
+      "sku": "CROSS_P",
+      "quantity": 3,
+      "value": 149.70,
+      "status": "pending",
+      "created_at": "2026-02-20T{HH:MM:SS}Z",
+      "shop_id": 341431138,
+      "seller_id": "69611396-ee23-4a96-9161-7c9928679056",
+      "ordersn": "2501080NKAMXA8",
+      "supplier_id": "051728cf88c143b5814ec9706ab61ddb"
+    },
+    "supplier_stock_after": {
+      "description": "Stock após reduzir 3 unidades (80 - 3 = 77)",
+      "quantity": 77
+    }
+  },
+  "cleanup_commands": {
+    "delete_kardex": "DELETE FROM \"catalog-core\" WHERE PK = 'Kardex#Sku#CROSS_P';",
+    "delete_payment_queue": "DELETE FROM \"catalog-core\" WHERE PK = 'PaymentQueue#Seller#69611396-ee23-4a96-9161-7c9928679056' AND begins_with(SK, 'PaymentStatus#Pending#');",
+    "reset_supplier_stock": "UPDATE \"catalog-core\" SET quantity = 80 WHERE PK = 'Product#3a60aa94111c491c97c293f990c0eddb' AND SK = 'Sku#CROSS_P#Supplier#051728cf88c143b5814ec9706ab61ddb';"
+  }
+}
+

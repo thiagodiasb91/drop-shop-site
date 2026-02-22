@@ -16,7 +16,8 @@ public class SellersController(ILogger<SellersController> logger,
                             SkuRepository skuRepository,
                             ProductSkuSellerRepository productSkuSellerRepository,
                             ProductSellerRepository productSellerRepository,
-                            ProductSupplierRepository productSupplierRepository
+                            ProductSupplierRepository productSupplierRepository,
+                            PaymentRepository paymentRepository
 
      ) : ControllerBase 
 {
@@ -181,6 +182,7 @@ public class SellersController(ILogger<SellersController> logger,
     /// Similar ao Supplier, atualiza o preço em todos os SKUs vinculados ao produto
     /// </summary>
     /// <param name="productId">ID do produto</param>
+    /// <param name="supplierId"></param>
     /// <param name="request">Novo preço</param>
     /// <returns>Lista de SKUs com preço atualizado</returns>
     [HttpPut("products/{productId}/suppliers/{supplierId}")]
@@ -433,6 +435,107 @@ public class SellersController(ILogger<SellersController> logger,
         catch (Exception ex)
         {
             logger.LogError(ex, "Error getting SKUs for product");
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Obtém lista de pagamentos do vendedor
+    /// Retorna os pagamentos como estão, sem agrupamento ou consolidação
+    /// </summary>
+    /// <param name="status">Filtro opcional por status: pending, paid, failed</param>
+    /// <returns>Lista de pagamentos</returns>
+    [HttpGet("payments/summary")]
+    [ProducesResponseType(typeof(List<PaymentQueueDomain>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetPaymentsSummary([FromQuery] string? status = null)
+    {
+        var sellerId = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "resourceId")?.Value;
+        logger.LogInformation("Getting payments for seller - SellerId: {SellerId}, Status: {Status}", 
+            sellerId, status ?? "all");
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(sellerId))
+            {
+                logger.LogWarning("Seller ID not found in claims");
+                return BadRequest(new { error = "Seller ID not found in authentication claims" });
+            }
+
+            // Obter pagamentos do vendedor
+            List<PaymentQueueDomain> payments;
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                payments = await paymentRepository.GetPaymentQueueBySellerAndStatus(sellerId, status);
+            }
+            else
+            {
+                payments = await paymentRepository.GetPaymentQueueBySellerId(sellerId);
+            }
+
+            if (payments == null || payments.Count == 0)
+            {
+                logger.LogInformation("No payments found for seller - SellerId: {SellerId}", sellerId);
+                return Ok(new List<PaymentQueueDomain>());
+            }
+
+            logger.LogInformation("Returning {Count} payments - SellerId: {SellerId}", payments.Count, sellerId);
+
+            return Ok(payments);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting payments - SellerId: {SellerId}", sellerId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Obtém detalhes de um pagamento específico incluindo lista de produtos
+    /// </summary>
+    /// <param name="paymentId">ID do pagamento</param>
+    /// <returns>Detalhes do pagamento com lista de produtos</returns>
+    [HttpGet("payments/{paymentId}")]
+    [ProducesResponseType(typeof(PaymentQueueDomain), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPaymentDetail(string paymentId)
+    {
+        var sellerId = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "resourceId")?.Value;
+        logger.LogInformation("Getting payment details - PaymentId: {PaymentId}, SellerId: {SellerId}",
+            paymentId, sellerId);
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(paymentId) || string.IsNullOrWhiteSpace(sellerId))
+            {
+                return BadRequest(new { error = "Payment ID and Seller ID are required" });
+            }
+
+            // Obter todos os pagamentos do vendedor
+            var allPayments = await paymentRepository.GetPaymentQueueBySellerId(sellerId);
+
+            if (allPayments == null || allPayments.Count == 0)
+            {
+                logger.LogWarning("No payments found for seller - SellerId: {SellerId}", sellerId);
+                return NotFound(new { error = "Payment not found" });
+            }
+
+            // Procurar o pagamento pelo PaymentId
+            var payment = allPayments.FirstOrDefault(p => p.PaymentId == paymentId);
+
+            if (payment == null)
+            {
+                logger.LogWarning("Payment not found - PaymentId: {PaymentId}, SellerId: {SellerId}", paymentId, sellerId);
+                return NotFound(new { error = "Payment not found" });
+            }
+
+            logger.LogInformation("Returning payment details - PaymentId: {PaymentId}", paymentId);
+
+            return Ok(payment);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting payment details - PaymentId: {PaymentId}", paymentId);
             return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
         }
     }

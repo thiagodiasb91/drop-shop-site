@@ -27,7 +27,7 @@ public static class KardexMapper
             PK = item.ContainsKey("PK") ? item["PK"].S : string.Empty,
             SK = item.ContainsKey("SK") ? item["SK"].S : string.Empty,
             Date = item.ContainsKey("date") ? item["date"].S : string.Empty,
-            EntityType = item.ContainsKey("entityType") ? item["entityType"].S : string.Empty,
+            EntityType = item.ContainsKey("entity_type") ? item["entity_type"].S : string.Empty,
             Operation = item.ContainsKey("operation") ? item["operation"].S : string.Empty,
             ProductId = item.ContainsKey("product_id") ? item["product_id"].S : string.Empty,
             Quantity = item.ContainsKey("quantity") && int.TryParse(item["quantity"].N, out var qty) ? qty : 0,

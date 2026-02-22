@@ -282,6 +282,45 @@ public class ProductSkuSupplierRepository
             throw;
         }
     }
+
+    /// <summary>
+    /// Atualiza o estoque do fornecedor (subtrai a quantidade vendida)
+    /// Chamado quando um pedido é processado e precisa descontar do estoque do fornecedor
+    /// </summary>
+    public async Task UpdateSupplierStockAsync(string productId, string sku, string supplierId, int quantity)
+    {
+        _logger.LogInformation(
+            "Updating supplier stock - ProductId: {ProductId}, SKU: {SKU}, SupplierId: {SupplierId}, Quantity: {Quantity}",
+            productId, sku, supplierId, quantity);
+
+        try
+        {
+            var key = new Dictionary<string, AttributeValue>
+            {
+                { "PK", new AttributeValue { S = $"Product#{productId}" } },
+                { "SK", new AttributeValue { S = $"Sku#{sku}#Supplier#{supplierId}" } }
+            };
+
+            await _repository.UpdateItemAsync(
+                key: key,
+                updateExpression: "SET quantity = quantity - :quantity",
+                expressionAttributeValues: new Dictionary<string, AttributeValue>
+                {
+                    { ":quantity", new AttributeValue { N = quantity.ToString() } }
+                }
+            );
+
+            _logger.LogInformation("Supplier stock updated - ProductId: {ProductId}, SKU: {SKU}, SupplierId: {SupplierId}",
+                productId, sku, supplierId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Error updating supplier stock - ProductId: {ProductId}, SKU: {SKU}, SupplierId: {SupplierId}",
+                productId, sku, supplierId);
+            throw;
+        }
+    }
 }
 
 

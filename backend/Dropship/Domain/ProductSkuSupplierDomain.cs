@@ -16,8 +16,9 @@ public class ProductSkuSupplierDomain
     public string SkuSupplier { get; set; } = default!;
     public string SupplierId { get; set; } = default!;
 
-    public decimal Price { get; set; } 
-    public long Quantity { get; set; } 
+    public decimal Price { get; set; }
+    public long Quantity { get; set; }
+    public int Priority { get; set; } = 0;
 }
 
 public static class ProductSkuSupplierBuilder

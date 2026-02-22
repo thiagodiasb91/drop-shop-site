@@ -212,11 +212,13 @@ builder.Services.AddScoped<ProductSkuSupplierRepository>();
 builder.Services.AddScoped<ProductSupplierRepository>();
 builder.Services.AddScoped<ProductSkuSellerRepository>();
 builder.Services.AddScoped<ProductSellerRepository>();
+builder.Services.AddScoped<KardexRepository>();
 builder.Services.AddScoped<KardexService>();
-builder.Services.AddScoped<PaymentService>();
+builder.Services.AddScoped<PaymentRepository>();
 builder.Services.AddScoped<AuthenticationService>();
 builder.Services.AddScoped<ShopeeService>();
 builder.Services.AddScoped<StockServices>();
+builder.Services.AddScoped<OrderProcessingService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddAuthorization();
 
