@@ -17,7 +17,7 @@ public class SellersController(ILogger<SellersController> logger,
                             ProductSkuSellerRepository productSkuSellerRepository,
                             ProductSellerRepository productSellerRepository,
                             ProductSupplierRepository productSupplierRepository,
-                            PaymentRepository paymentRepository
+                            PaymentService paymentService
 
      ) : ControllerBase 
 {
@@ -462,15 +462,15 @@ public class SellersController(ILogger<SellersController> logger,
                 return BadRequest(new { error = "Seller ID not found in authentication claims" });
             }
 
-            // Obter pagamentos do vendedor
+            // Obter pagamentos do vendedor via service
             List<PaymentQueueDomain> payments;
             if (!string.IsNullOrWhiteSpace(status))
             {
-                payments = await paymentRepository.GetPaymentQueueBySellerAndStatus(sellerId, status);
+                payments = await paymentService.GetPaymentsBySellerAndStatus(sellerId, status);
             }
             else
             {
-                payments = await paymentRepository.GetPaymentQueueBySellerId(sellerId);
+                payments = await paymentService.GetPaymentsBySellerId(sellerId);
             }
 
             if (payments == null || payments.Count == 0)
@@ -511,8 +511,8 @@ public class SellersController(ILogger<SellersController> logger,
                 return BadRequest(new { error = "Payment ID and Seller ID are required" });
             }
 
-            // Obter todos os pagamentos do vendedor
-            var allPayments = await paymentRepository.GetPaymentQueueBySellerId(sellerId);
+            // Obter todos os pagamentos do vendedor via service
+            var allPayments = await paymentService.GetPaymentsBySellerId(sellerId);
 
             if (allPayments == null || allPayments.Count == 0)
             {

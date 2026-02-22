@@ -14,6 +14,7 @@ public class PaymentQueueDomain
     public string PaymentId { get; set; } = default!; // ULID único
     public string SellerId { get; set; } = default!;
     public string SupplierId { get; set; } = default!;
+    public string? SupplierName { get; set; } // Nome do fornecedor (enriquecido via service)
     public string OrderSn { get; set; } = default!;
 
     // 🏪 Shop Info
