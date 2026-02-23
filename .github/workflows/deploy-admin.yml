@@ -1,0 +1,41 @@
+name: Deploy Frontend Admin
+
+on:
+  push:
+    branches: [ develop, master ]
+    paths:
+      - 'frontend/admin/**'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      ENV: ${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install & Build
+        working-directory: frontend/admin
+        run: |
+          npm install
+          npm run build
+
+      - name: S3 Sync
+        run: |
+          # O nome do bucket segue a nova lógica: drop-shop-dev-admin-frontend
+          aws s3 sync frontend/admin/dist/ s3://drop-shop-${{ env.ENV }}-admin-frontend --delete
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: "us-east-1"
+
+      - name: CloudFront Invalidation
+        run: |
+          # Busca o ID da distribuição via Secret (mais rápido que consultar o TF toda hora)
+          DIST_ID=${{ env.ENV == 'prod' && secrets.CF_ID_PROD || secrets.CF_ID_DEV }}
+          aws cloudfront create-invalidation --distribution-id $DIST_ID --paths "/*"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: "us-east-1"
