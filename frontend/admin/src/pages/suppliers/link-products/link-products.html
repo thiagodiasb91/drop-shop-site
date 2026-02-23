@@ -46,7 +46,25 @@
               <span class="text-[10px] text-slate-500 font-bold uppercase whitespace-nowrap px-3"
                 x-text="product.skusLoaded ? `${product.skus.length} variações` : ''"></span>
             </label>
+            <div x-show="product.selected && product.skusLoaded"
+              class="rounded-lg max-w-sm bg-indigo-500/5 px-4 py-3 border-t border-b border-slate-700/50 flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-1">
+                <i class="ph ph-arrows-merge text-indigo-400"></i>
+                <span class="text-[10px] uppercase font-black text-slate-400 tracking-widest">Preço Global</span>
+              </div>
 
+              <div class="flex items-center gap-2" x-data="{ globalPrice: '' }">
+                <div class="relative">
+                  <span class="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-500">R$</span>
+                  <input type="number" step="0.01" placeholder="0,00" x-model="globalPrice"
+                    class="w-24 rounded border border-slate-600 bg-slate-900 py-1 pl-6 pr-2 text-xs text-slate-200 outline-none focus:border-indigo-500" />
+                </div>
+                <button type="button" @click="applyPriceToAll(product, globalPrice)"
+                  class="bg-indigo-600 hover:bg-indigo-500 px-3 py-1 rounded text-[10px] font-bold text-white transition uppercase shadow-lg">
+                  Aplicar em tudo
+                </button>
+              </div>
+            </div>
           </div>
           <div class="p-4 bg-slate-900/20" x-show="product.selected && product.skusLoaded" x-transition>
             <div class="flex flex-col gap-6">

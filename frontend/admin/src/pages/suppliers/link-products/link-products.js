@@ -263,9 +263,10 @@ export function getData() {
 
       stateHelper.toast('Vínculos salvos com sucesso', 'success')
     },
-    cancel() {
-      // Simplesmente recarrega os produtos do estado original
-      this.loadProducts(true);
+    async cancel() {
+      this.loading = true;
+      await this.loadProducts(true);
+      this.loading = false;
       stateHelper.toast('Alterações descartadas.', 'info');
     },
     get filteredProducts() {
