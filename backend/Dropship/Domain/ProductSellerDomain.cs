@@ -74,6 +74,37 @@ public static class ProductSellerMapper
         };
     }
 
+    /// <summary>
+    /// Converte ProductSellerDomain para Dictionary pronto para salvar no DynamoDB
+    /// </summary>
+    public static Dictionary<string, Amazon.DynamoDBv2.Model.AttributeValue> ToDynamoDb(this ProductSellerDomain domain)
+    {
+        var item = new Dictionary<string, Amazon.DynamoDBv2.Model.AttributeValue>
+        {
+            { "PK", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.Pk } },
+            { "SK", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.Sk } },
+            { "entity_type", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.EntityType } },
+            { "product_id", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.ProductId } },
+            { "product_name", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.ProductName } },
+            { "seller_id", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.SellerId } },
+            { "supplier_id", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.SupplierId } },
+            { "marketplace", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.Marketplace } },
+            { "store_id", new Amazon.DynamoDBv2.Model.AttributeValue { N = domain.StoreId.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
+            { "marketplace_item_id", new Amazon.DynamoDBv2.Model.AttributeValue { N = domain.MarketplaceItemId.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
+            { "price", new Amazon.DynamoDBv2.Model.AttributeValue { N = domain.Price.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) } },
+            { "sku_count", new Amazon.DynamoDBv2.Model.AttributeValue { N = domain.SkuCount.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
+            { "created_at", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.CreatedAt.ToString("O") } },
+        };
+
+        // Adicionar updated_at se fornecido
+        if (domain.UpdatedAt.HasValue)
+        {
+            item["updated_at"] = new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.UpdatedAt.Value.ToString("O") };
+        }
+
+        return item;
+    }
+
     public static List<ProductSellerDomain> ToDomainList(this List<Dictionary<string, Amazon.DynamoDBv2.Model.AttributeValue>> items)
     {
         return items.Select(ToDomain).ToList();

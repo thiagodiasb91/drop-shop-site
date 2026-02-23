@@ -43,7 +43,7 @@ public class SellersController(ILogger<SellersController> logger,
                 return BadRequest(new { error = "Seller ID not found in authentication claims" });
             }
 
-            var products = await productSellerRepository.GetProductsBySellerAsync(sellerId);
+            var products = await productSellerRepository.GetProductsBySeller(sellerId);
             if (products == null || products.Count == 0)
             {
                 logger.LogWarning("No products found for seller - SellerId: {SellerId}", sellerId);
@@ -64,12 +64,12 @@ public class SellersController(ILogger<SellersController> logger,
 
     /// <summary>
     /// Vincula um vendedor a um produto com preço
-    /// Cria um registro META e registros para cada SKU
+    /// Cria um registro META e registros para cada SKU com o fornecedor especificado
     /// A quantidade é atualizada automaticamente via sistema
     /// </summary>
     /// <param name="productId">ID do produto que deve existir no banco de dados</param>
-    /// <param name="supplierId"></param>
-    /// <param name="request">Dados do vínculo (preço, marketplace, store_id, SKU mappings)</param>
+    /// <param name="supplierId">ID do fornecedor</param>
+    /// <param name="request">Dados do vínculo (preço, SKU mappings)</param>
     /// <returns>Lista de SKUs vinculados</returns>
     [HttpPost("products/{productId}/suppliers/{supplierId}")]
     [ProducesResponseType(typeof(ProductSkuSellerListResponse), StatusCodes.Status201Created)]
@@ -82,8 +82,8 @@ public class SellersController(ILogger<SellersController> logger,
     {
         var sellerId = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "resourceId")?.Value;
         logger.LogInformation(
-            "Linking seller to product - ProductId: {ProductId}, SellerId: {SellerId}",
-            productId, sellerId);
+            "Linking seller to product - ProductId: {ProductId}, SellerId: {SellerId}, SupplierId: {SupplierId}",
+            productId, sellerId, supplierId);
 
         try
         {
@@ -91,13 +91,6 @@ public class SellersController(ILogger<SellersController> logger,
             {
                 logger.LogWarning("Invalid product, supplierId or seller ID provided");
                 return BadRequest(new { error = "Product ID, supplierId and Seller ID are required" });
-            }
-
-            var productSeller = await productSellerRepository.GetProductSellerAsync(sellerId, supplierId, "shopee", productId);
-            
-            if(productSeller is not null)
-            {
-                return BadRequest(new { error = "Seller already linked to this product" });
             }
             
             var productSupplier = await productSupplierRepository.GetProductBySupplier(supplierId, productId);
@@ -123,50 +116,119 @@ public class SellersController(ILogger<SellersController> logger,
             }
 
             var seller = await sellerRepository.GetSellerByIdAsync(sellerId);
-            var skusToPublish = new List<ProductSkuSellerDomain>();
+            var skusToLink = new List<ProductSkuSellerDomain>();
+            var skusToUpdate = new List<ProductSkuSellerDomain>();
+            var skusToSkip = new List<ProductSkuSellerDomain>();
+
+            // Criar vínculos para todos os SKUs (apenas os novos)
             foreach (var mapping in skus)
             {
                 var skuMapping = request.SkuMappings.FirstOrDefault(s => s.Sku == mapping.Sku);
-                
-                var domain = ProductSkuSellerFactory.Create(
+                var price = skuMapping?.Price ?? request.Price;
+
+                // Verificar se já existe vínculo do seller com este SKU
+                var existingSku = await productSkuSellerRepository.GetProductSkuSellerAsync(
+                    productId, 
+                    mapping.Sku, 
+                    sellerId, 
+                    "shopee");
+
+                if (existingSku != null)
+                {
+                    if (existingSku.SupplierId == supplierId)
+                    {
+                        skusToSkip.Add(existingSku);
+                    }
+                    else
+                    {
+                        // Se já existe, adicionar à lista de SKUs para atualizar supplier
+                        logger.LogInformation(
+                            "SKU already linked to seller, will update supplier - ProductId: {ProductId}, SKU: {Sku}",
+                            productId, mapping.Sku);
+                        skusToUpdate.Add(existingSku);
+                    }
+                }
+                else if(existingSku == null)
+                {
+                    // Se não existe, criar novo vínculo
+                    var domain = ProductSkuSellerFactory.Create(
+                        productId,
+                        mapping.Sku,
+                        sellerId,
+                        "shopee",
+                        seller.ShopId,
+                        price,
+                        mapping.Color,
+                        mapping.Size,
+                        supplierId
+                    );
+                    skusToLink.Add(domain);
+                }
+            }
+
+            // Atualizar supplier_id nos SKUs que já existem (PUT)
+            var updatedExistingSkus = new List<ProductSkuSellerDomain>();
+            foreach (var sku in skusToUpdate)
+            {
+                var updated = await productSkuSellerRepository.UpdateSupplierAsync(sku, supplierId);
+                if (updated != null)
+                {
+                    updatedExistingSkus.Add(updated);
+                }
+            }
+
+            // Vincular os SKUs novos (que ainda não tinham vínculo)
+            var linkedRecords = new List<ProductSkuSellerDomain>();
+            if (skusToLink.Count > 0)
+            {
+                linkedRecords = await productSkuSellerRepository.LinkSellerToProductAsync(skusToLink);
+            }
+
+            // Combinar SKUs novos com os atualizados
+            var allProcessedSkus = linkedRecords.Concat(updatedExistingSkus).ToList();
+            allProcessedSkus = allProcessedSkus.Concat(skusToSkip).ToList();
+
+            // Criar registro META para busca rápida de produtos por vendedor (se não existir)
+            var productSeller = await productSellerRepository.GetProductSeller(sellerId, "shopee", productId);
+            
+            if (productSeller == null)
+            {
+                productSeller = await productSellerRepository.CreateProductSellerAsync(
                     productId,
-                    mapping.Sku,
+                    product.Name,
                     sellerId,
                     "shopee",
                     seller.ShopId,
-                    skuMapping?.Price ?? request.Price,
-                    mapping.Color,
-                    mapping.Size,
-                    supplierId
+                    request.Price,
+                    supplierId,
+                    allProcessedSkus.Count
                 );
-                skusToPublish.Add(domain);
+                
+                logger.LogInformation(
+                    "Seller linked to product successfully - ProductId: {ProductId}, SellerId: {SellerId}, SKUs: {SkuCount}",
+                    productId, sellerId, allProcessedSkus.Count);
+
+                await shopeeService.UploadProduct(productSeller, allProcessedSkus);
             }
+            else
+            {
+                // Atualizar registro META existente (PUT)
+                logger.LogInformation(
+                    "Updating ProductSeller supplier - ProductId: {ProductId}, SellerId: {SellerId}, NewSupplierId: {SupplierId}",
+                    productId, sellerId, supplierId);
 
-            // Vincular vendedor ao produto (cria registros para cada domain)
-            var linkedRecords = await productSkuSellerRepository.LinkSellerToProductAsync(skusToPublish);
+                productSeller.SupplierId = supplierId;
+                productSeller.Price = request.Price;
+                productSeller.SkuCount = allProcessedSkus.Count;
+                productSeller.UpdatedAt = DateTime.UtcNow;
 
-            // Criar registro META para busca rápida de produtos por vendedor
-            productSeller = await productSellerRepository.CreateProductSellerAsync(
-                productId,
-                product.Name,
-                sellerId,
-                "shopee",
-                seller.ShopId,
-                request.Price,
-                supplierId,
-                linkedRecords.Count
-            );
-
-            logger.LogInformation(
-                "Seller linked to product successfully - ProductId: {ProductId}, SellerId: {SellerId}, SKUs: {SkuCount}",
-                productId, sellerId, linkedRecords.Count);
-
-            await shopeeService.UploadProduct(productSeller, skusToPublish);
+                await productSellerRepository.Update(productSeller);
+            }
             
             return CreatedAtAction(
                 nameof(GetSkusBySellerInProduct),
                 new { productId },
-                linkedRecords.ToListResponse()
+                allProcessedSkus.ToListResponse()
             );
         }
         catch (Exception ex)
@@ -206,13 +268,13 @@ public class SellersController(ILogger<SellersController> logger,
                 return BadRequest(new { error = "Product ID and Seller ID are required" });
             }
 
-            var productSeller = await productSellerRepository.GetProductSellerAsync(sellerId, supplierId, "shopee", productId);
-            if (productSeller == null)            
+            var productSeller = await productSellerRepository.GetProductSeller(sellerId, "shopee", productId);
+            if (productSeller == null)
             {
                 logger.LogWarning("Seller not linked to product - ProductId: {ProductId}, SellerId: {SellerId}", productId, sellerId);
                 return NotFound(new { error = "Seller not linked to this product" });
-            }   
-            
+            }
+
             // Obter todos os SKUs do vendedor neste produto
             var skus = await productSkuSellerRepository.GetSkusBySellerAsync(productId, sellerId);
             if (skus == null || skus.Count == 0)
@@ -241,7 +303,7 @@ public class SellersController(ILogger<SellersController> logger,
             }
 
             productSeller.Price = request.Price;
-            await productSellerRepository.UpdatePrice(productSeller);
+            await productSellerRepository.Update(productSeller);
             
             logger.LogInformation("Seller product price updated - ProductId: {ProductId}, SellerId: {SellerId}, UpdatedSKUs: {Count}", productId, sellerId, updatedSkus.Count);
 
@@ -382,7 +444,7 @@ public class SellersController(ILogger<SellersController> logger,
                 return BadRequest(new { error = "Product ID and Seller ID are required" });
             }
 
-            var product = await productSellerRepository.GetProductSellerAsync(sellerId, supplierId, "shopee", productId);
+            var product = await productSellerRepository.GetProductSeller(sellerId, "shopee", productId);
             
             if (product is null)
             {
@@ -398,7 +460,7 @@ public class SellersController(ILogger<SellersController> logger,
             }
 
             // Remover registro META do vendedor no produto
-            await productSellerRepository.RemoveProductSellerAsync(sellerId, supplierId, "shopee", productId);
+            await productSellerRepository.RemoveProductSellerAsync(sellerId, "shopee", productId);
 
             logger.LogInformation("Seller removed successfully from product - ProductId: {ProductId}, SellerId: {SellerId}, RemovedSKUs: {Count}",
                 productId, sellerId, sellerSkus.Count);

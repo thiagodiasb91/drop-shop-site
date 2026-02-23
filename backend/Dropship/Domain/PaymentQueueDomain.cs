@@ -58,7 +58,7 @@ public static class PaymentQueueBuilder
         return new PaymentQueueDomain
         {
             PK = $"Seller#{sellerId}",
-            SK = $"Payment#{paymentId}#Order#{orderSn}",
+            SK = $"Payment#{paymentId}",
             PaymentId = paymentId,
             SellerId = sellerId,
             SupplierId = supplierId,

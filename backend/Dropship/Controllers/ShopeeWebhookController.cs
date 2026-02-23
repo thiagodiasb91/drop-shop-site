@@ -15,7 +15,6 @@ namespace Dropship.Controllers;
 public class ShopeeWebhookController(
     ShopeeService shopeeService,
     ShopeeApiService shopeeApiService,
-    SellerRepository sellerRepository,
     ILogger<ShopeeWebhookController> logger)
     : ControllerBase
 {
@@ -71,7 +70,7 @@ public class ShopeeWebhookController(
         }
     }
 
-    [HttpGet("/sellers/{email}/store/code")]
+    [HttpGet("sellers/{email}/store/code")]
     public async Task<IActionResult> MockResponseTest([FromRoute] string email, [FromQuery] string code, [FromQuery(Name = "shop_id")] long shopId)
     {
         return Ok(await shopeeApiService.GetCachedAccessTokenAsync(shopId, code));
@@ -82,7 +81,7 @@ public class ShopeeWebhookController(
     /// </summary>
     /// <param name="request">Payload do webhook do Shopee</param>
     /// <returns>Resposta do webhook</returns>
-    [HttpPost("/webhook")]
+    [HttpPost("webhook")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(ShopeeWebhookResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ShopeeWebhookResponse), StatusCodes.Status400BadRequest)]

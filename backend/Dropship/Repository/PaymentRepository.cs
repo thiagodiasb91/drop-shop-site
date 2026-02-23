@@ -149,5 +149,139 @@ public class PaymentRepository
         }
     }
 
+    /// <summary>
+    /// Obtém múltiplos pagamentos pelos seus IDs
+    /// Usado para processar links InfinityPay com múltiplos pagamentos
+    /// </summary>
+    public async Task<List<PaymentQueueDomain>> GetPaymentsByIdsAsync(List<string> paymentIds)
+    {
+        _logger.LogInformation("Getting payments by IDs - Count: {Count}", paymentIds.Count);
+
+        if (paymentIds == null || paymentIds.Count == 0)
+        {
+            _logger.LogWarning("No payment IDs provided");
+            return new List<PaymentQueueDomain>();
+        }
+
+        try
+        {
+            var payments = new List<PaymentQueueDomain>();
+
+            // Buscar cada pagamento pelo ID
+            foreach (var paymentId in paymentIds)
+            {
+                var payment = await GetPaymentByIdAsync(paymentId);
+                if (payment != null)
+                {
+                    payments.Add(payment);
+                }
+                else
+                {
+                    _logger.LogWarning("Payment not found - PaymentId: {PaymentId}", paymentId);
+                }
+            }
+
+            _logger.LogInformation("Found {Count} payments out of {Total} requested",
+                payments.Count, paymentIds.Count);
+
+            return payments;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting payments by IDs");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Obtém um pagamento específico pelo seu PaymentId
+    /// </summary>
+    public async Task<PaymentQueueDomain?> GetPaymentByIdAsync(string paymentId)
+    {
+        _logger.LogInformation("Getting payment by ID - PaymentId: {PaymentId}", paymentId);
+
+        try
+        {
+            var items = await _repository.QueryTableAsync(
+                keyConditionExpression: "SK = :sk",
+                expressionAttributeValues: new Dictionary<string, AttributeValue>
+                {
+                    { ":sk", new AttributeValue { S = $"Payment#{paymentId}" } }
+                },
+                indexName: "GSI_RELATIONS"
+            );
+
+            if (items == null || items.Count == 0)
+            {
+                _logger.LogWarning("Payment not found - PaymentId: {PaymentId}", paymentId);
+                return null;
+            }
+
+            var payment = await _repository.GetItemAsync(items[0]);
+            
+            return PaymentQueueMapper.ToDomain(payment);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting payment by ID - PaymentId: {PaymentId}", paymentId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Atualiza o status de um pagamento
+    /// </summary>
+    public async Task<bool> UpdatePaymentStatusAsync(string sellerId, string paymentId, string status, string? completedAt = null)
+    {
+        _logger.LogInformation("Updating payment status - SellerId: {SellerId}, PaymentId: {PaymentId}, Status: {Status}",
+            sellerId, paymentId, status);
+
+        try
+        {
+            // Buscar o pagamento primeiro para obter a SK completa
+            var payment = await GetPaymentByIdAsync(paymentId);
+            if (payment == null)
+            {
+                _logger.LogWarning("Payment not found for update - PaymentId: {PaymentId}", paymentId);
+                return false;
+            }
+
+            var updateExpression = "SET #status = :status";
+            var expressionAttributeValues = new Dictionary<string, AttributeValue>
+            {
+                { ":status", new AttributeValue { S = status } }
+            };
+
+            // Adicionar completed_at se fornecido
+            if (!string.IsNullOrWhiteSpace(completedAt))
+            {
+                updateExpression += ", completed_at = :completedAt";
+                expressionAttributeValues[":completedAt"] = new AttributeValue { S = completedAt };
+            }
+
+            await _repository.UpdateItemAsync(
+                key: new Dictionary<string, AttributeValue>
+                {
+                    { "PK", new AttributeValue { S = $"Seller#{sellerId}" } },
+                    { "SK", new AttributeValue { S = payment.SK } }
+                },
+                updateExpression: updateExpression,
+                expressionAttributeValues: expressionAttributeValues
+            );
+
+            _logger.LogInformation("Payment status updated successfully - PaymentId: {PaymentId}, Status: {Status}",
+                paymentId, status);
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Error updating payment status - SellerId: {SellerId}, PaymentId: {PaymentId}, Status: {Status}",
+                sellerId, paymentId, status);
+            throw;
+        }
+    }
+
 }
 

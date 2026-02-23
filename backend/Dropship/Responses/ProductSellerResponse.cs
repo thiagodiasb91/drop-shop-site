@@ -69,7 +69,7 @@ public static class ProductSkuSellerResponseMapper
             SellerId = domain.SellerId,
             Marketplace = domain.Marketplace,
             StoreId = domain.StoreId,
-            MarketplaceProductId = domain.MarketplaceProductId,
+            MarketplaceProductId = domain.MarketplaceItemId,
             MarketplaceModelId = domain.MarketplaceModelId,
             Price = domain.Price,
             SupplierId = domain.SupplierId,

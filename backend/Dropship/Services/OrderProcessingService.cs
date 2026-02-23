@@ -7,7 +7,7 @@ namespace Dropship.Services;
 public class OrderProcessingService(
     ShopeeApiService shopeeApiService,
     KardexService kardexService,
-    PaymentRepository paymentRepository,
+    PaymentService paymentService,
     SellerRepository sellerRepository,
     ProductSkuSellerRepository productSkuSellerRepository,
     SkuRepository skuRepository,
@@ -203,7 +203,7 @@ public class OrderProcessingService(
                 products: paymentProducts
             );
 
-            await paymentRepository.CreatePaymentQueueAsync(paymentQueue);
+            await paymentService.CreatePaymentQueueAsync(paymentQueue);
 
             logger.LogInformation(
                 "Supplier payment processed - SupplierId: {SupplierId}, OrderSn: {OrderSn}, ConsolidatedItems: {Count}",

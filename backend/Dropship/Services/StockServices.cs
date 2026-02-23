@@ -20,7 +20,7 @@ public class StockServices (ILogger<StockServices> logger,
         {
             logger.LogInformation("Updating stock for product {ProductId}, sku {Sku} in store {StoreId} with quantity {Quantity}", productToUpdate.ProductId, productToUpdate.Sku, productToUpdate.StoreId, quantity);
             
-            await shopeeApiService.UpdateStockAsync(productToUpdate.StoreId, long.Parse(productToUpdate.MarketplaceProductId), long.Parse(productToUpdate.MarketplaceModelId), quantity);
+            await shopeeApiService.UpdateStockAsync(productToUpdate.StoreId, long.Parse(productToUpdate.MarketplaceItemId), long.Parse(productToUpdate.MarketplaceModelId), quantity);
             await productSkuSellerRepository.UpdateStockAsync(productToUpdate, quantity);
         }
     }

@@ -23,7 +23,7 @@ public class ProductSkuSellerDomain
     // Marketplace
     public string Marketplace { get; set; } = default!; // ex: "shopee", "mercado_livre"
     public long StoreId { get; set; } // ID da loja no marketplace (ex: shop_id Shopee)
-    public string MarketplaceProductId { get; set; } = string.Empty; // ID do produto no marketplace
+    public string MarketplaceItemId { get; set; } = string.Empty; // ID do produto no marketplace
     public string MarketplaceModelId { get; set; } = string.Empty; // ID do modelo/SKU no marketplace
 
     // Dados
@@ -104,7 +104,7 @@ public static class ProductSkuSellerMapper
             // Marketplace
             Marketplace = item.ContainsKey("marketplace") ? item["marketplace"].S : "",
             StoreId = item.ContainsKey("store_id") && long.TryParse(item["store_id"].N, out var storeId) ? storeId : 0,
-            MarketplaceProductId = item.ContainsKey("marketplace_item_id") ? item["marketplace_item_id"].S : "",
+            MarketplaceItemId = item.ContainsKey("marketplace_item_id") ? item["marketplace_item_id"].S : "",
             MarketplaceModelId = item.ContainsKey("marketplace_model_id") ? item["marketplace_model_id"].S : "",
 
             // Dados
@@ -115,6 +115,40 @@ public static class ProductSkuSellerMapper
             CreatedAt = createdAt,
             UpdatedAt = updatedAtString != null ? updatedAt : null
         };
+    }
+
+    /// <summary>
+    /// Converte ProductSkuSellerDomain para Dictionary pronto para salvar no DynamoDB
+    /// </summary>
+    public static Dictionary<string, Amazon.DynamoDBv2.Model.AttributeValue> ToDynamoDb(this ProductSkuSellerDomain domain)
+    {
+        var item = new Dictionary<string, Amazon.DynamoDBv2.Model.AttributeValue>
+        {
+            { "PK", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.Pk } },
+            { "SK", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.Sk } },
+            { "entity_type", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.EntityType } },
+            { "product_id", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.ProductId } },
+            { "sku", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.Sku } },
+            { "supplier_id", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.SupplierId } },
+            { "seller_id", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.SellerId } },
+            { "marketplace", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.Marketplace } },
+            { "store_id", new Amazon.DynamoDBv2.Model.AttributeValue { N = domain.StoreId.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
+            { "marketplace_item_id", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.MarketplaceItemId } },
+            { "marketplace_model_id", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.MarketplaceModelId } },
+            { "price", new Amazon.DynamoDBv2.Model.AttributeValue { N = domain.Price.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) } },
+            { "quantity", new Amazon.DynamoDBv2.Model.AttributeValue { N = domain.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
+            { "color", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.Color } },
+            { "size", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.Size } },
+            { "created_at", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.CreatedAt.ToString("O") } }
+        };
+
+        // Adicionar updated_at se fornecido
+        if (domain.UpdatedAt.HasValue)
+        {
+            item["updated_at"] = new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.UpdatedAt.Value.ToString("O") };
+        }
+
+        return item;
     }
 
     public static List<ProductSkuSellerDomain> ToDomainList(this List<Dictionary<string, Amazon.DynamoDBv2.Model.AttributeValue>> items)

@@ -1,6 +1,5 @@
 using Amazon.DynamoDBv2.Model;
 using Dropship.Domain;
-using StackExchange.Redis;
 
 namespace Dropship.Repository;
 
@@ -54,30 +53,11 @@ public class ProductSkuSellerRepository(DynamoDbRepository repository, ILogger<P
 
     /// <summary>
     /// Cria um registro de Product-SKU-Seller no banco
-    /// Recebe o domain já construído
+    /// Recebe o domain já construído e o persiste usando o mapper
     /// </summary>
     private async Task<ProductSkuSellerDomain> CreateProductSkuSellerAsync(ProductSkuSellerDomain domain)
     {
-        var createdAtUtc = DateTime.UtcNow.ToString("O");
-
-        var item = new Dictionary<string, AttributeValue>
-        {
-            { "PK", new AttributeValue { S = domain.Pk } },
-            { "SK", new AttributeValue { S = domain.Sk } },
-            { "entity_type", new AttributeValue { S = domain.EntityType } },
-            { "product_id", new AttributeValue { S = domain.ProductId } },
-            { "sku", new AttributeValue { S = domain.Sku } },
-            { "supplier_id", new AttributeValue() { S = domain.SupplierId} },
-            { "seller_id", new AttributeValue { S = domain.SellerId } },
-            { "marketplace", new AttributeValue { S = domain.Marketplace } },
-            { "store_id", new AttributeValue { N = domain.StoreId.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
-            { "marketplace_product_id", new AttributeValue { S = domain.MarketplaceProductId } },
-            { "marketplace_model_id", new AttributeValue { S = domain.MarketplaceModelId } },
-            { "price", new AttributeValue { N = domain.Price.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) } },
-            { "quantity", new AttributeValue { N = domain.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
-            { "created_at", new AttributeValue { S = createdAtUtc } }
-        };
-
+        var item = domain.ToDynamoDb();
         await repository.PutItemAsync(item);
 
         return domain;
@@ -188,6 +168,42 @@ public class ProductSkuSellerRepository(DynamoDbRepository repository, ILogger<P
         catch (Exception ex)
         {
             logger.LogError(ex, "Error updating price - ProductId: {ProductId}, SKU: {Sku}", domain.ProductId, domain.Sku);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Atualiza o supplier de um SKU
+    /// </summary>
+    public async Task<ProductSkuSellerDomain?> UpdateSupplierAsync(ProductSkuSellerDomain domain, string supplierId)
+    {
+        logger.LogInformation("Updating supplier - ProductId: {ProductId}, SKU: {Sku}, SupplierId: {SupplierId}", 
+            domain.ProductId, domain.Sku, supplierId);
+
+        try
+        {
+            var key = new Dictionary<string, AttributeValue>
+            {
+                { "PK", new AttributeValue { S = domain.Pk } },
+                { "SK", new AttributeValue { S = domain.Sk } }
+            };
+
+            var updateExpression = "SET supplier_id = :supplier_id, updated_at = :updated_at";
+            var expressionAttributeValues = new Dictionary<string, AttributeValue>
+            {
+                { ":supplier_id", new AttributeValue { S = supplierId } },
+                { ":updated_at", new AttributeValue { S = DateTime.UtcNow.ToString("O") } }
+            };
+
+            await repository.UpdateItemAsync(key, updateExpression, expressionAttributeValues);
+
+            var item = await repository.GetItemAsync(key);
+            return item != null ? ProductSkuSellerMapper.ToDomain(item) : null;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error updating supplier - ProductId: {ProductId}, SKU: {Sku}", 
+                domain.ProductId, domain.Sku);
             throw;
         }
     }

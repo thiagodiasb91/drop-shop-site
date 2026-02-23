@@ -313,7 +313,7 @@ public class ShopeeService(
                         if (modelIdMap.TryGetValue(productSkuSeller.Sku, out var modelId))
                         {
                             productSkuSeller.MarketplaceModelId = modelId.ToString();
-                            productSkuSeller.MarketplaceProductId = itemId.ToString();
+                            productSkuSeller.MarketplaceItemId = itemId.ToString();
                             
                             await productSellerRepository.UpdateMarketplaceModelIdAsync(
                                 productSeller.ProductId,
@@ -353,7 +353,7 @@ public class ShopeeService(
         
         var seller = await sellerRepository.GetSellerByIdAsync(productSkuSeller.SellerId);
         
-        await shopeeApiService.UpdatePriceAsync(seller.ShopId, long.Parse(productSkuSeller.MarketplaceProductId), 
+        await shopeeApiService.UpdatePriceAsync(seller.ShopId, long.Parse(productSkuSeller.MarketplaceItemId), 
             productsSkuSeller.Select( x => 
             new PriceListDto
             {
@@ -367,7 +367,7 @@ public class ShopeeService(
     {
         var seller = await sellerRepository.GetSellerByIdAsync(productSkuSeller.SellerId);
         
-        await shopeeApiService.UpdatePriceAsync(seller.ShopId, long.Parse(productSkuSeller.MarketplaceProductId), [
+        await shopeeApiService.UpdatePriceAsync(seller.ShopId, long.Parse(productSkuSeller.MarketplaceItemId), [
             new PriceListDto()
             {
                 ModelId = long.Parse(productSkuSeller.MarketplaceModelId),
