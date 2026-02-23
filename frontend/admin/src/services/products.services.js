@@ -44,7 +44,7 @@ const ProductsService = {
 
     return {
       ok: true,
-      data: products
+      response: products
     }
   },
   async getSkusByProductId(productId) {

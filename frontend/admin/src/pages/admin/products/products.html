@@ -1,5 +1,7 @@
 <div x-data="getData()" class="space-y-6 text-slate-200">
-  <div
+  <div x-show="loading" x-html="renderLoader()"></div>
+
+  <div x-show="!loading"
     class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-800 p-4 rounded-xl border border-slate-700">
     <div class="relative flex-1 max-w-md">
       <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500">
@@ -14,7 +16,7 @@
     </button>
   </div>
 
-  <div class="bg-slate-800 rounded-xl border border-slate-700">
+  <div x-show="!loading" class="bg-slate-800 rounded-xl border border-slate-700">
     <div class="overflow-x-auto">
       <table class="w-full text-sm text-left border-collapse">
         <thead class="bg-slate-900/50 text-slate-400 uppercase text-[10px] tracking-widest">
@@ -76,7 +78,7 @@
                   </button>
                   <div x-show="menuOpen"
                     class="absolute right-0 mt-2 w-48 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-50 overflow-hidden"
-                    :class="product === products[products.length - 1] ? 'bottom-full mb-2' : 'top-full mt-2'"
+                    :class="product === products[products?.length - 1] ? 'bottom-full mb-2' : 'top-full mt-2'"
                     style="display: none;">
                     <div class="py-1 divide-y divide-slate-700">
                       <button @click="openEdit(product)"

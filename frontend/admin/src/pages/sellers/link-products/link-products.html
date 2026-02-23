@@ -19,8 +19,7 @@
       <template x-for="product in filteredProducts" :key="product.id">
         <div class="rounded-lg border overflow-hidden transition-all duration-300" :class="{
       'border-slate-700 bg-slate-800': !product.hasError,
-      'border-rose-500 bg-rose-500/10 ring-2 ring-rose-500/20': product.hasError
-    }">
+      'border-rose-500 bg-rose-500/10 ring-2 ring-rose-500/20': product.hasError}">
 
           <div class="p-4 flex items-center justify-between bg-slate-800">
             <div class="flex items-center gap-4">

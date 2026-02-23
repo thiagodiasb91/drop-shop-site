@@ -1,6 +1,7 @@
 import html from "./link-products.html?raw"
 import SellersService from "../../../services/sellers.services"
 import ProductsService from "../../../services/products.services"
+import stateHelper from "../../../utils/state.helper.js";
 
 export function getData() {
   return {
@@ -111,14 +112,32 @@ export function getData() {
     get updatedCount() {
       return this.products.filter(p => {
         const original = this.originalLinks.get(p.id);
-        return p.selectedSupplierId &&
-          original &&
-          p.selectedSupplierId === original.supplierId &&
-          p.salePrice !== original.salePrice;
+        return original && p.selectedSupplierId && (p.selectedSupplierId !== original.supplierId || p.salePrice !== original.salePrice);
       }).length;
     },
     get hasChanges() {
-      return this.includedCount > 0 || this.removedCount > 0 || this.updatedCount > 0;
+      return this.products.some(p => {
+        const original = this.originalLinks.get(p.id);
+
+        // Se não tinha vínculo e agora tem um fornecedor selecionado
+        if (!original && p.selectedSupplierId) return true;
+
+        // Se tinha vínculo e agora foi removido (selectedSupplierId nulo)
+        if (original && !p.selectedSupplierId) return true;
+
+        // Se o fornecedor selecionado mudou em relação ao original
+        if (original && p.selectedSupplierId !== original.supplierId) return true;
+
+        // Se o preço mudou (mantendo a lógica que você já deve ter)
+        if (original && p.salePrice !== original.salePrice) return true;
+
+        return false;
+      });
+    },
+    isChanged(product) {
+      const original = this.originalLinks.get(product.id);
+      if (!original) return !!product.selectedSupplierId;
+      return product.selectedSupplierId !== original.supplierId || Number(product.salePrice) !== Number(original.salePrice);
     },
     async cancel() {
       await this.refresh();
@@ -128,38 +147,52 @@ export function getData() {
       const q = this.search.toLowerCase();
       return this.products.filter(p => p.name.toLowerCase().includes(q) || p.id.includes(q));
     },
-    async saveLinks() {
-      this.loading = true;
-      let hasInvalid = false;
+    hasInvalidProducts() {
       this.products.forEach(p => {
         if (p.selectedSupplierId && (!p.salePrice)) {
           p.hasError = true;
           p.expanded = true;
-          hasInvalid = true;
           p.errorText = "Preço obrigatório faltando";
+          return true;
         } else if (p.selectedSupplierId && (p.salePrice < 1 || p.salePrice > 499999)) {
           p.hasError = true;
           p.expanded = true;
-          hasInvalid = true;
           p.errorText = "Preço deve ser entre R$ 1,00 e R$ 499.999,00";
+          return true;
         } else {
           p.hasError = false;
+          return false;
         }
       });
 
+    },
+    async saveLinks() {
+      this.loading = true;
+
+      const hasInvalid = this.hasInvalidProducts();
+
       if (hasInvalid) {
         this.showErrors = true;
-        Alpine.store('toast').open('Por favor, corrija os erros antes de salvar.', 'error');
+        stateHelper.toast('Por favor, corrija os erros antes de salvar.', 'error');
         this.loading = false;
         return;
       }
 
       this.saving = true;
 
-      const toLink = this.products.filter(p => p.selectedSupplierId && !this.originalLinks.has(p.id));
+      const toLink = this.products.filter(p => {
+        const original = this.originalLinks.get(p.id);
+
+        if (p.selectedSupplierId && !original)
+          return true;
+        if (original && p.selectedSupplierId !== original.supplierId)
+          return true;
+
+        return false;
+      });
       const toUpdate = this.products.filter(p => {
         const orig = this.originalLinks.get(p.id);
-        return orig && p.selectedSupplierId && (p.selectedSupplierId !== orig.supplierId || Number(p.salePrice) !== Number(orig.salePrice));
+        return orig && p.selectedSupplierId && (Number(p.salePrice) !== Number(orig.salePrice));
       });
       const toUnlink = this.products.filter(p => !p.selectedSupplierId && this.originalLinks.has(p.id));
       const promises = [
@@ -181,12 +214,17 @@ export function getData() {
 
       try {
         console.log("Executando as seguintes operações:");
-        await Promise.all(promises);
-        Alpine.store('toast').open('Vínculos atualizados com sucesso', 'success');
+        const responses = await Promise.all(promises);
+        const hasAnyErrors = responses.filter(p => p.ok === false);
+        if (hasAnyErrors.length > 0) {
+          stateHelper.toast(`Algumas alterações não puderam ser salvas.(${hasAnyErrors.length}/${responses.length})`, 'error');
+        } else {
+          stateHelper.toast('Vínculos atualizados com sucesso', 'success');
+        }
         await this.refresh();
       } catch (e) {
         console.error("Erro ao processar salvamento:", e);
-        Alpine.store('toast').open('Erro ao salvar algumas alterações', 'error');
+        stateHelper.toast('Erro ao salvar algumas alterações', 'error');
       } finally {
         this.saving = false;
         this.loading = false;

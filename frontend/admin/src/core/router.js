@@ -1,12 +1,7 @@
-import AuthService from "../services/auth.service.js";
 import { loadLayout } from "./layout.js";
 import { routes } from "./route.registry.js";
-import {
-  canAccessRoute,
-  redirectToSellerSetup,
-  redirectToSupplierSetup,
-  redirectToNewUserPage
-} from "./route.control.js";
+import RouteGuard from "./route.guard.js";
+import stateHelper from "../utils/state.helper.js";
 
 export const router = {
   current: {
@@ -56,7 +51,7 @@ async function render() {
   console.log("router.render.request", location.pathname);
   const path = location.pathname;
   const { route, params } = matchRoute(path);
-  console.log("router.render.route", route, params);
+  console.log("router.render.route", route, params, stateHelper.user);
 
   router.current = {
     path,
@@ -64,46 +59,21 @@ async function render() {
     params
   }
 
-  const logged = await AuthService.me()
+  const logged = stateHelper.user;
 
-  const requiresAuth = !route.public && !route.skipAuth;
+  if (route.middlewares && Array.isArray(route.middlewares)) {
+    for (const middleware of route.middlewares) {
+      const result = await middleware(logged, route, path);
 
-  if (requiresAuth) {
-    console.log("router.render.requiringAuth");
-
-    if (!logged) {
-      console.log("router.render.not-authenticated");
-      navigate("/login");
-      return;
+      if (typeof result === 'string') {
+        console.log(`[Router] Bloqueado por middleware. Redirecionando para: ${result}`);
+        navigate(result);
+        return;
+      }
     }
-
-    if(await redirectToNewUserPage(logged, route)){
-      console.log("router.render.redirectToNewUserPage");
-      navigate(`/new-user`)
-      return
-    }
-
-    if (await redirectToSellerSetup(logged, route, path)) {
-      console.log("router.render.redirectToSellerSetup");
-      navigate(`/sellers/store/setup`)
-      return
-    }
-
-    if (await redirectToSupplierSetup(logged, route, path)) {
-      console.log("router.render.redirectToSupplierSetup");
-      navigate(`/suppliers/setup`)
-      return
-    }
-
-    if (!canAccessRoute(route, logged.role)) {
-      console.log("router.render.not-authorized");
-      Alpine.store('toast').open(
-        'Você não tem permissão para acessar essa página',
-        'error'
-      )
-      navigate('/')
-      return
-    }
+  } else if (!route.public && !logged) {
+    navigate("/login");
+    return;
   }
 
   const app = document.getElementById("app");
