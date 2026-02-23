@@ -144,7 +144,7 @@ export const routes = {
     icon: "ph ph-hand-coins",
     js: () => import("../pages/sellers/payments-pending/payments-pending.js"),
   },
-  "/sellers/payments/monthly": {
+  "/sellers/billing": {
     allowedRoles: ['seller'],
     middlewares: RouteGuard.seller,
     title: "Faturamento",

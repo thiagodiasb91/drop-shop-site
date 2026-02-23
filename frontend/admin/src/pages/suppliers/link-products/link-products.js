@@ -91,7 +91,7 @@ export function getData() {
           console.log('page.supplier-products.loadProducts.linkedProducts', this.linkedProducts)
 
           const isLinked = this.linkedProducts?.some(lp => lp.productId === p.id)
-          
+
           const productObj = {
             ...p,
             selected: isLinked,
@@ -99,7 +99,7 @@ export function getData() {
             loadingSkus: false,
             skusLoaded: false
           }
-          
+
           this.products.push(productObj);
 
           // Se já estava vinculado, carregamos os SKUs de imediato para exibição
@@ -120,7 +120,7 @@ export function getData() {
     async fetchProductSkus(productRef) {
       const product = this.products.find(p => p.id === productRef.id);
       if (product.skusLoaded || product.loadingSkus) return;
-      
+
       product.loadingSkus = true;
       console.log(`Carregando SKUs para o produto: ${product.id}`);
       try {
@@ -147,7 +147,7 @@ export function getData() {
             color: s.color,
             size: s.size,
             platformSku: s.sku,
-            skuSupplier: linked ? linked.skuSupplier : '', 
+            skuSupplier: linked ? linked.skuSupplier : '',
             costPrice: linked ? linked.price : ''
           };
 
@@ -160,15 +160,23 @@ export function getData() {
           return data;
         });
 
-       product.skusLoaded = true;
+        product.skusLoaded = true;
       } catch (err) {
         console.error('Erro crítico ao carregar variações:', err);
         stateHelper.toast('Não foi possível carregar as variações deste produto.', 'error');
-        product.selected = false; 
+        product.selected = false;
       } finally {
         product.loadingSkus = false;
         console.log(`Fim do carregamento para: ${product.id}`);
       }
+    },
+    getGroupedSkus(product) {
+      if (!product.skus) return {};
+      return product.skus.reduce((acc, sku) => {
+        if (!acc[sku.color]) acc[sku.color] = [];
+        acc[sku.color].push(sku);
+        return acc;
+      }, {});
     },
     async toggleProduct(product) {
       if (product.selected) {
@@ -191,7 +199,7 @@ export function getData() {
             this.loading = false;
             return
           }
-          if (supplierSkus.includes(sku.skuSupplier)){
+          if (supplierSkus.includes(sku.skuSupplier)) {
             stateHelper.toast(
               `Existem registros com sku repetido (sku fornecedor= '${sku.skuSupplier}')`,
               'error'
@@ -200,7 +208,7 @@ export function getData() {
             return
           }
           supplierSkus.push(sku.skuSupplier)
-      
+
         }
       }
 
@@ -292,7 +300,7 @@ export function getData() {
       });
 
       stateHelper.toast(
-        `Preço R$ ${price} aplicado a todos os SKUs de ${product.name}`, 
+        `Preço R$ ${price} aplicado a todos os SKUs de ${product.name}`,
         'info');
     },
     get includedCount() {
