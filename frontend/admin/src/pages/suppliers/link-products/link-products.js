@@ -4,6 +4,7 @@ import SupplierService from "../../../services/suppliers.services.js"
 import productService from "../../../services/products.services.js"
 import AuthService from "../../../services/auth.service.js"
 import ProductsService from "../../../services/products.services.js"
+import stateHelper from "../../../utils/state.helper.js";
 
 export function getData() {
   return {
@@ -32,7 +33,7 @@ export function getData() {
       const params = new URLSearchParams(location.search);
       console.log(`${log_prefix}.params`, params)
 
-      const loggedInfo = await AuthService.me()
+      const loggedInfo = stateHelper.user;
       console.log(`${log_prefix}.loggedInfo`, loggedInfo)
 
 
@@ -44,7 +45,7 @@ export function getData() {
         const supplierId = params.get("supplierId")
         if (!supplierId) {
           console.log(`${log_prefix}.loggedInfo.admin.supplierIdNotFound`)
-          Alpine.store('toast').open(
+          stateHelper.toast(
             'Supplier ID não informado',
             'error'
           )
@@ -55,7 +56,7 @@ export function getData() {
       }
       else {
         console.log(`${log_prefix}.loggedInfo.roleNotAllowed`, loggedInfo.role)
-        Alpine.store('toast').open(
+        stateHelper.toast(
           'Você não tem permissão para acessar essa página',
           'error'
         )
@@ -110,7 +111,7 @@ export function getData() {
       }
       catch (ex) {
         console.error('page.supplier-products.loadProducts.error', ex)
-        Alpine.store('toast').open(
+        stateHelper.toast(
           'Erro ao carregar produtos',
           'error'
         )
@@ -162,7 +163,7 @@ export function getData() {
        product.skusLoaded = true;
       } catch (err) {
         console.error('Erro crítico ao carregar variações:', err);
-        Alpine.store('toast').open('Não foi possível carregar as variações deste produto.', 'error');
+        stateHelper.toast('Não foi possível carregar as variações deste produto.', 'error');
         product.selected = false; 
       } finally {
         product.loadingSkus = false;
@@ -183,7 +184,7 @@ export function getData() {
       for (const p of selected) {
         for (const sku of p.skus) {
           if (!sku.skuSupplier || !sku.costPrice) {
-            Alpine.store('toast').open(
+            stateHelper.toast(
               'Preencha todos os SKUs e preços',
               'error'
             )
@@ -191,7 +192,7 @@ export function getData() {
             return
           }
           if (supplierSkus.includes(sku.skuSupplier)){
-            Alpine.store('toast').open(
+            stateHelper.toast(
               `Existem registros com sku repetido (sku fornecedor= '${sku.skuSupplier}')`,
               'error'
             )
@@ -239,7 +240,7 @@ export function getData() {
         }
 
         await Promise.all(promises);
-        Alpine.store('toast').open('Alterações salvas com sucesso!', 'success');
+        stateHelper.toast('Alterações salvas com sucesso!', 'success');
 
         // Recarrega para sincronizar o originalSkuData com o banco
         await this.loadLinkedProducts();
@@ -247,17 +248,17 @@ export function getData() {
 
       } catch (ex) {
         console.error(ex);
-        Alpine.store('toast').open('Erro ao salvar algumas alterações.', 'error');
+        stateHelper.toast('Erro ao salvar algumas alterações.', 'error');
       } finally {
         this.loading = false;
       }
 
-      Alpine.store('toast').open('Vínculos salvos com sucesso', 'success')
+      stateHelper.toast('Vínculos salvos com sucesso', 'success')
     },
     cancel() {
       // Simplesmente recarrega os produtos do estado original
       this.loadProducts(true);
-      Alpine.store('toast').open('Alterações descartadas.', 'info');
+      stateHelper.toast('Alterações descartadas.', 'info');
     },
     get filteredProducts() {
       let list = this.products
@@ -280,7 +281,7 @@ export function getData() {
     },
     applyPriceToAll(product, price) {
       if (!price || price < 0) {
-        Alpine.store('toast').open(
+        stateHelper.toast(
           'Informe um valor válido para continuar',
           'error'
         )
@@ -290,7 +291,7 @@ export function getData() {
         sku.costPrice = price;
       });
 
-      Alpine.store('toast').open(
+      stateHelper.toast(
         `Preço R$ ${price} aplicado a todos os SKUs de ${product.name}`, 
         'info');
     },

@@ -1,6 +1,7 @@
-import AuthService from "../services/auth.service";
 import { navigate } from "../core/router"
 import { roleName } from "./../utils/format.utils"
+import AuthService from "../services/auth.service"
+import stateHelper from "../utils/state.helper";
 
 export function commons() {
   console.log('bootstrap.module.loaded');
@@ -9,11 +10,11 @@ export function commons() {
     sidebarOpen: window.innerWidth >= 769,
     async init() {
       console.log('bootstrap.commons.init.called');
-      const logged = await AuthService.me()
-      if (logged)
-        logged.roleName = roleName(logged.role)
-      console.log('bootstrap.commons.init.logged', logged);
-      this.logged = logged
+      
+      this.logged = await stateHelper.refresh()
+      if (this.logged)
+        this.logged.roleName = roleName(this.logged.role)
+      console.log('bootstrap.commons.init.logged', this.logged);
     },
     async logout() {
       console.log('bootstrap.commons.logout.called');

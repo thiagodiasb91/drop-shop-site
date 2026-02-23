@@ -1,11 +1,12 @@
 import AuthService from "../../services/auth.service.js";
 import { navigate } from "../../core/router.js";
+import stateHelper from "../../utils/state.helper.js";
 
 export function getData() {
     console.log("page.dashboard.getData.called")
     return {
         async init() {
-            const user = await AuthService.me();
+            const user = stateHelper.user;
             console.log("page.dashboard.init.called", user.role)
 
             // Redirecionamento inteligente baseado no cargo

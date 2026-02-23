@@ -1,5 +1,6 @@
 import { menu } from "./bootstrap.menu";
 import { commons } from "./bootstrap.commons";
+import AuthService from "../services/auth.service.js";
 
 export default class Bootstrap {
   constructor(Alpine) {
@@ -33,6 +34,13 @@ const registerFunctions = (AlpineInstance, modName, modRef) => {
 
 
 document.addEventListener('alpine:init', () => {
+  Alpine.store('auth', {
+    user: null,    
+    async refresh() {
+      this.user = await AuthService.me(true); 
+      return this.user;
+    }
+  });
   if (!Alpine.store('toast')) {
     Alpine.store('toast', {
       show: false,

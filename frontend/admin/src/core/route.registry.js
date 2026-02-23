@@ -1,6 +1,9 @@
+import RouteGuard from "./route.guard.js";
+
 export const routes = {
   "/": {
     title: "Home",
+    middlewares: RouteGuard.authenticated,
     hideMenu: true,
     js: () => import("../pages/dashboard/dashboard.js"),
   },
@@ -9,7 +12,7 @@ export const routes = {
     js: () => import("../pages/new-user/new-user.js"),
     layout: "public",
     hideMenu: true,
-    skipNewUserValidation: true
+    middlewares: RouteGuard.newUser,
   },
   "/login": {
     title: "Login",
@@ -21,105 +24,155 @@ export const routes = {
     js: () => import("../pages/auth/callback/callback.js"),
     public: true,
   },
+
+  // --- ADMIN ---
   "/admin/dashboard": {
     allowedRoles: ['admin'],
-    title: "Painel do Admin",
+    title: "Painel Geral",
+    middlewares: RouteGuard.admin,
+    group: "Principal",
+    icon: "ph ph-chart-line-up",
     js: () => import("../pages/admin/dashboard/dashboard.js"),
-  },
-  "/admin/products": {
-    title: "Produtos",
-    allowedRoles: ['admin'],
-    js: () => import("../pages/admin/products/products.js"),
   },
   "/admin/users": {
     title: "Usuários",
     allowedRoles: ['admin'],
+    middlewares: RouteGuard.admin,
+    group: "Cadastros",
+    icon: "ph ph-users",
     js: () => import("../pages/admin/users/users.js"),
   },
+  "/admin/products": {
+    title: "Catálogo Global",
+    allowedRoles: ['admin'],
+    middlewares: RouteGuard.admin,
+    group: "Cadastros",
+    icon: "ph ph-package",
+    js: () => import("../pages/admin/products/products.js"),
+  },
+
+  // --- SUPPLIERS ---
   "/suppliers/dashboard": {
     allowedRoles: ['supplier'],
+    middlewares: RouteGuard.supplier,
     title: "Painel do Fornecedor",
+    group: "Principal",
+    icon: "ph ph-gauge",
     js: () => import("../pages/suppliers/dashboard/dashboard.js"),
   },
   "/suppliers/products": {
     allowedRoles: ['supplier'],
+    middlewares: RouteGuard.supplier,
     title: "Meus Produtos",
+    group: "Inventário",
+    icon: "ph ph-package",
     js: () => import("../pages/suppliers/link-products/link-products.js"),
   },
   "/suppliers/stock": {
     allowedRoles: ['supplier'],
+    middlewares: RouteGuard.supplier,
     title: "Estoque",
+    group: "Inventário",
+    icon: "ph ph-stack",
+    hideMenu: true,
     js: () => import("../pages/suppliers/update-stock/update-stock.js"),
   },
   "/suppliers/orders": {
     allowedRoles: ['supplier'],
+    middlewares: RouteGuard.supplier,
     title: "Pedidos para Envio",
+    group: "Operações",
+    icon: "ph ph-list-checks",
     js: () => import("../pages/suppliers/orders/orders.js"),
   },
   "/suppliers/setup": {
     allowedRoles: ['supplier'],
-    title: "Configuração de Fornecedor",
+    middlewares: RouteGuard.supplierSetup,
+    title: "Configurar Fornecedor",
+    hideMenu: true,
     layout: "public",
     js: () => import("../pages/suppliers/initial-setup/initial-setup.js"),
-    skipSupplierValidation: true,
-    hideMenu: true
   },
+
+  // --- SELLERS ---
   "/sellers/dashboard": {
     allowedRoles: ['seller'],
-    title: "Painel do Vendedor",
+    middlewares: RouteGuard.seller,
+    title: "Meu Painel",
+    group: "Principal",
+    icon: "ph ph-house-line",
     js: () => import("../pages/sellers/dashboard/dashboard.js"),
-  },
-  "/sellers/store/setup": {
-    allowedRoles: ['seller'],
-    title: "Configuração de Código de Loja",
-    layout: "public",
-    js: () => import("../pages/sellers/store-setup/store-setup.js"),
-    skipStoreValidation: true,
-    hideMenu: true,
   },
   "/sellers/:email/store/code": {
     allowedRoles: ['seller'],
+    middlewares: RouteGuard.sellerSetup,
     title: "Retorno de Código de loja",
     hideMenu: true,
     layout: "public",
     js: () => import("../pages/sellers/store-code/store-code.js"),
-    skipStoreValidation: true,
   },
-  "/sellers/stock": {
+  "/sellers/store/setup": {
     allowedRoles: ['seller'],
-    title: "Estoque",
+    middlewares: RouteGuard.sellerSetup,
+    title: "Configuração de Código de Loja",
     hideMenu: true,
-    js: () => import("../pages/sellers/view-stock/view-stock.js"),
+    layout: "public",
+    js: () => import("../pages/sellers/store-setup/store-setup.js"),
   },
   "/sellers/products": {
     allowedRoles: ['seller'],
+    middlewares: RouteGuard.seller,
     title: "Meus Produtos",
+    group: "Inventário",
+    icon: "ph ph-package",
     js: () => import("../pages/sellers/link-products/link-products.js"),
+  },
+  "/sellers/view-stock": {
+    allowedRoles: ['seller'],
+    middlewares: RouteGuard.seller,
+    title: "Ver Estoque",
+    group: "Inventário",
+    icon: "ph ph-stack",
+    hideMenu: true,
+    js: () => import("../pages/sellers/view-stock/view-stock.js"),
   },
   "/sellers/payments/pending": {
     allowedRoles: ['seller'],
-    title: "Pagamentos Pendentes",
+    middlewares: RouteGuard.seller,
+    title: "Repasses",
+    group: "Financeiro",
+    icon: "ph ph-hand-coins",
     js: () => import("../pages/sellers/payments-pending/payments-pending.js"),
   },
+  "/sellers/payments/monthly": {
+    allowedRoles: ['seller'],
+    middlewares: RouteGuard.seller,
+    title: "Faturamento",
+    group: "Financeiro",
+    icon: "ph ph-receipt",
+    js: () => import("../pages/sellers/billing/billing.js"),
+  },
+
+  // --- OPERACIONAL ---
   "/orders": {
     title: "Pedidos",
+    group: "Operações",
+    icon: "ph ph-list-checks",
     hideMenu: true,
     js: () => import("../pages/orders/list/list.js"),
   },
   "/orders-group": {
-    title: "Pedidos Agrupados",
+    title: "Agrupados",
+    group: "Operações",
+    icon: "ph ph-folders",
     hideMenu: true,
     js: () => import("../pages/orders/list-group/list-group.js"),
   },
-  "/settings": {
-    title: "Configurações",
-    hideMenu: true,
-    js: () => import("../pages/settings/settings.js"),
-  },
+
+  // --- WILDCARD ---
   "*": {
-    title: "Página não encontrada",
+    title: "404",
+    hideMenu: true,
     js: () => import("../pages/not-found/not-found.js"),
-    skipAuth: true,
-    layout: "public",
-  },
+  }
 };

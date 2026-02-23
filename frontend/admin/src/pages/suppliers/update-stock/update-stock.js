@@ -1,6 +1,7 @@
 import html from "./update-stock.html?raw"
 import ProductsService from "../../../services/products.services";
 import SuppliersService from "../../../services/suppliers.services";
+import stateHelper from "../../../utils/state.helper.js";
 
 export function getData() {
   return {
@@ -102,7 +103,7 @@ export function getData() {
 
       if (countErrors > 0) {
         console.error(`Erro ao salvar ${countErrors} SKU(s)`);
-        Alpine.store('toast').open(`Erro ao salvar ${countErrors} alterações.`, 'error');
+        stateHelper.toast(`Erro ao salvar ${countErrors} alterações.`, 'error');
         this.loading = false;
         return
       }
@@ -111,7 +112,7 @@ export function getData() {
       
       this.updateChanges();
       this.loading = false;
-      Alpine.store('toast').open(`${stocksToSave.length} SKU(s) salvo(s) com sucesso`, 'success');
+      stateHelper.toast(`${stocksToSave.length} SKU(s) salvo(s) com sucesso`, 'success');
     },
 
     get filteredProducts() {

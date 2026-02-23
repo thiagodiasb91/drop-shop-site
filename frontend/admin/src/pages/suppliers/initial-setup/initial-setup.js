@@ -3,6 +3,7 @@ import AuthService from "../../../services/auth.service.js"
 import SuppliersService from "../../../services/suppliers.services.js"
 import CacheHelper from "../../../utils/cache.helper.js"
 import { navigate } from "../../../core/router.js"
+import stateHelper from "../../../utils/state.helper.js";
 
 function setStep (_this, step) {
   _this.step = {
@@ -39,7 +40,7 @@ export function getData() {
     },
     async init() {
       console.log("page.suppliers.initial-setup.init.called")
-      const logged = await AuthService.me()
+      const logged = stateHelper.user;
       this.userEmail = logged.user.email
       if(this.validate()){
         this.goToRedirect()
@@ -59,7 +60,7 @@ export function getData() {
 
       if (!res.ok) {
         console.error("pages.suppliers.initial-setup.save.error", res.response)
-        Alpine.store('toast').open(
+        stateHelper.toast(
           "Houve um erro ao tentar configurar o fornecedor. Tente novamente.",
           "error")
         setStep(this, 'submit')
