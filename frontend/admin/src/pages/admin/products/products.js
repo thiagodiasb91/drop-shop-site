@@ -2,6 +2,7 @@ import html from "./products.html?raw"
 import { currency } from "../../../utils/format.utils";
 import ProductsService from "../../../services/products.services"
 import stateHelper from "../../../utils/state.helper";
+import { renderGlobalLoader } from "../../../components";
 
 export function getData() {
   return {
@@ -177,7 +178,9 @@ export function getData() {
     currency(value) {
       return currency(value)
     },
-
+    renderLoader() {
+      return renderGlobalLoader("Carregando produtos...");
+    }
   }
 }
 

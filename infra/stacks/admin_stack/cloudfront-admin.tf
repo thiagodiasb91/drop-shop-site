@@ -8,7 +8,7 @@ resource "aws_cloudfront_origin_access_control" "admin_oac" {
 
 # 🌍 CloudFront - FRONTEND
 resource "aws_cloudfront_distribution" "admin_frontend" {
-  comment             = "Drop Shop Admin Frontend"
+  comment = "Drop Shop Admin Frontend (${var.environment})"
   enabled             = true
   default_root_object = "index.html"
 
