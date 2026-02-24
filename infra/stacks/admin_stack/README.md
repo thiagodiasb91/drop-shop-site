@@ -1,3 +1,5 @@
+[![.github/workflows/deploy-admin.yml](https://github.com/thiagodiasb91/drop-shop-site/actions/workflows/deploy-admin.yml/badge.svg)](https://github.com/thiagodiasb91/drop-shop-site/actions/workflows/deploy-admin.yml)
+
 # Como fazer deploy da lambda via terraform?
 
 Execute os seguintes comandos a partir da pasta `infra` para fazer o deploy da lambda:
