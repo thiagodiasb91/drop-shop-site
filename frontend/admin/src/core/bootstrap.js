@@ -2,12 +2,14 @@ import { menu } from "./bootstrap.menu";
 import { commons } from "./bootstrap.commons";
 import AuthService from "../services/auth.service.js";
 
+console.log('bootstrap.module.loaded');
 export default class Bootstrap {
   constructor(Alpine) {
     this.Alpine = Alpine;
   }
 
   init() {
+    console.log('bootstrap.init.called');
     try {
       registerFunctions(this.Alpine, 'menu', menu);
       registerFunctions(this.Alpine, 'bootstrap', commons);

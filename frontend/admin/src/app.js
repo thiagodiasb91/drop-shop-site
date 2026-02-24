@@ -5,6 +5,8 @@ import { initRouter } from "/src/core/router.js";
 import "./styles/main.css"
 import stateHelper from "./utils/state.helper.js";
 
+console.log("App initializing...")
+
 window.Alpine = Alpine;
 Alpine.plugin(collapse)
 Alpine.start();

@@ -12,7 +12,6 @@ export const router = {
 };
 
 export async function initRouter() {
-  console.log("router.initRouter.app", document.getElementById("app"));
   console.log("router.initRouter.request", location.pathname);
   window.addEventListener("popstate", render);
   await render();

@@ -16,7 +16,7 @@ function handleUnauthorized(res) {
       if (authStore) authStore.user = null;
     }
 
-    window.location.href = "/login";
+    // window.location.href = "/login";
     return false
   }
   return true
@@ -30,11 +30,15 @@ class BaseApi {
   call = async (endpoint, options = {}) => {
     const url = `${BASE_URL}${this.baseResource}${endpoint}`;
 
+    const token = CacheHelper.get("session_token");
     const defaultHeaders = {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${CacheHelper.get("session_token")}`
+      "Content-Type": "application/json"      
     };
 
+    if (token) {
+      defaultHeaders["Authorization"] = `Bearer ${token}`;
+    }
+    
     const config = {
       ...options,
       headers: {

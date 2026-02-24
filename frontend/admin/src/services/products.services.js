@@ -1,4 +1,4 @@
-import BaseApi from "./base"
+import BaseApi from "./base.api"
 
 const baseApi = new BaseApi("/products")
 

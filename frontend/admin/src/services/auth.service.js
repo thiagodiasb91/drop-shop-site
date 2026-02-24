@@ -1,7 +1,7 @@
 import { ENV } from "../config/env"
 import CacheHelper from "../utils/cache.helper.js"
 import stateHelper from "../utils/state.helper.js"
-import BaseApi from "./base"
+import BaseApi from "./base.api.js"
 
 const api = new BaseApi("/auth")
 
@@ -9,7 +9,7 @@ const AuthService = {
   _mePromise: null,
   async login() {
     console.log("AuthService.login.request")
-    window.location.href = `${ENV.API_BASE_URL}/login`
+    window.location.href = `${ENV.API_BASE_URL}/auth/login`
   },
   async callback(code) {
     console.log("AuthService.callback.request", code)
