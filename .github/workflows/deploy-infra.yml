@@ -50,5 +50,5 @@ jobs:
         working-directory: infra/stacks/admin_stack
         run: |
           terraform apply \
-            -var-file=../../envs/${{ env.ENV }}.tfvars \
+            -var-file=./envs/${{ env.ENV }}.tfvars \
             -auto-approve
