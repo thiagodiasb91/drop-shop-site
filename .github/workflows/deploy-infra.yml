@@ -6,24 +6,21 @@ on:
       - develop
       - master
     paths:
-      - 'infra/**'
+      - 'infra/**' # Só dispara se houver alteração aqui
+  workflow_dispatch: # Permite rodar manualmente se precisar
 
 jobs:
   terraform:
     name: "Terraform Apply"
     runs-on: ubuntu-latest
     
-    # Definindo permissões básicas para o token do GitHub
-    permissions:
-      contents: read
-      pull-requests: write
-
     env:
       ENV: ${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
+      # Credenciais mapeadas para o ambiente do Job
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: "us-east-1"
-    
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -31,10 +28,17 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.11.3" # Versão que está no seu tfstate
+          terraform_version: "1.11.3"
+
+      # Passo extra de segurança para garantir que o CLI da AWS está autenticado
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
 
       - name: Terraform Init
-        id: init
         working-directory: infra/stacks/admin_stack
         run: |
           terraform init \
@@ -42,7 +46,6 @@ jobs:
             -reconfigure
 
       - name: Terraform Apply
-        id: apply
         working-directory: infra/stacks/admin_stack
         run: |
           terraform apply \
