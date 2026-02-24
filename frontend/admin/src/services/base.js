@@ -55,14 +55,25 @@ class BaseApi {
         throw { status: res.status, ...errorData };
       }
 
-      const data = await res.json().catch(() => ({}));
-      const response = data.items ? data.items : data
+      try{
+        const data = await res.json()
+        const response = data.items ? data.items : data
+        
+        return {
+          ok: true,
+          status: res?.status,
+          response
+        };
+      }
+      catch(err){
+        console.error("Error parsing JSON response:", err);
+        return {
+          ok: false,
+          status: res?.status,
+          response: null
+        };
+      }
 
-      return {
-        ok: true,
-        status: res?.status,
-        response
-      };
     } catch (error) {
       console.error(`API Error [${endpoint}]:`, error);
       throw error;

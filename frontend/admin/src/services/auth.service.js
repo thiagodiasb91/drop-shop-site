@@ -1,4 +1,6 @@
 import { ENV } from "../config/env"
+import CacheHelper from "../utils/cache.helper.js"
+import stateHelper from "../utils/state.helper.js"
 import BaseApi from "./base"
 
 const api = new BaseApi("/auth")
@@ -43,7 +45,8 @@ const AuthService = {
         }
 
         if (!res.ok) {
-          throw new Error("Erro ao buscar usuário")
+          stateHelper.toast("Erro ao obter dados do usuário", "error")
+          return null
         }
 
         const data = await res.response;
