@@ -29,7 +29,7 @@ export function getData() {
         this.allOrders = resSummary.response?.map(o => ({
           ...o,
           expanded: false,
-          // Verifica se existem outras entradas para o mesmo OrderSn (Ordem dividida)
+          status: ["pending", "pending_payment"][Math.floor(Math.random() * 2)],
           isSplit: resSummary.response.filter(item => item.orderSn === o.orderSn).length > 1
         })) || [];
 
@@ -44,8 +44,11 @@ export function getData() {
     },
 
     // Filtros e Grupos
+    get notPaidOrders() {
+      return this.allOrders.filter(o => ["pending", "pending_payment"].includes(o.status));
+    },
     get pendingOrders() {
-      return this.allOrders.filter(o => o.status === 'pending');
+      return this.allOrders.filter(o => ["pending"].includes(o.status));
     },
 
     get paidOrders() {
@@ -67,7 +70,7 @@ export function getData() {
     },
 
     get selectedTotal() {
-      return this.pendingOrders
+      return this.notPaidOrders
         .filter(o => this.selectedOrders.includes(o.paymentId))
         .reduce((sum, o) => sum + o.totalAmount, 0);
     },
@@ -94,12 +97,19 @@ export function getData() {
       // Se houver mais de uma, aqui você decidiria se abre o link da primeira 
       // ou se sua API tem um endpoint de "lote". 
       // Baseado no seu JSON, seguiremos com o link individual ou primeiro do lote:
-      const firstOrder = this.pendingOrders.find(o => o.paymentId === this.selectedOrders[0]);
+      const firstOrder = this.notPaidOrders.find(o => o.paymentId === this.selectedOrders[0]);
       this.payIndividual(firstOrder);
     },
     renderLoader() {
       return renderGlobalLoader("Sincronizando repasses...");
     },
+    statusLabel(status) {
+      const map = {
+        pending: { text: "Pendente", color: "bg-yellow-100 text-yellow-800" },
+        pending_payment: { text: "Link gerado", color: "bg-blue-100 text-blue-800" },
+      }
+      return map[status] || { text: "Desconhecido", color: "bg-slate-100 text-slate-800" };
+    }
   }
 }
 

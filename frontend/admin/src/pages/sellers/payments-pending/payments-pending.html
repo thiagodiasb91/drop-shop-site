@@ -3,71 +3,71 @@
   <div x-show="loading" x-html="renderLoader()"></div>
 
   <div x-show="!loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-  <div class="bg-slate-800 p-5 rounded-xl border-l-4 border-amber-500 shadow-lg">
-    <div class="flex justify-between items-start">
-      <div>
-        <p class="text-[10px] uppercase font-black text-slate-500 tracking-wider">A Pagar (Pendente)</p>
-        <h3 class="text-xl md:text-2xl font-mono font-bold text-slate-100 mt-1"
-          x-text="'R$ ' + (stats.totalPending?.toFixed(2) || '0.00')"></h3>
+    <div class="bg-slate-800 p-5 rounded-xl border-l-4 border-amber-500 shadow-lg">
+      <div class="flex justify-between items-start">
+        <div>
+          <p class="text-[10px] uppercase font-black text-slate-500 tracking-wider">A Pagar (Pendente)</p>
+          <h3 class="text-xl md:text-2xl font-mono font-bold text-slate-100 mt-1"
+            x-text="'R$ ' + (stats.totalPending?.toFixed(2) || '0.00')"></h3>
+        </div>
+        <div class="bg-amber-500/10 p-2 rounded-lg text-amber-500">
+          <i class="ph ph-hand-coins text-2xl"></i>
+        </div>
       </div>
-      <div class="bg-amber-500/10 p-2 rounded-lg text-amber-500">
-        <i class="ph ph-hand-coins text-2xl"></i>
+      <div class="mt-4 flex items-center gap-2 text-[12px]">
+        <span class="text-amber-400 font-bold" x-text="notPaidOrders.length + ' ordens'"></span>
+        <span class="text-slate-500">aguardando repasse</span>
       </div>
     </div>
-    <div class="mt-4 flex items-center gap-2 text-[12px]">
-      <span class="text-amber-400 font-bold" x-text="pendingOrders.length + ' ordens'"></span>
-      <span class="text-slate-500">aguardando repasse</span>
+
+
+    <div class="bg-slate-800 p-5 rounded-xl border-l-4 border-emerald-500 shadow-lg">
+      <div class="flex justify-between items-start">
+        <div>
+          <p class="text-[10px] uppercase font-black text-slate-500 tracking-wider">Pago (Mês Atual)</p>
+          <h3 class="text-xl md:text-2xl font-mono font-bold text-slate-100 mt-1"
+            x-text="'R$ ' + (stats.totalPaid?.toFixed(2) || '0.00')"></h3>
+        </div>
+        <div class="bg-emerald-500/10 p-2 rounded-lg text-emerald-500">
+          <i class="ph ph-check-circle text-2xl"></i>
+        </div>
+      </div>
+      <div class="mt-4 flex items-center gap-2 text-[12px]">
+        <span class="text-emerald-400 font-bold" x-text="paidOrders.length + ' concluídos'"></span>
+        <span class="text-slate-500">este mês</span>
+      </div>
+    </div>
+
+
+    <div class="bg-slate-800 p-5 rounded-xl border-l-4 border-blue-500 shadow-lg">
+      <div class="flex justify-between items-start">
+        <div>
+          <p class="text-[10px] uppercase font-black text-slate-500 tracking-wider">Em Processamento</p>
+          <h3 class="text-xl md:text-2xl font-mono font-bold text-slate-100 mt-1"
+            x-text="'R$ ' + (stats.processingAmount?.toFixed(2) || '0.00')"></h3>
+        </div>
+        <div class="bg-blue-500/10 p-2 rounded-lg text-blue-500">
+          <i class="ph ph-arrows-clockwise text-2xl"></i>
+        </div>
+      </div>
+      <div class="mt-4 text-[12px] text-slate-500">Valores em trânsito bancário</div>
+    </div>
+
+
+    <div class="bg-slate-800 p-5 rounded-xl border-l-4 border-rose-500 shadow-lg">
+      <div class="flex justify-between items-start">
+        <div>
+          <p class="text-[10px] uppercase font-black text-slate-500 tracking-wider">Taxas de Serviço</p>
+          <h3 class="text-xl md:text-2xl font-mono font-bold text-slate-100 mt-1"
+            x-text="'R$ ' + (stats.feesAmount?.toFixed(2) || '0.00')"></h3>
+        </div>
+        <div class="bg-rose-500/10 p-2 rounded-lg text-rose-500">
+          <i class="ph ph-percent text-2xl"></i>
+        </div>
+      </div>
+      <div class="mt-4 text-[12px] text-slate-500">Total retido da plataforma</div>
     </div>
   </div>
-
-
-  <div class="bg-slate-800 p-5 rounded-xl border-l-4 border-emerald-500 shadow-lg">
-    <div class="flex justify-between items-start">
-      <div>
-        <p class="text-[10px] uppercase font-black text-slate-500 tracking-wider">Pago (Mês Atual)</p>
-        <h3 class="text-xl md:text-2xl font-mono font-bold text-slate-100 mt-1"
-          x-text="'R$ ' + (stats.totalPaid?.toFixed(2) || '0.00')"></h3>
-      </div>
-      <div class="bg-emerald-500/10 p-2 rounded-lg text-emerald-500">
-        <i class="ph ph-check-circle text-2xl"></i>
-      </div>
-    </div>
-    <div class="mt-4 flex items-center gap-2 text-[12px]">
-      <span class="text-emerald-400 font-bold" x-text="paidOrders.length + ' concluídos'"></span>
-      <span class="text-slate-500">este mês</span>
-    </div>
-  </div>
-
-
-  <div class="bg-slate-800 p-5 rounded-xl border-l-4 border-blue-500 shadow-lg">
-    <div class="flex justify-between items-start">
-      <div>
-        <p class="text-[10px] uppercase font-black text-slate-500 tracking-wider">Em Processamento</p>
-        <h3 class="text-xl md:text-2xl font-mono font-bold text-slate-100 mt-1"
-          x-text="'R$ ' + (stats.processingAmount?.toFixed(2) || '0.00')"></h3>
-      </div>
-      <div class="bg-blue-500/10 p-2 rounded-lg text-blue-500">
-        <i class="ph ph-arrows-clockwise text-2xl"></i>
-      </div>
-    </div>
-    <div class="mt-4 text-[12px] text-slate-500">Valores em trânsito bancário</div>
-  </div>
-
-
-  <div class="bg-slate-800 p-5 rounded-xl border-l-4 border-rose-500 shadow-lg">
-    <div class="flex justify-between items-start">
-      <div>
-        <p class="text-[10px] uppercase font-black text-slate-500 tracking-wider">Taxas de Serviço</p>
-        <h3 class="text-xl md:text-2xl font-mono font-bold text-slate-100 mt-1"
-          x-text="'R$ ' + (stats.feesAmount?.toFixed(2) || '0.00')"></h3>
-      </div>
-      <div class="bg-rose-500/10 p-2 rounded-lg text-rose-500">
-        <i class="ph ph-percent text-2xl"></i>
-      </div>
-    </div>
-    <div class="mt-4 text-[12px] text-slate-500">Total retido da plataforma</div>
-  </div>
-</div>
 
   <div x-show="!loading" class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
     <div class="relative w-full md:w-96">
@@ -85,19 +85,30 @@
   </div>
 
   <div x-show="!loading" class="mb-10">
-    <h2 class="text-lg font-black uppercase flex items-center gap-2 mb-4 italic text-amber-500">
+    <h2 class="text-lg font-black uppercase flex items-center gap-2 mb-4 text-amber-500">
       <i class="ph ph-clock-counter-clockwise"></i> Fila de Repasses
     </h2>
 
-    <div class="flex items-center gap-3 px-5 py-3 bg-slate-900/50 rounded-t-2xl border-x border-t border-slate-700">
+    <div x-show="notPaidOrders.length === 0"
+      class="text-center bg-slate-800 rounded-2xl p-4 border-x border border-slate-700">
+      <i class="ph ph-check-circle text-emerald-500 text-4xl mb-4"></i>
+      <p class="text-lg font-bold">Nenhuma ordem pendente de pagamento</p>
+      <p class="text-sm mt-2">
+        Todas as ordens foram processadas ou estão aguardando repasse. Verifique o histórico de pagos para mais
+        detalhes.
+      </p>
+    </div>
+
+    <div x-show="notPaidOrders.length > 0"
+      class="flex items-center gap-3 px-5 py-3 bg-slate-900/50 rounded-t-2xl border-x border-t border-slate-700">
       <input type="checkbox" @change="toggleSelectAll()"
         :checked="selectedOrders.length === pendingOrders.length && pendingOrders.length > 0"
         class="h-5 w-5 rounded border-slate-600 bg-slate-900 text-indigo-600">
-      <span class="text-[10px] uppercase font-black text-slate-400 tracking-widest">Selecionar Todas as Ordens</span>
+      <span class="text-[10px] uppercase font-black text-slate-400">Selecionar Todas as Ordens Pendentes</span>
     </div>
 
     <div class="space-y-0.5">
-      <template x-for="order in pendingOrders" :key="order.paymentId">
+      <template x-for="order in notPaidOrders" :key="order.paymentId">
         <div
           class="bg-slate-800 border-x border-b border-slate-700 first:border-t-0 last:rounded-b-2xl overflow-hidden">
 
@@ -106,12 +117,15 @@
 
               <div class="flex items-center gap-4 min-w-0">
                 <div @click.stop>
-                  <input type="checkbox" :value="order.paymentId" x-model="selectedOrders"
-                    class="h-5 w-5 rounded border-slate-600 bg-slate-900 text-indigo-600">
+                  <input type="checkbox" :value="order.paymentId" :disabled="order.status === 'pending_payment'"
+                    x-model="selectedOrders" class="h-5 w-5 rounded border-slate-600 bg-indigo-900 text-indigo-600">
                 </div>
                 <div class="min-w-0">
                   <div class="flex items-center gap-2">
                     <span class="font-mono font-bold text-indigo-400 text-sm truncate" x-text="order.orderSn"></span>
+                    <span :class="statusLabel(order.status).color"
+                      class="text-[9px] font-black uppercase px-2 py-1 rounded-full"
+                      x-text="statusLabel(order.status).text"></span>
                     <template x-if="order.isSplit">
                       <span
                         class="text-[8px] bg-amber-500/20 text-amber-500 px-1.5 py-0.5 rounded font-black shrink-0">DIVIDIDA</span>
@@ -125,23 +139,36 @@
               <div class="flex items-center justify-between md:gap-8">
                 <div class="flex -space-x-2">
                   <template x-for="p in order.paymentProducts?.slice(0, 3)" :key="p.productId">
-                    <img :src="p.image"
-                      class="w-8 h-8 rounded-full border-2 border-slate-800 bg-slate-700 object-cover">
+                    <div>
+                      <img :src="p.image" class="w-8 h-8 rounded-full border-2 border-slate-800 bg-slate-700 object-cover">
+                    </div>
+
                   </template>
                 </div>
 
                 <div class="text-right">
                   <div class="font-black text-emerald-400 text-lg md:text-xl"
                     x-text="'R$ ' + order.totalAmount.toFixed(2)"></div>
-                  <div class="md:hidden text-[9px] text-slate-500 font-bold uppercase"
-                    x-text="order.totalItems + ' itens'"></div>
+                  <div class="text-[9px] text-slate-500 font-bold uppercase" x-text="order.totalItems + ' itens'"></div>
                 </div>
 
                 <div class="flex items-center gap-4">
-                  <button @click.stop="payIndividual(order)"
-                    class="bg-indigo-600 hover:bg-indigo-500 text-white p-2 rounded-lg transition-all shadow-lg">
-                    <i class="ph-bold ph-arrow-square-out"></i>
-                  </button>
+                  <template x-if="order.status === 'pending_payment'">
+                    <button @click.stop="payIndividual(order)"
+                      class="bg-emerald-600/50 hover:bg-emerald-500 text-white p-2 rounded-lg transition-all shadow-lg">
+                      <i class="ph-bold ph-arrow-square-out"></i>
+                      <span class="shrink-0">Link para pagar</span>
+                    </button>
+                  </template>
+                  <template x-if="order.status === 'pending'">
+                    <button @click.stop="payIndividual(order)"
+                      class="bg-indigo-600 hover:bg-indigo-500 text-white p-2 rounded-lg transition-all shadow-lg">
+                      <i class="ph-bold ph-arrow-square-out"></i>
+                      <span class="shrink-0">Gerar link</span>
+                    </button>
+                  </template>
+
+
                   <i class="ph-bold text-slate-600 transition-transform"
                     :class="order.expanded ? 'ph-caret-up' : 'ph-caret-down'"></i>
                 </div>
