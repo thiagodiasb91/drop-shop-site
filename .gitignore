@@ -36,10 +36,6 @@ pip-log.txt
 crash.log
 crash.*.log
 
-# Exclude all .tfvars files (likely to contain sensitive data)
-*.tfvars
-*.tfvars.json
-
 # Ignore override files (usually used for local testing)
 override.tf
 override.tf.json
