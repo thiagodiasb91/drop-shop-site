@@ -2,32 +2,49 @@ name: Deploy Infra
 
 on:
   push:
-    branches: [ develop, master ]
+    branches:
+      - develop
+      - master
     paths:
       - 'infra/**'
 
 jobs:
   terraform:
+    name: "Terraform Apply"
     runs-on: ubuntu-latest
+    
+    # Definindo permissões básicas para o token do GitHub
+    permissions:
+      contents: read
+      pull-requests: write
+
     env:
       ENV: ${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: "us-east-1"
     
     steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.11.3" # Versão que está no seu tfstate
 
       - name: Terraform Init
+        id: init
         working-directory: infra/stacks/admin_stack
         run: |
-          # Usamos uma chave de estado diferente para cada ambiente para não sobrescrever
-          terraform init -backend-config="key=tf-state/admin-${{ env.ENV }}.tfstate"
+          terraform init \
+            -backend-config="key=tf-state/admin-${{ env.ENV }}.tfstate" \
+            -reconfigure
 
       - name: Terraform Apply
+        id: apply
         working-directory: infra/stacks/admin_stack
         run: |
-          # Aplica usando o arquivo de variáveis do ambiente correto
-          terraform apply -var-file=../../envs/${{ env.ENV }}.tfvars -auto-approve
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: "us-east-1"
+          terraform apply \
+            -var-file=../../envs/${{ env.ENV }}.tfvars \
+            -auto-approve
