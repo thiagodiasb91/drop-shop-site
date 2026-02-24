@@ -8,7 +8,7 @@ on:
     paths:
       - 'infra/**'
       - '.github/workflows/deploy-infra.yml'
-  workflow_dispatch: # Permite rodar manualmente se precisar
+  workflow_dispatch:
 
 jobs:
   terraform:
