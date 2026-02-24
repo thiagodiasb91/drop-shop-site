@@ -1,63 +1,40 @@
-import { ENV } from "../config/env.js"
-import CacheHelper from "../utils/cache.helper.js"
-import { responseHandler } from "../utils/response.handler.js"
+import { ENV } from "../config/env"
+import BaseApi from "./base"
 
-console.log("AuthService.loaded");
-console.log("ENV.API_BASE_URL", ENV.API_BASE_URL);
-
-
+const api = new BaseApi("/auth")
 
 const AuthService = {
-  basePath: `${ENV.API_BASE_URL}/auth`,
   _mePromise: null,
   async login() {
     console.log("AuthService.login.request")
-    window.location.href = `${this.basePath}/login`
+    window.location.href = `${ENV.API_BASE_URL}/login`
   },
   async callback(code) {
     console.log("AuthService.callback.request", code)
-    const res = await fetch(
-      `${this.basePath}/callback`,
-      {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code }),
-      }
-    )
-
-    return responseHandler(res)
+    return api.call("/callback", {
+      method: "POST",
+      credentials: "include",
+      body: JSON.stringify({ code }),
+    })
   },
 
   async me(force = false) {
-    const now = Date.now()
-    console.log("AuthService.me.request", force, now)
-    const cachedMe = CacheHelper.get("me.data")
-    const expiresAt = CacheHelper.get("me.expiresAt")
-    const isValid = cachedMe && expiresAt && Date.now() < expiresAt * 1000
-    console.log("AuthService.me.cached", cachedMe, expiresAt, isValid)
+    if (!force) {
+      const cachedMe = CacheHelper.get("me.data")
+      const expiresAt = CacheHelper.get("me.expiresAt")
 
-    if (!force && isValid) {
-      console.log("AuthService.me.returningCached", cachedMe)
-      return cachedMe
+      if (cachedMe && expiresAt && Date.now() < expiresAt * 1000) {
+        console.log("AuthService.me.cached", cachedMe, expiresAt, isValid)
+        console.log("AuthService.me.returningCached", cachedMe)
+        return cachedMe
+      }
     }
 
-    if (this._mePromise) {
-      console.log("AuthService.me.returning_mePromise", cachedMe)
-      return this._mePromise;
-    }
+    if (this._mePromise) { return this._mePromise; }
 
     this._mePromise = (async () => {
       try {
-        const res = await fetch(
-          `${this.basePath}/me`,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${CacheHelper.get("session_token")}`
-            },
-          }
-        )
+        const res = await api.call("/me")
 
         if (res.status === 401) {
           console.log("AuthService.me.unauthorized")
@@ -69,7 +46,7 @@ const AuthService = {
           throw new Error("Erro ao buscar usuário")
         }
 
-        const data = (await res.json())
+        const data = await res.response;
         console.log("AuthService.me.api.response", data)
 
         // Simula resposta da API
@@ -92,32 +69,19 @@ const AuthService = {
 
   async confirmCode(code, shopId, email) {
     console.log("AuthService.confirmCode.request", code, shopId, email)
-    const res = await fetch(
-      `${this.basePath}/confirm-shopee`,
-      {
-        method: "POST",
-        body: JSON.stringify({ code, shopId, email }),
-        headers: { "Content-Type": "application/json" },
-      }
-    )
-
-    return responseHandler(res)
+    return api.call("/confirm-shopee", {
+      method: "POST",
+      body: JSON.stringify({ code, shopId, email })
+    })
   },
 
   async renewToken() {
     console.log("AuthService.renewToken.request")
-    const res = await fetch(
-      `${this.basePath}/renew`,
+    return api.call(
+      `/renew`,
       {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${CacheHelper.get("session_token")}`,
-          "Content-Type": "application/json"
-        },
-      }
-    )
-
-    return responseHandler(res)
+        method: "POST"
+      })
   },
 
   async logout() {

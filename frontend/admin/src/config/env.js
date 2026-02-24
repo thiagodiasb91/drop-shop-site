@@ -1,9 +1,5 @@
-const IS_LOCALHOST = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-export const ENV = IS_LOCALHOST ? {
-  SITE_URL: "http://localhost:5173",
-  API_BASE_URL: "https://d2rjoik9cb60m4.cloudfront.net/dev"
-  // API_BASE_URL: "https://inv6sa4cb0.execute-api.us-east-1.amazonaws.com/dev"
-} : {
-  SITE_URL: "https://duz838qu40buj.cloudfront.net",
-  API_BASE_URL: "https://d2rjoik9cb60m4.cloudfront.net/dev"
-}
+export const ENV = {
+  API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
+  SITE_URL: import.meta.env.VITE_SITE_URL,
+  MODE: import.meta.env.MODE // 'development', 'staging' ou 'production'
+};

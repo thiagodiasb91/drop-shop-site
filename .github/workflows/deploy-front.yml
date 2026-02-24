@@ -34,7 +34,12 @@ jobs:
         working-directory: frontend/admin
         run: |
           npm install
-          npm run build
+          # Se for master, usa 'production'. Se for develop, usa 'staging'.
+          if [ "${{ github.ref }}" == "refs/heads/master" ]; then
+            npm run build -- --mode production
+          else
+            npm run build -- --mode staging
+          fi
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
