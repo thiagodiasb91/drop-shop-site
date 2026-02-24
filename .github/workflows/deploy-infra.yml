@@ -6,7 +6,8 @@ on:
       - develop
       - master
     paths:
-      - 'infra/**' # Só dispara se houver alteração aqui
+      - 'infra/**'
+      - '.github/workflows/deploy-infra.yml'
   workflow_dispatch: # Permite rodar manualmente se precisar
 
 jobs:
