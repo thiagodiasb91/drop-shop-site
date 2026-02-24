@@ -12,3 +12,9 @@ variable "common_tags" {
     description = "Common tags to apply to all resources"
     type = map(string)  
 }
+
+variable "aws_profile" {
+  description = "AWS Profile to use for local deployment"
+  type        = string
+  default     = null # Se não informado, ele ignora
+}

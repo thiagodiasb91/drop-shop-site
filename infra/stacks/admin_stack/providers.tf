@@ -1,4 +1,4 @@
 provider "aws" {
   region  = "us-east-1"
-  profile = "default"
+  profile = var.aws_profile
 }
