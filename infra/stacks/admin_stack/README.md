@@ -2,7 +2,7 @@
 
 Execute os seguintes comandos a partir da pasta `infra` para fazer o deploy da lambda:
 
-1.  **Inicialize o Terraform:**
+1.  **Inicialize o Terraform: **
     Este comando inicializa o diretório de trabalho do Terraform, baixando os provedores e módulos necessários.
 
     ```bash
