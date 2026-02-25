@@ -15,9 +15,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # Lógica de ambiente
-      ENV: ${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
+      ENV: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
       # Nome do bucket seguindo o padrão que criamos no Terraform
-      BUCKET_NAME: "drop-shop-${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}-admin-frontend"
+      BUCKET_NAME: "drop-shop-${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}-admin-frontend"
 
     steps:
       - name: Checkout
@@ -34,8 +34,8 @@ jobs:
         working-directory: frontend/admin
         run: |
           npm install
-          # Se for master, usa 'production'. Se for develop, usa 'staging'.
-          if [ "${{ github.ref }}" == "refs/heads/master" ]; then
+          # Se for main, usa 'production'. Se for develop, usa 'staging'.
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
             npm run build -- --mode production
           else
             npm run build -- --mode staging
