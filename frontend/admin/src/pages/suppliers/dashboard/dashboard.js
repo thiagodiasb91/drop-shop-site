@@ -1,5 +1,6 @@
 import html from "./dashboard.html?raw"
 import AuthService from "../../../services/auth.service.js";
+import stateHelper from "../../../utils/state.helper.js";
 
 export function getData() {
     return {
@@ -38,7 +39,7 @@ export function getData() {
         ],
 
         async init() {
-            this.loggedInfo = await AuthService.me();
+            this.loggedInfo = stateHelper.user;
             await this.fetchData();
         },
 

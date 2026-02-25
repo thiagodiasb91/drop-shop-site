@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "admin" {
-  bucket = "${var.project_name}-admin-frontend"
+  bucket = "${var.project_name}-${var.environment}-admin-frontend"
 
   tags = merge(
     var.common_tags,

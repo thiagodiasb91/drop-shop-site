@@ -2,6 +2,7 @@ import html from "./callback.html?raw";
 import AuthService from "../../../services/auth.service.js"
 import { navigate } from "../../../core/router.js"; 
 import CacheHelper from "../../../utils/cache.helper.js";
+import stateHelper from "../../../utils/state.helper.js";
 
 export function getData() {
   return {
@@ -33,6 +34,7 @@ export function getData() {
       const callbackResponse = await AuthService.callback(code)
       console.log("page.callback.init.callbackResponse", callbackResponse);
 
+
       if (!callbackResponse.ok) {
         console.error("page.callback.init.error", callbackResponse.response);
         CacheHelper.remove("session_token")
@@ -42,6 +44,7 @@ export function getData() {
       }
 
       CacheHelper.set("session_token", callbackResponse.response.sessionToken)
+      await stateHelper.refresh()
 
       this.message = "Login realizado"
       console.log("page.callback.init.redirecting");

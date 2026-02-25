@@ -1,6 +1,6 @@
 # 🔐 OAC para S3
 resource "aws_cloudfront_origin_access_control" "admin_oac" {
-  name                              = "${var.project_name}-admin-oac"
+  name                              = "${var.project_name}-${var.environment}-admin-oac"
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always"
   signing_protocol                  = "sigv4"
@@ -8,18 +8,18 @@ resource "aws_cloudfront_origin_access_control" "admin_oac" {
 
 # 🌍 CloudFront - FRONTEND
 resource "aws_cloudfront_distribution" "admin_frontend" {
-  comment             = "Drop Shop Admin Frontend"
+  comment = "Drop Shop Admin Frontend (${var.environment})"
   enabled             = true
   default_root_object = "index.html"
 
   origin {
     domain_name              = aws_s3_bucket.admin.bucket_regional_domain_name
-    origin_id                = "admin-s3-origin"
+    origin_id                = "${var.project_name}-${var.environment}-admin-s3-origin"
     origin_access_control_id = aws_cloudfront_origin_access_control.admin_oac.id
   }
 
   default_cache_behavior {
-    target_origin_id       = "admin-s3-origin"
+    target_origin_id       = "${var.project_name}-${var.environment}-admin-s3-origin"
     viewer_protocol_policy = "redirect-to-https"
 
     allowed_methods = ["GET", "HEAD"]
@@ -53,7 +53,7 @@ resource "aws_cloudfront_distribution" "admin_frontend" {
 }
 
 resource "aws_cloudfront_cache_policy" "static" {
-  name = "static-assets"
+  name = "${var.project_name}-${var.environment}-static-assets"
 
   default_ttl = 86400
   max_ttl     = 31536000

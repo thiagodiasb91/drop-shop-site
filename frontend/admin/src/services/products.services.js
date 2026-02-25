@@ -1,19 +1,13 @@
-import { ENV } from "../config/env.js"
-import { responseHandler } from "../utils/response.handler.js"
-import CacheHelper from "../utils/cache.helper.js"
+import BaseApi from "./base.api"
+
+const baseApi = new BaseApi("/products")
 
 const ProductsService = {
-  basePath: `${ENV.API_BASE_URL}/products`,
   async getAll() {
-    console.log("ProductsService.getAll.request")
-    const res = await fetch(
-      `${this.basePath}`,
-      {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      }
-    )
-    return responseHandler(res)
+    return baseApi.call("/", {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    })
   },
   async getAllWithSkus() {
     const productsResponse = await ProductsService.getAll()
@@ -44,79 +38,58 @@ const ProductsService = {
 
     return {
       ok: true,
-      data: products
+      response: products
     }
   },
   async getSkusByProductId(productId) {
-    console.log("SkusService.getSkusByProductId.request", productId)
-    const res = await fetch(
-      `${this.basePath}/${productId}/skus`,
-      {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      }
-    )
-    return responseHandler(res)
+    return baseApi.call(`/${productId}/skus`, {
+      method: "GET",
+    })
   },
   async create(data) {
-    const res = await fetch(`${this.basePath}`, {
+    return baseApi.call("/", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data)
-    });
-    return responseHandler(res);
+    })
   },
 
   async update(id, data) {
-    const res = await fetch(`${this.basePath}/${id}`, {
+    return baseApi.call(`/${id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data)
-    });
-    return responseHandler(res);
+    })
+  },
+
+  async updateSku(id, data) {
+    return baseApi.call(`/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data)
+    })
   },
 
   async createSku(productId, skuData) {
-    const res = await fetch(`${this.basePath}/${productId}/skus`, {
+    return baseApi.call(`/${productId}/skus`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(skuData)
     });
-    return responseHandler(res);
   },
 
   async deleteSku(productId, skuId) {
-    const res = await fetch(
-      `${this.basePath}/${productId}/skus/${skuId}`,
-      {
-        method: "DELETE"
-      }
-    );
-    return responseHandler(res);
+    return baseApi.call(`/${productId}/skus/${skuId}`, {
+      method: "DELETE"
+    })
   },
 
   async delete(id) {
-    const res = await fetch(
-      `${this.basePath}/${id}`,
-      {
-        method: "DELETE"
-      }
-    );
-    return responseHandler(res);
+    return baseApi.call(`/${id}`, {
+      method: "DELETE"
+    })
   },
   async getProductSuppliers(productId) {
     console.log("ProductsService.getSuppliersForProduct.request", productId)
-    const res = await fetch(
-      `${this.basePath}/${productId}/suppliers`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${CacheHelper.get("session_token")}`
-        },
-      }
-    )
-    return responseHandler(res)
+    return baseApi.call(`/${productId}/suppliers`, {
+      method: "GET",
+    })
   }
 }
 

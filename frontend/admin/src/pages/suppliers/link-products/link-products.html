@@ -46,24 +46,70 @@
               <span class="text-[10px] text-slate-500 font-bold uppercase whitespace-nowrap px-3"
                 x-text="product.skusLoaded ? `${product.skus.length} variações` : ''"></span>
             </label>
-
-            <div x-show="product.selected && product.skusLoaded" x-data="{ batchPrice: '' }" x-transition
-              class="bg-slate-700/20 px-4 py-4 border-t border-slate-700/50">
-              <div class="flex flex-col gap-2 max-w-xs">
-                <label class="text-[10px] uppercase font-bold text-slate-400 tracking-widest">Preço de custo para
-                  todos</label>
-                <div class="flex items-center gap-3">
-                  <div class="relative flex-1">
-                    <span class="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-500">R$</span>
-                    <input type="number" step="0.01" placeholder="Preço" x-model="batchPrice"
-                      class="w-24 rounded border border-slate-600 bg-slate-900 py-1 pl-6 pr-2 text-xs text-slate-200 outline-none focus:border-indigo-500" />
-                  </div>
-                  <button type="button" @click="applyPriceToAll(product, batchPrice)"
-                    class="bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-[10px] font-bold text-slate-200 transition uppercase">
-                    Aplicar
-                  </button>
-                </div>
+            <div x-show="product.selected && product.skusLoaded"
+              class="rounded-lg max-w-sm bg-indigo-500/5 px-4 py-3 border-t border-b border-slate-700/50 flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-1">
+                <i class="ph ph-arrows-merge text-indigo-400"></i>
+                <span class="text-[10px] uppercase font-black text-slate-400 tracking-widest">Preço Global</span>
               </div>
+
+              <div class="flex items-center gap-2" x-data="{ globalPrice: '' }">
+                <div class="relative">
+                  <span class="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-500">R$</span>
+                  <input type="number" step="0.01" placeholder="0,00" x-model="globalPrice"
+                    class="w-24 rounded border border-slate-600 bg-slate-900 py-1 pl-6 pr-2 text-xs text-slate-200 outline-none focus:border-indigo-500" />
+                </div>
+                <button type="button" @click="applyPriceToAll(product, globalPrice)"
+                  class="bg-indigo-600 hover:bg-indigo-500 px-3 py-1 rounded text-[10px] font-bold text-white transition uppercase shadow-lg">
+                  Aplicar em tudo
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="p-4 bg-slate-900/20" x-show="product.selected && product.skusLoaded" x-transition>
+            <div class="flex flex-col gap-6">
+
+              <template x-for="(skus, color) in getGroupedSkus(product)" :key="color">
+                <div class="space-y-3">
+                  <div class="flex items-center gap-2">
+                    <div class="h-px flex-1 bg-slate-700"></div>
+                    <span
+                      class="px-3 py-1 bg-slate-800 border border-slate-700 rounded-full text-[10px] font-black uppercase text-indigo-400 tracking-widest"
+                      x-text="color"></span>
+                    <div class="h-px flex-1 bg-slate-700"></div>
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                    <template x-for="sku in skus" :key="sku.key">
+                      <div
+                        class="group bg-slate-800/40 p-3 rounded-xl border border-slate-700 hover:border-indigo-500/50 transition-all shadow-sm">
+
+                        <div class="flex justify-between items-center mb-2">
+                          <span class="text-[11px] font-black text-slate-200 bg-slate-700 px-2 py-0.5 rounded"
+                            x-text="sku.size"></span>
+                          <span
+                            class="text-[9px] text-slate-500 font-mono group-hover:text-indigo-400 transition-colors"
+                            x-text="sku.platformSku"></span>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                          <div class="space-y-1">
+                            <label class="text-[8px] uppercase font-bold text-slate-500">Cod. Forn</label>
+                            <input type="text" x-model="sku.skuSupplier"
+                              class="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-[11px] text-slate-200 outline-none focus:border-indigo-500" />
+                          </div>
+                          <div class="space-y-1">
+                            <label class="text-[8px] uppercase font-bold text-slate-500">Custo R$</label>
+                            <input type="number" step="0.01" x-model="sku.costPrice"
+                              class="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-[11px] text-slate-200 outline-none focus:border-indigo-500" />
+                          </div>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </template>
+
             </div>
           </div>
 
@@ -72,32 +118,6 @@
             <div class="h-3 w-3 animate-spin rounded-full border-2 border-slate-500 border-t-indigo-500"></div>
             <span class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest animate-pulse">Buscando
               variações...</span>
-          </div>
-          <div class="p-4" x-show="product.selected && product.skusLoaded" x-transition>
-            <div class="space-y-3">
-              <div
-                class="hidden md:grid md:grid-cols-4 gap-4 px-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                <div>Cor / Tamanho</div>
-                <div>SKU Plataforma</div>
-                <div>SKU Fornecedor</div>
-                <div>Preço de Custo</div>
-              </div>
-
-              <template x-for="sku in product.skus" :key="sku.key">
-                <div
-                  class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center bg-slate-900/50 p-3 rounded-md border border-slate-700/50">
-                  <div class="text-xs font-medium text-slate-200" x-text="`${sku.color} / ${sku.size}`"></div>
-                  <code class="text-[11px] text-indigo-400" x-text="sku.platformSku"></code>
-                  <input type="text" x-model="sku.skuSupplier"
-                    class="w-full rounded border-slate-700 bg-slate-900 px-2 py-1 text-sm text-slate-200" />
-                  <div class="relative">
-                    <span class="absolute left-2 top-1.5 text-slate-500 text-xs">R$</span>
-                    <input type="number" step="0.01" x-model="sku.costPrice"
-                      class="w-full rounded border-slate-700 bg-slate-900 pl-7 py-1 text-sm text-slate-200" />
-                  </div>
-                </div>
-              </template>
-            </div>
           </div>
         </div>
     </div>

@@ -7,8 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "npm run build && vite preview --port 5173",
-    "deploy:s3": "aws s3 sync dist/ s3://drop-shop-admin-frontend --delete --cache-control 'max-age=31536000,public'",
-    "deploy:cdn": "aws cloudfront create-invalidation --distribution-id E2A7MA05O5ZR0P --paths /index.html",
+    "deploy:s3": "aws s3 sync dist/ s3://$BUCKET_NAME --delete --cache-control 'max-age=31536000,public'",
+    "deploy:cdn": "aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths /index.html",
     "deploy": "run-s build deploy:s3 deploy:cdn"
   },
   "devDependencies": {

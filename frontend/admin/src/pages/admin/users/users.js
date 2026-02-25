@@ -1,6 +1,7 @@
 import html from "./users.html?raw"
 import { navigate } from "../../../core/router.js"
 import UsersService from "../../../services/users.services.js"
+import stateHelper from "../../../utils/state.helper.js";
 
 export function getData() {
   return {
@@ -25,7 +26,7 @@ export function getData() {
 
       if (!res.ok) {
         console.error("pages.users.fetchUsers.getAllUsers.error", res.response)
-        Alpine.store('toast').open('Erro ao consultar usuários.', 'error');
+        stateHelper.toast('Erro ao consultar usuários.', 'error');
         return
       }
 
@@ -61,9 +62,9 @@ export function getData() {
 
       if (!res.ok) {
         user.role = oldRole; // Reverte em caso de erro
-        Alpine.store('toast').open('Erro ao atualizar permissão.', 'error');
+        stateHelper.toast('Erro ao atualizar permissão.', 'error');
       } else {
-        Alpine.store('toast').open(`Usuário atualizado para ${this.labelRole(role)}`, 'success');
+        stateHelper.toast(`Usuário atualizado para ${this.labelRole(role)}`, 'success');
       }
       user.saving = false;
     },

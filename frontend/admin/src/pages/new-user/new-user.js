@@ -1,11 +1,12 @@
 import html from "./new-user.html?raw"
 import AuthService from "../../services/auth.service";
+import stateHelper from "../../utils/state.helper.js";
 
 export function getData() {
   return {
     email: "",
     async init() {
-      const logged = await AuthService.me()
+      const logged = stateHelper.user;
       this.email = logged?.user?.email
     }
   }

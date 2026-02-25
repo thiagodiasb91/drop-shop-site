@@ -1,5 +1,6 @@
 import html from "./dashboard.html?raw"
 import AuthService from "../../../services/auth.service"
+import stateHelper from "../../../utils/state.helper";
 
 export function getData() {
     return {
@@ -39,7 +40,7 @@ export function getData() {
         ],
 
         async init() {
-            this.loggedInfo = await AuthService.me()
+            this.loggedInfo = stateHelper.user;
             await this.fetchData();
         },
 
@@ -74,7 +75,7 @@ export function getData() {
 
         openSupport() {
             const phone = "5511999999999"; // Seu número de suporte
-            const message = encodeURIComponent(`Olá! Sou o vendedor ${this.loggedInfo.user.email} e preciso de ajuda com o setup inicial.`);
+            const message = encodeURIComponent(`Olá! Sou o vendedor ${this.loggedInfo.user.email} e preciso de ajuda.`);
             window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
         }
     }

@@ -1,0 +1,216 @@
+<div x-data="getData()" class="min-h-screen bg-slate-900 p-4 md:p-8 text-slate-100">
+    <div x-show="loading" class="flex justify-center items-center h-64">
+        <i class="ph ph-circle-notch animate-spin text-indigo-500 text-4xl"></i>
+    </div>
+
+    <div x-show="!loading" class="max-w-4xl mx-auto space-y-8">
+
+        <header>
+            <h1 class="text-2xl font-bold">Financeiro e Faturamento</h1>
+            <p class="text-slate-400 text-sm">Acompanhe seu ciclo de vendas e faturas mensais.</p>
+        </header>
+        <div class="bg-indigo-600 rounded-3xl p-6 md:p-8 shadow-2xl shadow-indigo-500/20 relative overflow-hidden">
+            <div class="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
+            <div class="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                <div>
+                    <span
+                        class="text-indigo-200 text-[10px] uppercase font-black tracking-widest bg-white/10 px-2 py-1 rounded">Taxas
+                        Acumuladas</span>
+                    <h2 class="text-4xl md:text-5xl font-mono font-bold mt-2 text-white"
+                        x-text="'R$ ' + stats.currentCycle?.totalAmount.toFixed(2)"></h2>
+                    <p class="text-indigo-100/70 text-sm mt-1"
+                        x-text="stats.currentCycle?.ordersCount + ' ordens processadas neste ciclo'"></p>
+                </div>
+
+                <div
+                    class="bg-black/20 backdrop-blur-md rounded-2xl p-4 border border-white/10 w-full md:w-auto text-center">
+                    <p class="text-[10px] uppercase text-indigo-200 font-bold mb-1">Custo por Ordem</p>
+                    <p class="text-2xl font-bold text-white">R$ 1,00</p>
+                    <p class="text-[10px] text-indigo-200/90 italic mt-1"
+                        x-text="'Fechamento: ' + stats.currentCycle?.closingDate"></p>
+                </div>
+            </div>
+        </div>
+
+        <section>
+            <h3 class="text-lg text-slate-400 font-bold mb-4 flex items-center gap-2">
+                <i class="ph ph-clock-counter-clockwise text-indigo-400"></i>
+                Faturas Anteriores
+            </h3>
+
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-slate-900/50 text-[10px] uppercase text-slate-500 font-bold">
+                        <tr>
+                            <th class="px-4 md:px-6 py-4">Fatura</th>
+                            <th class="px-4 md:px-6 py-4">Valor</th>
+                            <th class="hidden md:table-cell px-6 py-4 text-center">Status</th>
+                            <th class="px-4 md:px-6 py-4"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-700/50">
+                        <template x-for="inv in stats.invoices" :key="inv.id">
+                    <tbody class="contents">
+                        <tr @click="toggleDetails(inv)" class="hover:bg-slate-700/30 cursor-pointer transition-all">
+                            <td class="px-4 md:px-6 py-4">
+                                <div class="font-bold text-slate-200 text-sm md:text-base" x-text="inv.month"></div>
+                                <div class="text-[9px] text-slate-500 font-mono truncate w-20 md:w-full"
+                                    x-text="inv.id"></div>
+                            </td>
+                            <td class="px-4 md:px-6 py-4">
+                                <div class="font-mono font-bold text-indigo-400 text-sm md:text-base"
+                                    x-text="'R$ ' + inv.amount.toFixed(2)"></div>
+                                <div class="md:hidden mt-1">
+                                    <span :class="statusLabel(inv.status).color"
+                                        class="text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full"
+                                        x-text="statusLabel(inv.status).text"></span>
+                                </div>
+                            </td>
+                            <td class="hidden md:table-cell px-6 py-4 text-center">
+                                <span :class="statusLabel(inv.status).color"
+                                    class="text-[9px] font-black uppercase px-2 py-1 rounded-full"
+                                    x-text="statusLabel(inv.status).text"></span>
+                            </td>
+                            <td class="px-4 md:px-6 py-4 text-right">
+                                <div class="flex items-center justify-end gap-2">
+                                    <template x-if="inv.status != 'paid'">
+                                        <button @click.stop="generatePix(inv)"
+                                            class="mr-3 bg-indigo-600 text-white text-[10px] font-black px-2 md:px-3 py-1.5 rounded-lg flex items-center gap-1">
+                                            <i class="ph ph-qr-code"></i>
+                                            <span class="hidden md:inline">PAGAR</span> </button>
+                                    </template>
+                                    <i class="ph ph-caret-down text-slate-500 transition-transform"
+                                        :class="inv.expanded ? 'rotate-180' : ''"></i>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <tr x-show="inv.expanded" x-transition class="bg-slate-900/50">
+                            <td colspan="4" class="px-6 py-4">
+                                <div x-show="inv.loadingDetails" class="flex justify-center py-4">
+                                    <i class="ph ph-circle-notch animate-spin text-indigo-500 text-2xl"></i>
+                                </div>
+
+                                <div x-show="!inv.loadingDetails" class="space-y-2">
+                                    <div
+                                        class="hidden md:grid grid-cols-12 gap-4 px-4 pb-2 text-[9px] uppercase font-black text-slate-500 tracking-widest">
+                                        <div class="col-span-3">Data da Ordem</div>
+                                        <div class="col-span-5">ID do Pedido Shopee</div>
+                                        <div class="col-span-2 text-center">Itens</div>
+                                        <div class="col-span-2 text-right">Valor da Ordem</div>
+                                    </div>
+
+                                    <template x-for="order in inv.orders" :key="order.orderId">
+                                        <div
+                                            class="bg-slate-800 border border-slate-700/50 p-3 rounded-xl hover:border-indigo-500/30 transition-colors">
+                                            <div class="flex flex-col md:grid md:grid-cols-12 gap-2 md:items-center">
+
+                                                <div
+                                                    class="flex justify-between md:col-span-3 text-[10px] font-mono text-slate-500">
+                                                    <span x-text="order.date"></span>
+                                                    <span
+                                                        class="md:hidden bg-slate-900 px-2 py-0.5 rounded text-slate-400"
+                                                        x-text="order.itemsCount + ' un'"></span>
+                                                    <span
+                                                        class="md:hidden bg-slate-900 px-2 py-0.5 rounded text-slate-400"
+                                                        x-text="'R$ ' + order.totalAmount.toFixed(2)"></span>
+                                                </div>
+
+                                                <div class="md:col-span-6 min-w-0">
+                                                    <div class="text-[11px] font-bold text-slate-200 font-mono tracking-tight truncate"
+                                                        x-text="order.orderId"></div>
+                                                    <div class="text-[8px] text-slate-600 uppercase font-black">
+                                                        Shopee ID</div>
+                                                </div>
+
+                                                <div class="hidden md:block md:col-span-1 text-center text-[11px] text-slate-400"
+                                                    x-text="order.itemsCount + ' un'"></div>
+
+                                                <div
+                                                    class="md:col-span-2 text-right border-t border-slate-700/50 md:border-0 pt-2 md:pt-0 mt-1 md:mt-0">
+                                                    <span
+                                                        class="md:hidden text-[9px] text-slate-500 uppercase float-left mt-1 font-bold">Taxa
+                                                        de Serviço:</span>
+                                                    <span
+                                                        class="text-xs md:text-[11px] font-mono font-black text-indigo-400">R$
+                                                        1,00</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+
+                                    <div class="flex justify-end pt-4 border-t border-slate-800 mt-4">
+                                        <div class="text-right">
+                                            <p class="text-[9px] uppercase font-black text-slate-500">Total desta
+                                                Fatura</p>
+                                            <p class="text-xl font-mono font-black text-white"
+                                                x-text="'R$ ' + inv.amount.toFixed(2)"></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                    </template>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <div class="p-4 bg-slate-800/50 border border-dashed border-slate-700 rounded-xl flex items-start gap-4">
+            <i class="ph ph-info text-indigo-400 text-xl mt-1"></i>
+            <p class="text-xs text-slate-500 leading-relaxed">
+                As faturas acima referem-se ao custo de mercadoria dos fornecedores e taxa de intermediação.
+                Os pagamentos realizados pelo cliente final na Shopee são recebidos diretamente por você através da
+                central do vendedor Shopee.
+            </p>
+        </div>
+        <div x-show="showPaymentModal" x-transition.opacity
+            class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+
+            <div @click.away="showPaymentModal = false"
+                class="bg-slate-800 border border-slate-700 w-full max-w-sm rounded-[2.5rem] p-8 text-center shadow-2xl relative">
+
+                <button @click="showPaymentModal = false"
+                    class="absolute right-6 top-6 text-slate-500 hover:text-white">
+                    <i class="ph ph-x text-2xl"></i>
+                </button>
+
+                <div class="mb-6">
+                    <div
+                        class="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <i class="ph ph-pix-logo text-3xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white">Pagamento via Pix</h3>
+                    <p class="text-xs text-slate-400 mt-1">Escaneie o código abaixo para pagar</p>
+                </div>
+
+                <div x-show="pixData.loading" class="py-12">
+                    <i class="ph ph-circle-notch animate-spin text-4xl text-indigo-500"></i>
+                </div>
+
+                <div x-show="!pixData.loading" class="space-y-6">
+                    <div class="bg-white p-3 rounded-2xl inline-block shadow-inner">
+                        <img :src="pixData.qrcode" alt="QR Code Pix" class="w-48 h-48">
+                    </div>
+
+                    <div class="space-y-2">
+                        <p class="text-[10px] text-slate-500 uppercase font-bold">Ou use o Pix Copia e Cola</p>
+                        <div class="relative group">
+                            <input readonly type="text" :value="pixData.copyPaste"
+                                class="h-13 w-full bg-slate-900 border border-slate-700 rounded-xl py-3 px-4 pr-12 text-[10px] font-mono text-slate-400 focus:ring-0">
+                            <button @click="copyPix()"
+                                class="absolute right-2 top-1.5 p-2 bg-indigo-600 rounded-lg text-white hover:bg-indigo-500 transition-colors">
+                                <i class="ph ph-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <p class="text-[10px] text-slate-500 italic">
+                        Após o pagamento, o sistema identificará automaticamente em até 5 minutos.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

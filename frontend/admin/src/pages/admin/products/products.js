@@ -1,6 +1,8 @@
 import html from "./products.html?raw"
 import { currency } from "../../../utils/format.utils";
 import ProductsService from "../../../services/products.services"
+import stateHelper from "../../../utils/state.helper";
+import { renderGlobalLoader } from "../../../components";
 
 export function getData() {
   return {
@@ -25,7 +27,7 @@ export function getData() {
       console.log("products", productsResponse)
 
       if (!productsResponse.ok) {
-        Alpine.store('toast').open('Erro ao consultar os produtos e seus skus.', 'error');
+        stateHelper.toast('Erro ao consultar os produtos e seus skus.', 'error');
         return
       }
 
@@ -91,11 +93,11 @@ export function getData() {
     },
     validateProduct() {
       if (!this.modal.form.name?.trim()) {
-        Alpine.store('toast').open('O nome do produto é obrigatório.', 'error');
+        stateHelper.toast('O nome do produto é obrigatório.', 'error');
         return false;
       }
       if (!this.modal.form.colors.length || !this.modal.form.sizes.length) {
-        Alpine.store('toast').open('Adicione ao menos uma cor e um tamanho.', 'error');
+        stateHelper.toast('Adicione ao menos uma cor e um tamanho.', 'error');
         return false;
       }
       return true;
@@ -156,12 +158,12 @@ export function getData() {
 
         if (skuPromises.length > 0) await Promise.all(skuPromises);
 
-        Alpine.store('toast').open('Produto salvo com sucesso.', 'success');
+        stateHelper.toast('Produto salvo com sucesso.', 'success');
         await this.init(); // Recarrega a tabela usando o getAllWithSkus do service
         this.closeModal();
       } catch (e) {
         console.error(e);
-        Alpine.store('toast').open('Erro ao salvar produto.', 'error');
+        stateHelper.toast('Erro ao salvar produto.', 'error');
       } finally {
         this.modal.loading = false;
       }
@@ -176,7 +178,9 @@ export function getData() {
     currency(value) {
       return currency(value)
     },
-
+    renderLoader() {
+      return renderGlobalLoader("Carregando produtos...");
+    }
   }
 }
 
