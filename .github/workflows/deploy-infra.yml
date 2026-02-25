@@ -43,7 +43,7 @@ jobs:
         working-directory: infra/stacks/admin_stack
         run: |
           terraform init \
-            -backend-config="key=tf-state/admin-stack-${{ env.ENV }}.tfstate" \
+            -backend-config="key=tf-state/admin-${{ env.ENV }}.tfstate" \
             -reconfigure
 
       - name: Terraform Apply
