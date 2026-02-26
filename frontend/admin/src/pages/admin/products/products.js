@@ -1,5 +1,5 @@
 import html from "./products.html?raw"
-import { currency } from "../../../utils/format.utils";
+import { currency } from "../../../utils/format.helper";
 import ProductsService from "../../../services/products.services"
 import stateHelper from "../../../utils/state.helper";
 import { renderGlobalLoader } from "../../../components";

@@ -12,7 +12,7 @@ export function getData() {
       'admin',
       'seller', 
       'supplier', 
-      'new-user',
+      'dispatcher',
     ],
 
     init() {
@@ -48,11 +48,13 @@ export function getData() {
         supplier: 'Fornecedor',
         seller: 'Vendedor',
         admin: 'Admin',
+        dispatcher: 'CD',
         'new-user': 'Sem acesso'
       }[role];
     },
     async setRole(user, role) {
-      if (user.role === role || user.saving) return;
+      const confirm = window.confirm(`Tem certeza que deseja definir o nível de acesso de ${user.email} para ${this.labelRole(role)}?`);
+      if (user.role === role || user.saving || !confirm) return;
 
       const oldRole = user.role;
       user.role = role;

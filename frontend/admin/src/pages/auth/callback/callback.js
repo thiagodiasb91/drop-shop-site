@@ -37,13 +37,13 @@ export function getData() {
 
       if (!callbackResponse.ok) {
         console.error("page.callback.init.error", callbackResponse.response);
-        CacheHelper.remove("session_token")
+        stateHelper.removeSession()
         this.message = "Erro ao autenticar"
         this.executing = false
         return
       }
 
-      CacheHelper.set("session_token", callbackResponse.response.sessionToken)
+      stateHelper.setSession(callbackResponse.response.sessionToken)
       await stateHelper.refresh()
 
       this.message = "Login realizado"

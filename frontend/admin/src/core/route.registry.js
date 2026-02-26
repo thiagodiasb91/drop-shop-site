@@ -9,7 +9,7 @@ export const routes = {
   },
   "/new-user": {
     title: "Usuário Novo",
-    js: () => import("../pages/new-user/new-user.js"),
+    js: () => import("../pages/commons/new-user/new-user.js"),
     layout: "public",
     hideMenu: true,
     middlewares: RouteGuard.newUser,
@@ -74,16 +74,15 @@ export const routes = {
     title: "Estoque",
     group: "Inventário",
     icon: "ph ph-stack",
-    hideMenu: true,
     js: () => import("../pages/suppliers/update-stock/update-stock.js"),
   },
-  "/suppliers/orders": {
+  "/suppliers/orders-to-send": {
     allowedRoles: ['supplier'],
     middlewares: RouteGuard.supplier,
     title: "Pedidos para Envio",
     group: "Operações",
     icon: "ph ph-list-checks",
-    js: () => import("../pages/suppliers/orders/orders.js"),
+    js: () => import("../pages/suppliers/orders-to-send/orders-to-send.js"),
   },
   "/suppliers/setup": {
     allowedRoles: ['supplier'],
@@ -153,6 +152,32 @@ export const routes = {
     js: () => import("../pages/sellers/billing/billing.js"),
   },
 
+  // --- SELLERS ---
+  "/distribution-center/new": {
+    allowedRoles: ['distribution_center'],
+    middlewares: RouteGuard.distributionCenterSetup,
+    title: "Central de Distribuição sem vínculo com Fornecedor",
+    hideMenu: true,
+    layout: "public",
+    js: () => import("../pages/commons/new-distribution-center/new-distribution-center.js"),
+  },
+  "/distribution-center/dashboard": {
+    allowedRoles: ['distribution_center'],
+    middlewares: RouteGuard.distributionCenter,
+    title: "Meu Painel",
+    group: "Principal",
+    icon: "ph ph-house-line",
+    js: () => import("../pages/distribution-center/dashboard/dashboard.js"),
+  },
+  "/distribution-center/orders-to-send": {
+    allowedRoles: ['distribution_center'],
+    middlewares: RouteGuard.distributionCenter,
+    title: "Pedidos para Envio",
+    group: "Operações",
+    icon: "ph ph-list-checks",
+    js: () => import("../pages/distribution-center/orders-to-send/orders-to-send.js"),
+  },
+
   // --- OPERACIONAL ---
   "/orders": {
     title: "Pedidos",
@@ -173,6 +198,6 @@ export const routes = {
   "*": {
     title: "404",
     hideMenu: true,
-    js: () => import("../pages/not-found/not-found.js"),
+    js: () => import("../pages/commons/not-found/not-found.js"),
   }
 };

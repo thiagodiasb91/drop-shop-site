@@ -1,6 +1,5 @@
-import html from "./new-user.html?raw"
-import AuthService from "../../services/auth.service";
-import stateHelper from "../../utils/state.helper.js";
+import html from "./new-distribution-center.html?raw"
+import stateHelper from "../../../utils/state.helper.js";
 
 export function getData() {
   return {

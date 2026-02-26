@@ -28,6 +28,13 @@ const Middlewares = {
     return true;
   },
 
+  needsDistributionCenterSetup: (user, route) => {
+    if (user?.role === 'distribution_center' && !user?.resourceId) {
+      return '/distribution-center/new';
+    }
+    return true;
+  },
+
   isNewUser: (user, route) => {
     if (user?.role === 'new-user') {
       return '/new-user';

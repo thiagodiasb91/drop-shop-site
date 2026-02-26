@@ -1,5 +1,6 @@
-import { ENV } from "../config/env.js";
+import ENV from "../config/env.js";
 import CacheHelper from "../utils/cache.helper.js";
+import stateHelper from "../utils/state.helper.js";
 
 const BASE_URL = ENV.API_BASE_URL;
 
@@ -7,9 +8,7 @@ function handleUnauthorized(res) {
   if (res.status === 401) {
     console.warn("Sessão expirada ou inválida. Limpando dados...");
 
-    CacheHelper.remove("session_token")
-    CacheHelper.remove("me.data")
-    CacheHelper.remove("me.expiresAt")
+    stateHelper.setLogout()
 
     if (window.Alpine) {
       const authStore = Alpine.store('auth');

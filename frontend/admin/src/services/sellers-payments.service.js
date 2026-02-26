@@ -1,9 +1,11 @@
-import { ENV } from "../config/env.js"
+import ENV from "../config/env.js"
 import { responseHandler } from "../utils/response.handler.js"
 import CacheHelper from "../utils/cache.helper.js";
+import BaseApi from "./base.api.js";
+
+const api = new BaseApi("/sellers/payments");
 
 const SellersPaymentsService = {
-  basePath: `${ENV.API_BASE_URL}/sellers/payments`,
   async getFinancialSummary() {
     // Simularia: GET /sellers/payments/dashboard-summary
     return {
@@ -21,45 +23,13 @@ const SellersPaymentsService = {
 
   // Simula o endpoint: GET /sellers/payments/summary  
   async getPaymentSummary() {
-    const res = await fetch(
-      `${this.basePath}/summary`,
+    return api.call(
+      `/summary`,
       {
         method: "GET",
-        headers: {
-          "Authorization": `Bearer ${CacheHelper.get("session_token")}`
-        }
       });
-    return responseHandler(res);
-
-
-    // // MOCK: Lista de fornecedores que o vendedor precisa pagar
-    // const pending = Array.from({ length: 2 }, (_, i) => ({
-    //   supplierId: `SP-${i + 1}`,
-    //   supplierName: `Fornecedor Pendente ${i + 1}`,
-    //   totalAmount: Math.floor(Math.random() * 2000) + 100,
-    //   totalItems: Math.floor(Math.random() * 10) + 1,
-    //   status: "pending",
-    //   dueDate: "2026-02-28"
-    // }));
-
-    // // Gerando 50 itens concluídos
-    // const paid = Array.from({ length: 50 }, (_, i) => ({
-    //   supplierId: `SC-${i + 1}`,
-    //   supplierName: `Fornecedor Histórico ${i + 1}`,
-    //   totalAmount: Math.floor(Math.random() * 1500) + 50,
-    //   totalItems: Math.floor(Math.random() * 5) + 1,
-    //   status: "paid",
-    //   paidAt: "2026-01-20"
-    // }));
-
-    // return {
-    //   ok: true,
-    //   response: [...pending, ...paid]
-    // };
   },
 
-  // Simula o endpoint: GET /sellers/payments/supplier/{id}
-  // Carregamento sob demanda (Lazy Loading)
   async getSupplierPaymentDetails(supplierId) {
     /* const res = await fetch(`${this.basePath}/supplier/${supplierId}`, { method: "GET" });
     return responseHandler(res);
@@ -160,29 +130,15 @@ const SellersPaymentsService = {
       }, 500);
     });
   },
-  async generatePixPayment(amount) {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          ok: true,
-          response: {
-            qrcode: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=PIX_MOCK_VALUE_${amount}`,
-            copyPaste: "00020126580014br.gov.bcb.pix013660f95b32-3435-424d-b636-23112345678952040000530398654071450.805802BR..."
-          }
-        });
-      }, 1200);
-    });
-  },
-  async paySupplier(supplierId, amount) {
-    // POST /sellers/payments/suppliers/{supplier_id}/pay
-    /* const res = await fetch(`${this.basePath}/pay`, { 
-      method: "POST", 
-      body: JSON.stringify({ supplierId, amount }) 
-    });
-    return responseHandler(res);
-    */
-    console.log(`Processando pagamento de R$ ${amount} para ${supplierId}`);
-    return { ok: true };
+  async createPaymentLink(paymentIds, amount) {
+    // POST /sellers/payments/create-link
+    return api.call(
+      `/create-link`,
+      {
+        method: "POST",
+        body: JSON.stringify({ paymentIds, amount }),
+      }
+    )    
   },
 };
 

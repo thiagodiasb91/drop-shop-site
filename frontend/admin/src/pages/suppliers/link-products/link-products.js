@@ -191,9 +191,9 @@ export function getData() {
 
       for (const p of selected) {
         for (const sku of p.skus) {
-          if (!sku.skuSupplier || !sku.costPrice) {
+          if (!sku.costPrice) {
             stateHelper.toast(
-              'Preencha todos os SKUs e preços',
+              'Preencha todos os preços',
               'error'
             )
             this.loading = false;

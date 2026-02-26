@@ -9,9 +9,9 @@
     <!-- HEADER -->
     <header class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
       <div>
+        <h1 class="text-2xl font-semibold">Vincular Produtos</h1>
         <p class="text-sm text-slate-400">
-          Fornecedor:
-          <strong class="text-slate-200" x-text="supplierEmail || '—'"></strong>
+          Escolha os produtos do catálogo e informe o preço de custo.
         </p>
       </div>
     </header>
@@ -40,6 +40,8 @@
           <!-- PRODUTO -->
           <div class="flex items-center justify-between border-b border-slate-700 px-4 py-3">
             <label class="flex items-center gap-3 cursor-pointer">
+              <img :src="product.imageUrl" class="w-12 h-12 rounded-lg object-cover border border-slate-700">
+
               <input type="checkbox" x-model="product.selected" @change="toggleProduct(product)"
                 class="h-4 w-4 rounded border-slate-600 bg-slate-900 text-indigo-600 focus:ring-indigo-500" />
               <span class="text-sm font-bold text-slate-200" x-text="product.name"></span>

@@ -2,6 +2,7 @@ import html from "./store-code.html?raw"
 import { router, navigate } from "../../../core/router.js";
 import AuthService from "../../../services/auth.service.js"
 import CacheHelper from "../../../utils/cache.helper.js";
+import stateHelper from "../../../utils/state.helper.js";
 
 export function getData() {
   return {
@@ -43,7 +44,7 @@ export function getData() {
         return
       }
 
-      CacheHelper.set("session_token", renewResponse.response.sessionToken)
+      stateHelper.setSession(renewResponse.response.sessionToken)
 
       console.log("pages.sellers.store-code.sessionToken.set")
 
