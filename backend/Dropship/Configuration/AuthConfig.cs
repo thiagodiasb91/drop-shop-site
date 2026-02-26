@@ -3,13 +3,13 @@ namespace Dropship.Configuration;
 public static class AuthConfig
 {
     public static readonly string COGNITO_DOMAIN = Environment.GetEnvironmentVariable("COGNITO_DOMAIN") ??
-                                                   "drop-shop-admin-auth.auth.us-east-1.amazoncognito.com";
+                                                   "drop-shop-dev-admin-auth.auth.us-east-1.amazoncognito.com";
 
     public static readonly string CLIENT_ID =
-        Environment.GetEnvironmentVariable("COGNITO_CLIENT_ID") ?? "1ovcuufeei9bbg5vkf059obj4p";
+        Environment.GetEnvironmentVariable("COGNITO_CLIENT_ID") ?? "6jp62ofu16kilar90619g6naq0";
 
     public static readonly string USER_POOL_ID =
-        Environment.GetEnvironmentVariable("USER_POOL_ID") ?? "us-east-1_OUGR0GKR6";
+        Environment.GetEnvironmentVariable("USER_POOL_ID") ?? "us-east-1_NjIF2zIQf";
 
     public static readonly string SESSION_SECRET =
         Environment.GetEnvironmentVariable("SESSION_SECRET") ?? "session-secret-bff";

@@ -29,6 +29,7 @@ public class PaymentQueueDomain
     public int TotalItems { get; set; }
     public decimal TotalAmount { get; set; }
     public string InfinityPayUrl { get; set; } = default!;
+    public string PaymentLinkId { get; set; } = default!;
 }
 
 public class PaymentProduct
@@ -98,6 +99,7 @@ public static class PaymentQueueMapper
             TotalItems = item.ContainsKey("total_items") ? int.Parse(item["total_items"].N) : 0,
             TotalAmount = item.ContainsKey("total_amount") ? decimal.Parse(item["total_amount"].N) : 0,
             InfinityPayUrl = item.ContainsKey("infinity_pay_url") ? item["infinity_pay_url"].S : "",
+            PaymentLinkId =  item.ContainsKey("payment_link_id") ? item["payment_link_id"].S : "",
             PaymentProducts = item.ContainsKey("payment_products") && item["payment_products"].L != null
                 ? item["payment_products"].L.Select(p => new PaymentProduct
                 {
@@ -108,7 +110,7 @@ public static class PaymentQueueMapper
                     Image = p.M.ContainsKey("image") && p.M["image"].S != null ? p.M["image"].S : "",
                     Name = p.M.ContainsKey("name") && p.M["name"].S != null ? p.M["name"].S : ""
                 }).ToList() 
-                : new List<PaymentProduct>()    
+                : new List<PaymentProduct>()   
         };
     }
 
@@ -142,6 +144,11 @@ public static class PaymentQueueMapper
         if (!string.IsNullOrWhiteSpace(domain.InfinityPayUrl))
         {
             item["infinity_pay_url"] = new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.InfinityPayUrl };
+        }
+        
+        if(!string.IsNullOrWhiteSpace(domain.PaymentLinkId))
+        {
+            item["payment_link_id"] = new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.PaymentLinkId };
         }
 
         // Adicionar lista de produtos se houver

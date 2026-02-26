@@ -9,7 +9,6 @@ public class ProductSupplierResponse
     public string ProductName { get; set; } = string.Empty;
     public string SupplierId { get; set; } = string.Empty;
     public int SkuCount { get; set; }
-    public int Priority { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 

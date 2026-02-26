@@ -21,10 +21,10 @@ public class SupplierController(
     ProductRepository productRepository,
     ProductSkuSupplierRepository productSkuSupplierRepository,
     ProductSupplierRepository productSupplierRepository,
+    SupplierShipmentRepository supplierShipmentRepository,
     SkuRepository skuRepository,
     StockServices stockServices,
-    ILogger<SupplierController> logger,
-    ShopeeService shopeeService)
+    ILogger<SupplierController> logger)
     : ControllerBase
 {
     /// <summary>
@@ -475,7 +475,7 @@ public class SupplierController(
             logger.LogInformation("Found {Count} SKUs for supplier - ProductId: {ProductId}, SupplierId: {SupplierId}",
                 skus.Count, productId, supplierId);
   
-            var suppliers = skus.Select(x => x.SupplierId);
+            var suppliers = skus.Select(x => x.SupplierId).Distinct().ToList();
             var supplierList = new List<SupplierDomain>();
 
             foreach (var suppliersId in suppliers)
@@ -533,7 +533,7 @@ public class SupplierController(
             }
             
             var updated = await productSkuSupplierRepository.UpdateSkuSupplier(
-                productId, sku, supplierId, request.SkuSupplier, request.price, request.Quantity);
+                productId, sku, supplierId, request.SkuSupplier ?? sku, request.price, request.Quantity);
 
             if(request.Quantity.HasValue)
                 await stockServices.UpdateStockSupplier(supplierId, productId, sku, request.Quantity.Value);
@@ -597,7 +597,7 @@ public class SupplierController(
             {
                 try
                 {
-                    await productSkuSupplierRepository.UpdateSkuSupplier(productId, sku.Sku, supplierId, sku.SkuSupplier, sku.Price, sku.Quantity);
+                    await productSkuSupplierRepository.UpdateSkuSupplier(productId, sku.Sku, supplierId, sku.SkuSupplier ?? sku.Sku, sku.Price, sku.Quantity);
                 }
                 catch (Exception ex)
                 {
@@ -658,4 +658,86 @@ public class SupplierController(
             return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
         }
     }
+    
+    /// <summary>
+    /// Obtém todos os shipments do fornecedor autenticado
+    /// O ID do fornecedor é obtido automaticamente da claim "resourceId" do usuário autenticado
+    /// </summary>
+    /// <returns>Lista de shipments do fornecedor com informações de produtos, quantidades e status</returns>
+    [HttpGet("shipments")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetSupplierShipments()
+    {
+        var supplierId = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "resourceId")?.Value;
+        logger.LogInformation("Getting shipments for supplier - SupplierId: {SupplierId}", supplierId);
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(supplierId))
+            {
+                logger.LogWarning("Supplier ID not found in claims");
+                return BadRequest(new { error = "Supplier ID not found in authentication claims" });
+            }
+
+            var shipments = await supplierShipmentRepository.GetShipmentsBySupplierAsync(supplierId);
+            
+            if (shipments == null || shipments.Count == 0)
+            {
+                logger.LogWarning("No shipments found for supplier - SupplierId: {SupplierId}", supplierId);
+                return NotFound(new { error = "No shipments found for this supplier" });
+            }
+
+            logger.LogInformation("Found {Count} shipments for supplier - SupplierId: {SupplierId}",
+                shipments.Count, supplierId);
+
+            return Ok(shipments);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting shipments for supplier - SupplierId: {SupplierId}", supplierId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
+        }
+    }
+    
+    /// <summary>
+    /// Obtém os detalhes de um shipment específico
+    /// </summary>
+    /// <param name="shipmentId">ID do shipment</param>
+    /// <returns>Informações detalhadas do shipment</returns>
+    [HttpGet("shipments/{shipmentId}")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetShipmentById(string shipmentId)
+    {
+        logger.LogInformation("Getting shipment details - ShipmentId: {ShipmentId}", shipmentId);
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(shipmentId))
+            {
+                logger.LogWarning("Invalid shipment ID provided");
+                return BadRequest(new { error = "Shipment ID is required" });
+            }
+
+            var shipment = await supplierShipmentRepository.GetShipmentByIdAsync(supplierId: "", shipmentId);
+            
+            if (shipment == null)
+            {
+                logger.LogWarning("Shipment not found - ShipmentId: {ShipmentId}", shipmentId);
+                return NotFound(new { error = "Shipment not found" });
+            }
+
+            logger.LogInformation("Found shipment - ShipmentId: {ShipmentId}", shipmentId);
+
+            return Ok(shipment);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting shipment - ShipmentId: {ShipmentId}", shipmentId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
+        }
+    }
+    
 }

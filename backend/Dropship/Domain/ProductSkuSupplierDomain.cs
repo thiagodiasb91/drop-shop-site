@@ -17,8 +17,7 @@ public class ProductSkuSupplierDomain
     public string SupplierId { get; set; } = default!;
 
     public decimal Price { get; set; }
-    public long Quantity { get; set; }
-    public int Priority { get; set; } = 0;
+    public long Quantity { get; set; }  
 }
 
 public static class ProductSkuSupplierBuilder
@@ -61,11 +60,6 @@ public static class ProductSkuSupplierMapper
             Price = item.ContainsKey("price") && decimal.TryParse(item["price"].N, System.Globalization.CultureInfo.InvariantCulture, out var price) ? price : 0,
             Quantity = item.ContainsKey("quantity") && long.TryParse(item["quantity"].N, out var qty) ? qty : 0
         };
-    }
-
-    public static List<ProductSkuSupplierDomain> ToDomainList(this List<Dictionary<string, Amazon.DynamoDBv2.Model.AttributeValue>> items)
-    {
-        return items.Select(ToDomain).ToList();
     }
 }
 

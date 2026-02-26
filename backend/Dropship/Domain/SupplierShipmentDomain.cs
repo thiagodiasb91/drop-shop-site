@@ -26,7 +26,6 @@ public class SupplierShipmentDomain
 
     // 📦 Informações de Transação
     public string TransactionNsu { get; set; } = default!;
-    public string OrderNsu { get; set; } = default!;
     public string CaptureMethod { get; set; } = default!; // credit_card, bank_transfer, etc
     public string ReceiptUrl { get; set; } = default!;
 
@@ -100,7 +99,6 @@ public static class SupplierShipmentMapper
             PaidAmount = item.ContainsKey("paid_amount") ? decimal.Parse(item["paid_amount"].N) : 0,
             Installments = item.ContainsKey("installments") ? int.Parse(item["installments"].N) : 0,
             TransactionNsu = item.ContainsKey("transaction_nsu") ? item["transaction_nsu"].S : "",
-            OrderNsu = item.ContainsKey("order_nsu") ? item["order_nsu"].S : "",
             CaptureMethod = item.ContainsKey("capture_method") ? item["capture_method"].S : "",
             ReceiptUrl = item.ContainsKey("receipt_url") ? item["receipt_url"].S : "",
             Status = item.ContainsKey("status") ? item["status"].S : "paid",
@@ -139,7 +137,6 @@ public static class SupplierShipmentMapper
             { "paid_amount", new AttributeValue { N = domain.PaidAmount.ToString("F2") } },
             { "installments", new AttributeValue { N = domain.Installments.ToString() } },
             { "transaction_nsu", new AttributeValue { S = domain.TransactionNsu } },
-            { "order_nsu", new AttributeValue { S = domain.OrderNsu } },
             { "capture_method", new AttributeValue { S = domain.CaptureMethod } },
             { "receipt_url", new AttributeValue { S = domain.ReceiptUrl } },
             { "status", new AttributeValue { S = domain.Status } },
@@ -167,7 +164,8 @@ public static class SupplierShipmentMapper
                     { "sku", new AttributeValue { S = product.Sku } },
                     { "quantity", new AttributeValue { N = product.Quantity.ToString() } },
                     { "unit_price", new AttributeValue { N = product.UnitPrice.ToString("F2") } },
-                    { "image", new AttributeValue { S = product.Image } }
+                    { "image", new AttributeValue { S = product.Image } },
+                    { "name", new AttributeValue { S = product.Name } }
                 };
 
                 itemsList.Add(new AttributeValue { M = productMap });

@@ -20,7 +20,7 @@ public class InfinityPayWebhookRequest
     /// Valor pago em centavos
     /// Pode ser diferente de Amount se houver desconto ou taxa
     /// </summary>
-    public decimal PaidAmount { get; set; } = 0;
+    public long PaidAmount { get; set; } = 0;
 
     /// <summary>
     /// Quantidade de parcelas

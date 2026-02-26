@@ -126,28 +126,10 @@ public class InfinityPayLinkRepository
                 return false;
             }
 
-            var updateExpression = "SET #status = :status";
-            var expressionAttributeValues = new Dictionary<string, AttributeValue>
-            {
-                { ":status", new AttributeValue { S = status } }
-            };
-
-            if (!string.IsNullOrWhiteSpace(completedAt))
-            {
-                updateExpression += ", completed_at = :completedAt";
-                expressionAttributeValues[":completedAt"] = new AttributeValue { S = completedAt };
-            }
-
-            await _repository.UpdateItemAsync(
-                key: new Dictionary<string, AttributeValue>
-                {
-                    { "PK", new AttributeValue { S = $"InfinityPayLink#{linkId}" } },
-                    { "SK", new AttributeValue { S = "META" } }
-                },
-                updateExpression: updateExpression,
-                expressionAttributeValues: expressionAttributeValues
-            );
-
+            link.Status = status;
+            link.CompletedAt = completedAt;
+            
+            await _repository.PutItemAsync(link.ToDynamoDb());
             _logger.LogInformation(
                 "InfinityPayLink status updated successfully - LinkId: {LinkId}, Status: {Status}",
                 linkId, status);

@@ -55,7 +55,7 @@ public class WebhookController(
             // O orderNsu aqui é o webhookOrderNsu que contém os paymentIds
             await paymentService.ProcessPaymentWebhookWithLinkAsync(
                 linkId: request.OrderNsu,
-                paidAmount: request.PaidAmount,
+                paidAmount: request.PaidAmount / 100m,
                 installments: request.Installments,
                 transactionNsu: request.TransactionNsu,
                 captureMethod: request.CaptureMethod,

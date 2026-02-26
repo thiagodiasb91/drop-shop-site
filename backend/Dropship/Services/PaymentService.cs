@@ -212,7 +212,7 @@ public class PaymentService(
             }
 
             // 2. Validar que o status está "pending"
-            if (payment.Status != "pending")
+            if (payment.Status != "waiting-payment")
             {
                 throw new InvalidOperationException(
                     $"Payment already processed - PaymentId: {paymentId}, Current Status: {payment.Status}");
@@ -350,6 +350,7 @@ public class PaymentService(
             {
                 payment.InfinityPayUrl = infinityPayUrl;
                 payment.Status = "waiting-payment";
+                payment.PaymentLinkId = linkId;
                 await paymentRepository.UpdatePayment(payment);   
             }
             
