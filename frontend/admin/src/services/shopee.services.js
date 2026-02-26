@@ -1,4 +1,4 @@
-import { ENV } from "../config/env.js"
+import ENV from "../config/env.js"
 
 export const ShopeeService = {
   basePath: `${ENV.API_BASE_URL}/shopee`,  

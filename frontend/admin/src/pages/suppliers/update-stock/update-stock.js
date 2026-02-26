@@ -7,14 +7,17 @@ export function getData() {
   return {
     loading: true,
     search: '',
-    supplierEmail: 'fornecedor@exemplo.com',
+    supplierEmail: '',
 
     products: [],
     hasChanges: false,
     changedCount: 0,
 
     async init() {
-      // mock grande
+      this.loading = true;
+      const logged = stateHelper.user;
+      this.supplierEmail = logged?.user?.email
+
       this.products = await this.fetchProducts()
 
       // guarda estoque original
@@ -24,48 +27,74 @@ export function getData() {
         })
       );
 
+      this.updateChanges();
       this.loading = false;
     },
 
     async fetchProducts() {
-      const productsResponse = await SuppliersService.getLinkedProducts();
-      const products = productsResponse.response || [];
-      let response = []
-      for (const p of products) {
-        const skusResponse = await ProductsService.getSkusByProductId(p.productId);
-        const skus = skusResponse.response || [];
-        const linkedSkuResponse = await SuppliersService.getLinkedProductSkus(p.productId);
-        const linkedSkus = linkedSkuResponse.response || [];
-        p.skus = []
+      try {
+        const productsResponse = await SuppliersService.getLinkedProducts();
+        const linkedProducts = productsResponse.response || [];
+        let response = []
+        for (const p of linkedProducts) {
+          const [skusRes, linkedSkusRes] = await Promise.all([
+            ProductsService.getSkusByProductId(p.productId),
+            SuppliersService.getLinkedProductSkus(p.productId)
+          ]);
 
-        for (const s of skus) {
-          const linkedSku = linkedSkus.find(ls => ls.sku === s.sku);
-          p.skus.push({
-            sku: linkedSku.sku,
-            skuSupplier: linkedSku.skuSupplier,
-            color: s.color,
-            size: s.size,
-            stock: linkedSku.quantity 
-          })
+          const platformSkus = skusRes.response || [];
+          const linkedSkus = linkedSkusRes.response || [];
+
+          let productSkus = [];
+          for (const s of platformSkus) {
+            const linkedSku = linkedSkus.find(ls => ls.sku === s.sku);
+            productSkus.push({
+              sku: linkedSku.sku,
+              skuSupplier: linkedSku.skuSupplier,
+              color: s.color || "Padrão",
+              size: s.size || "ÚNico",
+              stock: linkedSku.quantity,
+              originalStock: linkedSku.quantity,
+              changed: false
+            })
+          }
+
+          p.open = (linkedSkus.length > 0)
+          if (productSkus.length > 0) {
+            response.push({
+              id: p.productId,
+              name: p.productName,
+              imageUrl: p.productImage || `https://picsum.photos/${Math.floor(Math.random() * 500)}?text=Produto+${p.productId}`,
+              open: false, // Começa fechado para melhor visualização
+              stock: productSkus.reduce((acc, cur) => acc + cur.stock, 0),
+              skus: productSkus
+            });
+          }
         }
-
-        p.open = (linkedSkus.length > 0)
-
-        response.push({
-          id: p.productId,
-          name: p.product_name,
-          open: p.open,
-          skus: p.skus
-        })
+        return response;
+      } catch (error) {
+        console.error("Erro ao carregar produtos:", error);
+        stateHelper.toast("Erro ao carregar lista de estoque", "error");
+        return [];
       }
-      return response;        
     },
 
+    getGroupedSkus(product) {
+      if (!product.skus) return {};
+      return product.skus.reduce((acc, sku) => {
+        const color = sku.color || 'Padrão';
+        if (!acc[color]) acc[color] = [];
+        acc[color].push(sku);
+        return acc;
+      }, {});
+    },
     markAsChanged(sku) {
+      // Garante que o valor seja numérico e trata campos vazios como 0
+      if (sku.stock === '' || sku.stock === null) sku.stock = 0;
+
       sku.changed = sku.stock !== sku.originalStock;
       this.updateChanges();
     },
-
     updateChanges() {
       const changedSkus = this.products.flatMap(p =>
         p.skus.filter(s => s.changed)
@@ -74,47 +103,49 @@ export function getData() {
       this.changedCount = changedSkus.length;
       this.hasChanges = this.changedCount > 0;
     },
-
     async saveAll() {
       this.loading = true;
-      const stocksToSave = this.products.flatMap(p =>
-        p.skus
-          .filter(s => s.changed)
-          .map(s => ({
-            productId: p.id,
-            sku: s.sku,
-            stock: s.stock
-          }))
-      );
 
-      const promises = []
+      const promises = [];
+      const changedList = [];
 
       for (const p of this.products) {
         for (const s of p.skus) {
-          if (s.changed)
-            promises.push(SuppliersService.updateProductStock(p.id, s.sku, s.stock))
+          if (s.stock < 0) {
+            s.error = true;
+            this.loading = false;
+          }
+          if (s.changed) {
+            changedList.push(s);
+            promises.push(SuppliersService.updateProductStock(p.id, s.sku, s.stock));
+          }
         }
       }
 
-      const res = await Promise.all(promises);
-      console.log("saveAll.updateProductStock.response", res)
-
-      const countErrors = res.filter(r => !r.ok).length;
-
-      if (countErrors > 0) {
-        console.error(`Erro ao salvar ${countErrors} SKU(s)`);
-        stateHelper.toast(`Erro ao salvar ${countErrors} alterações.`, 'error');
-        this.loading = false;
-        return
+      const hasErrors = this.products.some(p => p.skus.some(s => s.error));
+      if (hasErrors) {
+        stateHelper.toast('Corrija os campos com erros antes de salvar.', 'error');
+        return;
       }
 
-      this.products = await this.fetchProducts()
-      
-      this.updateChanges();
-      this.loading = false;
-      stateHelper.toast(`${stocksToSave.length} SKU(s) salvo(s) com sucesso`, 'success');
-    },
+      try {
+        const results = await Promise.all(promises);
+        const errors = results.filter(r => !r.ok);
 
+        if (errors.length > 0) {
+          stateHelper.toast(`Erro em ${errors.length} atualizações.`, 'error');
+        } else {
+          stateHelper.toast(`${changedList.length} SKU(s) atualizado(s) com sucesso`, 'success');
+          // Reinicia para limpar os estados de "changed" e resetar o originalStock
+          await this.init();
+        }
+      } catch (ex) {
+        console.error(ex);
+        stateHelper.toast('Erro crítico ao salvar estoque.', 'error');
+      } finally {
+        this.loading = false;
+      }
+    },
     get filteredProducts() {
       if (!this.search) return this.products;
 
@@ -122,10 +153,9 @@ export function getData() {
 
       return this.products.filter(p =>
         p.name.toLowerCase().includes(term) ||
-        p.skus.some(s =>
-          Object.values(s.attributes).some(v =>
-            String(v).toLowerCase().includes(term)
-          )
+        p.skus.some(s => 
+          s.color.toLowerCase().includes(term) || 
+          s.skuSupplier.toLowerCase().includes(term)
         )
       );
     }

@@ -1,16 +1,16 @@
 import html from "./initial-setup.html?raw"
 import AuthService from "../../../services/auth.service.js"
 import SuppliersService from "../../../services/suppliers.services.js"
-import CacheHelper from "../../../utils/cache.helper.js"
 import { navigate } from "../../../core/router.js"
 import stateHelper from "../../../utils/state.helper.js";
+import { maskCNPJ, maskPhone } from "../../../utils/format.helper.js"
 
-function setStep (_this, step) {
+function setStep(_this, step) {
   _this.step = {
-      submit: false,
-      redirect: false,
-      loading: false,
-    }
+    submit: false,
+    redirect: false,
+    loading: false,
+  }
   _this.step[step] = true
 }
 
@@ -18,18 +18,20 @@ export function getData() {
   return {
     userEmail: "",
     form: {
-      name: "123",
-      legalName: "123",
-      cnpj: "33.113.309/0001-47",
-      enotasId: "5d366413-e89b-4e8a-9f20-a47193f81ffd",
-      phone: "11-988441122",
-      addressState: "SP",
+      name: null,
+      legalName: null,
+      cnpj: null,
+      enotasId: null,
+      infinitePayId: null,
+      phone: null,
+      addressState: 'SP',
     },
     errors: {
       name: null,
       legalName: null,
       cnpj: null,
       enotasId: null,
+      infinitePayId: null,
       phone: null,
       addressState: null,
     },
@@ -42,9 +44,21 @@ export function getData() {
       console.log("page.suppliers.initial-setup.init.called")
       const logged = stateHelper.user;
       this.userEmail = logged.user.email
-      if(this.validate()){
-        this.goToRedirect()
+
+      if (logged?.resourceId) {
+        console.log("page.suppliers.initial-setup.init.alreadySetup", logged.user.resourceId)
+        this.goToRedirect();
       }
+
+      this.$watch('form.cnpj', value => {
+        if (!value) return;
+        this.form.cnpj = maskCNPJ(value);
+      });
+
+      this.$watch('form.phone', value => {
+        if (!value) return;
+        this.form.phone = maskPhone(value);
+      });
     },
     async submit() {
       if (this.step.loading) return;
@@ -53,7 +67,7 @@ export function getData() {
 
       if (!this.validate())
         return;
-      
+
       setStep(this, 'loading')
 
       const res = await SuppliersService.save(this.form)
@@ -67,7 +81,7 @@ export function getData() {
         return
       }
       console.log("page.suppliers.initial-setup.save.response", res)
-      
+
       const renewResponse = await AuthService.renewToken()
       console.log("pages.suppliers.initial-setup.renewToken.response", renewResponse)
 
@@ -78,14 +92,14 @@ export function getData() {
         return
       }
 
-      CacheHelper.set("session_token", renewResponse.response.sessionToken)
+      stateHelper.setSession(renewResponse.response.sessionToken)
 
       console.log("pages.suppliers.initial-setup.sessionToken.set")
 
       await AuthService.me(true)
-      
+
     },
-    goToRedirect(){
+    goToRedirect() {
       setStep(this, 'redirect')
       setTimeout(() => navigate("/"), 5000);
     },
@@ -100,16 +114,30 @@ export function getData() {
         this.errors.legalName = "O nome legal é obrigatório.";
         valid = false;
       }
-      if (!this.form.cnpj?.trim()) {
-        this.errors.cnpj = "O CNPJ é obrigatório.";
+      const cleanCNPJ = this.form.cnpj?.replace(/[^a-zA-Z0-9]/g, "") || "";
+      if (cleanCNPJ.length !== 14) {
+        this.errors.cnpj = "O CNPJ deve ter exatamente 14 caracteres.";
         valid = false;
+      } else {
+        // Regra da Receita: Os últimos 6 dígitos (posição 9 a 14) DEVEM ser números
+        // O radical (8 primeiros) pode ser alfanumérico
+        const filialEVerificadores = cleanCNPJ.slice(8);
+        if (!/^\d+$/.test(filialEVerificadores)) {
+          this.errors.cnpj = "Os últimos 6 dígitos do CNPJ devem ser apenas números.";
+          valid = false;
+        }
       }
       if (!this.form.enotasId?.trim()) {
         this.errors.enotasId = "O ID do e-notas é obrigatório.";
         valid = false;
       }
-      if (!this.form.phone?.trim()) {
-        this.errors.phone = "O telefone é obrigatório.";
+      if (!this.form.infinitePayId?.trim()) {
+        this.errors.infinitePayId = "O ID do InfinitePay é obrigatório.";
+        valid = false;
+      }
+      const cleanPhone = this.form.phone?.replace(/\D/g, "");
+      if (!cleanPhone || cleanPhone.length < 10 || cleanPhone.length > 11) {
+        this.errors.phone = "Telefone inválido. Use (11) 99999-9999.";
         valid = false;
       }
       if (!this.form.addressState?.trim()) {

@@ -35,3 +35,9 @@ variable "facebook_client_secret" {
   description = "Facebook client secret"
   type = string
 }
+
+variable "aws_profile" {
+  description = "AWS Profile to use for local deployment"
+  type        = string
+  default     = null
+}

@@ -1,5 +1,5 @@
 import { navigate } from "../core/router"
-import { roleName } from "./../utils/format.utils"
+import { roleName } from "./../utils/format.helper"
 import AuthService from "../services/auth.service"
 import stateHelper from "../utils/state.helper";
 

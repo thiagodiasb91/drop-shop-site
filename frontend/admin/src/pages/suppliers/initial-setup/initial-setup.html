@@ -1,12 +1,7 @@
-<div x-data="getData" class="w-full min-h-[calc(100vh-5rem)] flex items-center justify-center px-4">
+<div x-data="getData" class="w-full flex justify-center px-4">
 
   <!-- Card -->
-  <div class="
-      w-full max-w-md
-      bg-slate-800 border border-slate-700
-      rounded-xl shadow-xl
-      p-6 md:p-8
-    ">    
+  <div class="mt-10 mb-10 w-full max-w-md bg-slate-800 border border-slate-700 rounded-xl shadow-xl p-6 md:p-8">
     <div x-show="step.loading" class="items-center flex flex-col">
       <div class="loader"></div>
       <br>
@@ -85,10 +80,23 @@
         </div>
         <div>
           <label class="block text-sm mb-1 text-gray-300">
+            ID InfinitePay
+          </label>
+
+          <input x-model="form.infinitePayId" type="text" placeholder="ID do InfinitePay"
+            class="w-full rounded-md bg-slate-900 border px-3 py-2 text-sm focus:outline-none focus:ring-2"
+            :class="errors?.infinitePayId? 'border-red-500 focus:ring-red-500' : 'border-slate-700 focus:ring-indigo-500'" />
+
+          <template x-if="errors?.infinitePayId">
+            <p class="mt-1 text-xs text-red-400" x-text="errors?.infinitePayId"></p>
+          </template>
+        </div>
+        <div>
+          <label class="block text-sm mb-1 text-gray-300">
             Telefone
           </label>
 
-          <input x-model="form.phone" type="text" placeholder="ID do e-notas"
+          <input x-model="form.phone" type="text" placeholder="Ex: (11) 98844-1122"
             class="w-full rounded-md bg-slate-900 border px-3 py-2 text-sm focus:outline-none focus:ring-2"
             :class="errors?.phone? 'border-red-500 focus:ring-red-500' : 'border-slate-700 focus:ring-indigo-500'" />
 
@@ -100,10 +108,38 @@
           <label class="block text-sm mb-1 text-gray-300">
             Estado
           </label>
-
-          <input x-model="form.addressState" type="text" placeholder="ID do e-notas"
+          <select x-model="form.addressState"
             class="w-full rounded-md bg-slate-900 border px-3 py-2 text-sm focus:outline-none focus:ring-2"
-            :class="errors?.addressState? 'border-red-500 focus:ring-red-500' : 'border-slate-700 focus:ring-indigo-500'" />
+            :class="errors?.addressState? 'border-red-500 focus:ring-red-500' : 'border-slate-700 focus:ring-indigo-500'">
+            <option value="">Selecione um estado</option>
+            <option value="AC">Acre</option>
+            <option value="AL">Alagoas</option>
+            <option value="AP">Amapá</option>
+            <option value="AM">Amazonas</option>
+            <option value="BA">Bahia</option>
+            <option value="CE">Ceará</option>
+            <option value="DF">Distrito Federal</option>
+            <option value="ES">Espírito Santo</option>
+            <option value="GO">Goiás</option>
+            <option value="MA">Maranhão</option>
+            <option value="MT">Mato Grosso</option>
+            <option value="MS">Mato Grosso do Sul</option>
+            <option value="MG">Minas Gerais</option>
+            <option value="PA">Pará</option>
+            <option value="PB">Paraíba</option>
+            <option value="PR">Paraná</option>
+            <option value="PE">Pernambuco</option>
+            <option value="PI">Piauí</option>
+            <option value="RJ">Rio de Janeiro</option>
+            <option value="RN">Rio Grande do Norte</option>
+            <option value="RS">Rio Grande do Sul</option>
+            <option value="RO">Rondônia</option>
+            <option value="RR">Roraima</option>
+            <option value="SC">Santa Catarina</option>
+            <option value="SP">São Paulo</option>
+            <option value="SE">Sergipe</option>
+            <option value="TO">Tocantins</option>
+          </select>
 
           <template x-if="errors?.addressState">
             <p class="mt-1 text-xs text-red-400" x-text="errors?.addressState"></p>
@@ -126,9 +162,9 @@
         </div>
       </form>
     </div>
-    <div class="pt-4 items-center flex flex-col text-center" x-show="step.redirect" >
+    <div class="pt-4 items-center flex flex-col text-center" x-show="step.redirect">
       <h1 class="md:text-2xl font-semibold ">
-        Configuração finalizada com sucesso!
+        Configuração completa!
       </h1>
       <br>
       <span class="items-center gap-2">

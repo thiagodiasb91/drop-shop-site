@@ -10,6 +10,8 @@ const RouteGuard = {
   
   // Preset para Supplier: Autenticado, Role Supplier e validação de Setup
   supplier: [Middlewares.isAuthenticated, Middlewares.hasRole, Middlewares.needsSupplierSetup],
+
+  distributionCenter: [Middlewares.isAuthenticated, Middlewares.hasRole, Middlewares.needsDistributionCenterSetup],
   
   // Presets de Transição: Autenticam, mas NÃO chamam a validação que gera o loop
   sellerSetup: [Middlewares.isAuthenticated, Middlewares.hasRole],

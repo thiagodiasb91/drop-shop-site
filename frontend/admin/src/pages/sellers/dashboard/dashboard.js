@@ -74,7 +74,7 @@ export function getData() {
         },
 
         openSupport() {
-            const phone = "5511999999999"; // Seu número de suporte
+            const phone = ENV.CONTACT_PHONE;
             const message = encodeURIComponent(`Olá! Sou o vendedor ${this.loggedInfo.user.email} e preciso de ajuda.`);
             window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
         }

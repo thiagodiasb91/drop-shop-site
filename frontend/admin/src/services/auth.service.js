@@ -1,4 +1,4 @@
-import { ENV } from "../config/env"
+import ENV from "../config/env"
 import CacheHelper from "../utils/cache.helper.js"
 import stateHelper from "../utils/state.helper.js"
 import BaseApi from "./base.api.js"
@@ -55,11 +55,9 @@ const AuthService = {
         // Simula resposta da API
         // data.role = 'supplier';
         // data.role = 'seller';
+        // data.role = 'distribution_center';
 
-        CacheHelper.set("me.data", data)
-        CacheHelper.set("me.expiresAt", data.session?.exp)
-
-        console.log("AuthService.me.new-session", data, data.session?.exp)
+        stateHelper.setAuthenticated(data, data.session?.exp)
 
         return data
       }
@@ -89,9 +87,7 @@ const AuthService = {
 
   async logout() {
     console.log("AuthService.logout.request")
-    CacheHelper.remove("session_token")
-    CacheHelper.remove("me.data")
-    CacheHelper.remove("me.expiresAt")
+    stateHelper.setLogout()
   },
 }
 

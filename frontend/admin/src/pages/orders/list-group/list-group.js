@@ -1,5 +1,5 @@
 import html from "./list-group.html?raw"
-import { currency } from "../../../utils/format.utils";
+import { currency } from "../../../utils/format.helper";
 
 
 export function getData() {

@@ -16,14 +16,14 @@
     </div>
   </div>
 
-  <div x-show="!loading"  class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-    <div class="overflow-x-auto">
+  <div x-show="!loading"  class="bg-slate-800 rounded-xl border border-slate-700">
+    <div class="">
       <table class="w-full text-sm text-left border-collapse">
         <thead class="bg-slate-900/50 text-slate-400 uppercase text-[10px] tracking-widest">
           <tr>
             <th class="p-4 font-semibold">Usuário</th>
             <th class="p-4 font-semibold">Nível de Acesso</th>
-            <th class="p-4 font-semibold text-right">Ações</th>
+            <!-- <th class="p-4 font-semibold text-right">Ações</th> -->
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-700">
@@ -48,10 +48,10 @@
               <td class="p-4">
                 <div class="flex flex-wrap gap-1.5">
                   <template x-for="r in availableRoles" :key="String(r)">
-                    <button @click="setRole(user, r)" :disabled="user.saving" :class="{
+                    <button @click="setRole(user, r)" :disabled="user.saving || user.role" :class="{
                                                 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/20': user.role === r,
                                                 'bg-slate-900 text-slate-400 border-slate-700 hover:border-slate-500': user.role !== r,
-                                                'opacity-50 cursor-not-allowed': user.saving
+                                                'opacity-50 cursor-not-allowed': user.saving || user.role
                                             }"
                       class="px-2.5 py-1 text-[10px] uppercase font-bold rounded border transition-all whitespace-nowrap"
                       x-text="labelRole(r)">
@@ -59,7 +59,7 @@
                   </template>
                 </div>
               </td>
-              <td class="p-4 text-right">
+              <!-- <td class="p-4 text-right">
                 <div class="relative inline-block text-left" x-data="{ menuOpen: false }"
                   @click.away="menuOpen = false">
 
@@ -89,7 +89,7 @@
 
                       <template x-if="user.role === 'supplier'">
                         <div class="py-1 bg-indigo-500/5">
-                          <button @click="spaNavigate($event, `/admin/suppliers/${user.id}/products`)"
+                          <button @click="spaNavigate($event, `/suppliers/products?supplierId=${user.id}`)"
                             class="flex items-center gap-3 w-full px-4 py-2 text-xs text-slate-300 hover:bg-slate-700 transition-colors">
                             <i class="fa fa-boxes w-4 text-indigo-400"></i> Produtos Vinculados
                           </button>
@@ -120,7 +120,7 @@
                     </div>
                   </div>
                 </div>
-              </td>
+              </td> -->
             </tr>
           </template>
         </tbody>

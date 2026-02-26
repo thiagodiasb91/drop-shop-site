@@ -1,4 +1,4 @@
-import { ENV } from "../config/env.js"
+import ENV from "../config/env.js"
 import { responseHandler } from "../utils/response.handler.js"
 import CacheHelper from "../utils/cache.helper.js"
 

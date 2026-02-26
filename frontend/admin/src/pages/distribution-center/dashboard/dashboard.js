@@ -1,6 +1,6 @@
 import html from "./dashboard.html?raw"
-import AuthService from "../../../services/auth.service.js";
 import stateHelper from "../../../utils/state.helper.js";
+import ENV from "../../../config/env.js";
 
 export function getData() {
     return {
@@ -15,27 +15,7 @@ export function getData() {
 
         loggedInfo: null,
         steps: [
-            {
-                title: 'Atualizar Catálogo',
-                desc: 'Cadastre seus produtos e variações para que os vendedores possam encontrá-los.',
-                icon: 'ph-package',
-                link: '/suppliers/products',
-                done: false
-            },
-            {
-                title: 'Gerenciar Estoque',
-                desc: 'Mantenha as quantidades atualizadas para evitar cancelamentos de pedidos.',
-                icon: 'ph-stack',
-                link: '/suppliers/stock',
-                done: false
-            },
-            {
-                title: 'Pedidos Pendentes',
-                desc: 'Verifique se há novas vendas da Shopee aguardando separação e envio.',
-                icon: 'ph-truck',
-                link: '/suppliers/orders',
-                done: false
-            }
+           
         ],
 
         async init() {

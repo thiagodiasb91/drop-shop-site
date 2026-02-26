@@ -16,5 +16,5 @@ variable "common_tags" {
 variable "aws_profile" {
   description = "AWS Profile to use for local deployment"
   type        = string
-  default     = null # Se não informado, ele ignora
+  default     = null
 }

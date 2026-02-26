@@ -1,4 +1,4 @@
-import { ENV } from "../config/env.js"
+import ENV from "../config/env.js"
 import { responseHandler } from "../utils/response.handler.js"
 
 console.log("ENV.API_BASE_URL", ENV.API_BASE_URL);

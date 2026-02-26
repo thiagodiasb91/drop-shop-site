@@ -1,16 +1,33 @@
-// core/state.js
+import CacheHelper from "./cache.helper.js"
+
 const stateHelper = {
-  // Acesso ao usuário
+  setSession(token) {
+    console.log("stateHelper.setSession", { token })
+    CacheHelper.set("session_token", token)
+  },
+  removeSession() {
+    console.log("stateHelper.removeSession")
+    CacheHelper.remove("session_token")
+  },
+  setAuthenticated(user, expiresAt) {
+    console.log("stateHelper.setAuthenticated", { user, expiresAt })
+    CacheHelper.set("me.data", user)
+    CacheHelper.set("me.expiresAt", expiresAt)
+  },
+  setLogout() {
+    console.log("stateHelper.setLogout")
+    CacheHelper.remove("me.data")
+    CacheHelper.remove("me.expiresAt")
+    CacheHelper.remove("session_token")
+  },
   get user() {
     return window.Alpine?.store('auth')?.user || null;
   },
 
-  // Acesso ao estado de carregamento
   get authLoading() {
     return window.Alpine?.store('auth')?.loading ?? true;
   },
 
-  // Atalho para saber se está logado
   get isAuthenticated() {
     return !!this.user;
   },
