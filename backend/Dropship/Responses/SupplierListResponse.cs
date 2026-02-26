@@ -9,7 +9,6 @@ public class SupplierItemResponse
     public string Name { get; set; } = string.Empty;
     public string LegalName { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
-    public int Priority { get; set; }
     public string Cnpj { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
 }
@@ -43,7 +42,6 @@ public static class SupplierListResponseMapper
             Name = supplier.Name,
             LegalName = supplier.LegalName,
             Phone = supplier.Phone,
-            Priority = supplier.Priority,
             Cnpj = supplier.Cnpj,
             CreatedAt = supplier.CreatedAt
         };

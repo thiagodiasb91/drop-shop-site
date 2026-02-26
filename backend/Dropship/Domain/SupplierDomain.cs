@@ -14,7 +14,6 @@ public class SupplierDomain
     public string Name { get; set; } = default!;
     public string LegalName { get; set; } = default!;
     public string Phone { get; set; } = default!;
-    public int Priority { get; set; }
     
     // Endereço
     public string Address { get; set; } = default!;
@@ -30,6 +29,9 @@ public class SupplierDomain
     
     // Integração eNota
     public string EnotasId { get; set; } = default!;
+
+    // Integração InfinityPay
+    public string InfinityPayHandle { get; set; } = default!; // Username/Handle no InfinityPay
     
     // Metadata
     public DateTime CreatedAt { get; set; }
@@ -62,7 +64,6 @@ public static class SupplierMapper
             Name = item.ContainsKey("name") ? item["name"].S : (item.ContainsKey("supplier_name") ? item["supplier_name"].S : ""),
             LegalName = item.ContainsKey("legal_name") ? item["legal_name"].S : "",
             Phone = item.ContainsKey("phone") ? item["phone"].S : "",
-            Priority = int.TryParse(item.ContainsKey("supplier_priority") ? item["supplier_priority"].S : "0", out var priority) ? priority : 0,
             
             // Endereço
             Address = item.ContainsKey("address") ? item["address"].S : "",
@@ -78,11 +79,60 @@ public static class SupplierMapper
             
             // Integração eNota
             EnotasId = item.ContainsKey("enotas_Id") ? item["enotas_Id"].S : "",
+
+            // Integração InfinityPay
+            InfinityPayHandle = item.ContainsKey("infinity_pay_handle") ? item["infinity_pay_handle"].S : "",
             
             // Metadata
             CreatedAt = createdAt,
             UpdatedAt = updatedAtString != null ? updatedAt : null
         };
+    }
+
+    /// <summary>
+    /// Converte SupplierDomain para Dictionary pronto para salvar no DynamoDB
+    /// </summary>
+    public static Dictionary<string, Amazon.DynamoDBv2.Model.AttributeValue> ToDynamoDb(this SupplierDomain domain)
+    {
+        var item = new Dictionary<string, Amazon.DynamoDBv2.Model.AttributeValue>
+        {
+            { "PK", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.Pk } },
+            { "SK", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.Sk } },
+            { "id", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.Id } },
+            { "entity_type", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.EntityType } },
+            { "name", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.Name } },
+            { "legal_name", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.LegalName } },
+            { "phone", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.Phone } },
+            { "address", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.Address } },
+            { "address_number", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.AddressNumber } },
+            { "address_district", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.AddressDistrict } },
+            { "address_city", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.AddressCity } },
+            { "address_state", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.AddressState } },
+            { "address_zipcode", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.AddressZipcode } },
+            { "cnpj", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.Cnpj } },
+            { "cst_csosn", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.CstCsosn } },
+            { "created_at", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.CreatedAt.ToString("O") } }
+        };
+
+        // Adicionar eNota ID se fornecido
+        if (!string.IsNullOrWhiteSpace(domain.EnotasId))
+        {
+            item["enotas_Id"] = new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.EnotasId };
+        }
+
+        // Adicionar InfinityPay Handle se fornecido
+        if (!string.IsNullOrWhiteSpace(domain.InfinityPayHandle))
+        {
+            item["infinity_pay_handle"] = new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.InfinityPayHandle };
+        }
+
+        // Adicionar updated_at se fornecido
+        if (domain.UpdatedAt.HasValue)
+        {
+            item["updated_at"] = new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.UpdatedAt.Value.ToString("O") };
+        }
+
+        return item;
     }
 }
 

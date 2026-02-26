@@ -26,10 +26,7 @@ public class InfinityPayLinkDomain
     public string EntityType { get; set; } = "infinitypay_link";
     public string CreatedAt { get; set; } = default!;
     public string? CompletedAt { get; set; }
-
-    // 🔗 Informações do Checkout
-    public string CheckoutUrl { get; set; } = default!; // URL gerada para InfinityPay
-    public string? WebhookOrderNsu { get; set; } // orderNsu que virá no webhook
+    public string Url { get; set; }
 }
 
 /// <summary>
@@ -39,10 +36,11 @@ public static class InfinityPayLinkBuilder
 {
     public static InfinityPayLinkDomain Create(
         string sellerId,
+        string linkId,
         List<string> paymentIds,
-        decimal totalAmount)
+        decimal totalAmount,
+        string url)
     {
-        var linkId = Ulid.NewUlid().ToString();
         
         return new InfinityPayLinkDomain
         {
@@ -54,11 +52,9 @@ public static class InfinityPayLinkBuilder
             Amount = totalAmount,
             PaymentCount = paymentIds.Count,
             Status = "pending",
-            EntityType = "infinitypay_link",
+            EntityType = "infinitypay",
             CreatedAt = DateTime.UtcNow.ToString("O"),
-            // orderNsu será: paymentId1-paymentId2-...-paymentIdN
-            WebhookOrderNsu = string.Join("-", paymentIds),
-            CheckoutUrl = string.Empty // Será preenchido após retornar da API
+            Url = url
         };
     }
 }
@@ -85,11 +81,10 @@ public static class InfinityPayLinkMapper
             Amount = item.ContainsKey("amount") ? decimal.Parse(item["amount"].N) : 0,
             PaymentCount = item.ContainsKey("payment_count") ? int.Parse(item["payment_count"].N) : 0,
             Status = item.ContainsKey("status") ? item["status"].S : "pending",
-            EntityType = item.ContainsKey("entity_type") ? item["entity_type"].S : "infinitypay_link",
+            EntityType = item.ContainsKey("entity_type") ? item["entity_type"].S : "infinitypay",
             CreatedAt = item.ContainsKey("created_at") ? item["created_at"].S : DateTime.UtcNow.ToString("O"),
             CompletedAt = item.ContainsKey("completed_at") ? item["completed_at"].S : null,
-            CheckoutUrl = item.ContainsKey("checkout_url") ? item["checkout_url"].S : "",
-            WebhookOrderNsu = item.ContainsKey("webhook_order_nsu") ? item["webhook_order_nsu"].S : ""
+            Url =  item.ContainsKey("url") ? item["url"].S : null
         };
     }
 
@@ -104,13 +99,12 @@ public static class InfinityPayLinkMapper
             { "SK", new AttributeValue { S = domain.Sk } },
             { "link_id", new AttributeValue { S = domain.LinkId } },
             { "seller_id", new AttributeValue { S = domain.SellerId } },
-            { "amount", new AttributeValue { N = domain.Amount.ToString("F2") } },
+            { "amount", new AttributeValue { N = domain.Amount.ToString() } },
             { "payment_count", new AttributeValue { N = domain.PaymentCount.ToString() } },
             { "status", new AttributeValue { S = domain.Status } },
             { "entity_type", new AttributeValue { S = domain.EntityType } },
             { "created_at", new AttributeValue { S = domain.CreatedAt } },
-            { "checkout_url", new AttributeValue { S = domain.CheckoutUrl } },
-            { "webhook_order_nsu", new AttributeValue { S = domain.WebhookOrderNsu ?? "" } }
+            { "url", new AttributeValue { S = domain.Url } }
         };
 
         // Adicionar lista de payment IDs

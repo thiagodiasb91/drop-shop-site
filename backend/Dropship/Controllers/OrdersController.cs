@@ -10,7 +10,7 @@ namespace Dropship.Controllers;
 /// </summary>
 [ApiController]
 [Route("orders")]
-public class OrdersController(OrderProcessingService orderProcessingService, ILogger<OrdersController> logger)
+public class OrdersController(OrderService orderService, ILogger<OrdersController> logger)
     : ControllerBase
 {
     /// <summary>
@@ -58,7 +58,7 @@ public class OrdersController(OrderProcessingService orderProcessingService, ILo
         try
         {
             // Processar o pedido
-            var result = await orderProcessingService.ProcessOrderAsync(
+            var result = await orderService.ProcessOrderAsync(
                 request.OrderSn,
                 request.Status,
                 request.ShopId);

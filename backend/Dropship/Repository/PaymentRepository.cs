@@ -88,41 +88,6 @@ public class PaymentRepository
     }
 
     /// <summary>
-    /// Obtém pagamentos de um fornecedor específico
-    /// Busca registros onde SK começa com "PaymentQueue#Supplier#{supplierId}"
-    /// </summary>
-    public async Task<List<PaymentQueueDomain>> GetPaymentQueueBySupplier(string sellerId, string supplierId)
-    {
-        _logger.LogInformation("Getting payment queue by supplier - SellerId: {SellerId}, SupplierId: {SupplierId}", 
-            sellerId, supplierId);
-
-        try
-        {
-            var items = await _repository.QueryTableAsync(
-                keyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
-                expressionAttributeValues: new Dictionary<string, AttributeValue>
-                {
-                    { ":pk", new AttributeValue { S = $"Seller#{sellerId}" } },
-                    { ":sk", new AttributeValue { S = $"Payments#" } },
-                    { ":supplierId", new AttributeValue { S = supplierId } }
-                },
-                filterExpression: "supplier_id = :supplierId"
-            );
-
-            var paymentQueue = items.Select(PaymentQueueMapper.ToDomain).ToList();
-            
-            _logger.LogInformation("Found {Count} payment queue entries for supplier - SupplierId: {SupplierId}", 
-                paymentQueue.Count, supplierId);
-            
-            return paymentQueue;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting payment queue by supplier - SupplierId: {SupplierId}", supplierId);
-            throw;
-        }
-    }
-    /// <summary>
     /// Cria um novo registro de fila de pagamento
     /// </summary>
     public async Task CreatePaymentQueueAsync(PaymentQueueDomain paymentQueue)
@@ -231,54 +196,25 @@ public class PaymentRepository
     /// <summary>
     /// Atualiza o status de um pagamento
     /// </summary>
-    public async Task<bool> UpdatePaymentStatusAsync(string sellerId, string paymentId, string status, string? completedAt = null)
+    public async Task<bool> UpdatePayment(PaymentQueueDomain payment)
     {
-        _logger.LogInformation("Updating payment status - SellerId: {SellerId}, PaymentId: {PaymentId}, Status: {Status}",
-            sellerId, paymentId, status);
+        _logger.LogInformation(
+            "Updating payment status - PaymentId: {PaymentId}, SellerId: {SellerId}, Status: {Status}",
+            payment.PaymentId, payment.SellerId, payment.Status);
 
         try
         {
-            // Buscar o pagamento primeiro para obter a SK completa
-            var payment = await GetPaymentByIdAsync(paymentId);
-            if (payment == null)
-            {
-                _logger.LogWarning("Payment not found for update - PaymentId: {PaymentId}", paymentId);
-                return false;
-            }
+            await _repository.PutItemAsync(payment.ToDynamoDb());
 
-            var updateExpression = "SET #status = :status";
-            var expressionAttributeValues = new Dictionary<string, AttributeValue>
-            {
-                { ":status", new AttributeValue { S = status } }
-            };
-
-            // Adicionar completed_at se fornecido
-            if (!string.IsNullOrWhiteSpace(completedAt))
-            {
-                updateExpression += ", completed_at = :completedAt";
-                expressionAttributeValues[":completedAt"] = new AttributeValue { S = completedAt };
-            }
-
-            await _repository.UpdateItemAsync(
-                key: new Dictionary<string, AttributeValue>
-                {
-                    { "PK", new AttributeValue { S = $"Seller#{sellerId}" } },
-                    { "SK", new AttributeValue { S = payment.SK } }
-                },
-                updateExpression: updateExpression,
-                expressionAttributeValues: expressionAttributeValues
-            );
-
-            _logger.LogInformation("Payment status updated successfully - PaymentId: {PaymentId}, Status: {Status}",
-                paymentId, status);
+            _logger.LogInformation(
+                "Payment status updated successfully - PaymentId: {PaymentId}, Status: {Status}",
+                payment.PaymentId, payment.Status);
 
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
-                "Error updating payment status - SellerId: {SellerId}, PaymentId: {PaymentId}, Status: {Status}",
-                sellerId, paymentId, status);
+            _logger.LogError(ex, "Error updating payment status");
             throw;
         }
     }

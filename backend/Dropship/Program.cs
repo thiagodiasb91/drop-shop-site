@@ -13,6 +13,7 @@ using Dropship.Repository;
 using Dropship.Services;
 using Dropship.Middlewares;
 using Dropship.Logging;
+using Dropship.Responses;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Logging.Console;
@@ -221,7 +222,8 @@ builder.Services.AddScoped<PaymentService>();
 builder.Services.AddScoped<AuthenticationService>();
 builder.Services.AddScoped<ShopeeService>();
 builder.Services.AddScoped<StockServices>();
-builder.Services.AddScoped<OrderProcessingService>();
+builder.Services.AddScoped<OrderService>();
+builder.Services.AddScoped<InfinityPayService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddAuthorization();
 

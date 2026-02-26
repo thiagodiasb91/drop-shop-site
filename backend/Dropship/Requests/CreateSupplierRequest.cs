@@ -88,6 +88,8 @@ public class CreateSupplierRequest
     /// </summary>
     public string? EnotasId { get; set; }
 
+    public string InfinityPayHandle { get; set; }
+
     /// <summary>
     /// Validação customizada para CNPJ
     /// </summary>

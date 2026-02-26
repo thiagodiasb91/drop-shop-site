@@ -25,12 +25,6 @@ public class UpdateSupplierRequest
     [Phone(ErrorMessage = "Phone must be a valid phone number")]
     [StringLength(20)]
     public string? Phone { get; set; }
-
-    /// <summary>
-    /// Prioridade (opcional)
-    /// </summary>
-    [Range(0, int.MaxValue, ErrorMessage = "Priority must be a non-negative number")]
-    public int? Priority { get; set; }
     
     /// <summary>
     /// Rua/logradouro (opcional)
@@ -85,6 +79,9 @@ public class UpdateSupplierRequest
     /// </summary>
     public string? EnotasId { get; set; }
 
+    [StringLength(2, MinimumLength = 2, ErrorMessage = "InfinityPayHandle must be a 2-characters")]
+    public string? InfinityPayHandle { get; set; }
+    
     /// <summary>
     /// Validação customizada para CNPJ (opcional)
     /// </summary>

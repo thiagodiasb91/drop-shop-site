@@ -49,7 +49,6 @@ public static class SupplierShipmentBuilder
     public static SupplierShipmentDomain CreateFromPayment(
         PaymentQueueDomain paymentQueue,
         string transactionNsu,
-        string orderNsu,
         string captureMethod,
         string receiptUrl,
         decimal paidAmount,
@@ -60,7 +59,7 @@ public static class SupplierShipmentBuilder
         return new SupplierShipmentDomain
         {
             Pk = $"Supplier#{paymentQueue.SupplierId}",
-            Sk = $"Shipment#{shipmentId}#Payment#{paymentQueue.PaymentId}",
+            Sk = $"Shipment#{shipmentId}",
             ShipmentId = shipmentId,
             PaymentId = paymentQueue.PaymentId,
             SupplierId = paymentQueue.SupplierId,
@@ -70,7 +69,6 @@ public static class SupplierShipmentBuilder
             PaidAmount = paidAmount,
             Installments = installments,
             TransactionNsu = transactionNsu,
-            OrderNsu = orderNsu,
             CaptureMethod = captureMethod,
             ReceiptUrl = receiptUrl,
             Status = "paid",

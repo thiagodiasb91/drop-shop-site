@@ -76,48 +76,6 @@ public class InfinityPayLinkRepository
     }
 
     /// <summary>
-    /// Obtém um link pelo WebhookOrderNsu (paymentId1-paymentId2-...)
-    /// Usado quando o webhook retorna com o orderNsu
-    /// </summary>
-    public async Task<InfinityPayLinkDomain?> GetLinkByWebhookOrderNsuAsync(string webhookOrderNsu)
-    {
-        _logger.LogInformation("Getting InfinityPay link by webhook orderNsu - OrderNsu: {OrderNsu}", webhookOrderNsu);
-
-        try
-        {
-            // Buscar usando GSI_WEBHOOK_ORDERNSU
-            var items = await _repository.QueryTableAsync(
-                keyConditionExpression: "webhook_order_nsu = :orderNsu",
-                expressionAttributeValues: new Dictionary<string, AttributeValue>
-                {
-                    { ":orderNsu", new AttributeValue { S = webhookOrderNsu } }
-                },
-                indexName: "GSI_WEBHOOK_ORDERNSU"
-            );
-
-            if (items == null || items.Count == 0)
-            {
-                _logger.LogWarning("InfinityPay link not found - WebhookOrderNsu: {OrderNsu}", webhookOrderNsu);
-                return null;
-            }
-
-            // Retornar o primeiro (deve ser único)
-            var link = InfinityPayLinkMapper.ToDomain(items.First());
-            
-            _logger.LogInformation("Found InfinityPay link - LinkId: {LinkId}, OrderNsu: {OrderNsu}",
-                link.LinkId, webhookOrderNsu);
-
-            return link;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting InfinityPay link by webhook orderNsu - OrderNsu: {OrderNsu}",
-                webhookOrderNsu);
-            throw;
-        }
-    }
-
-    /// <summary>
     /// Obtém todos os links de um vendedor
     /// </summary>
     public async Task<List<InfinityPayLinkDomain>> GetLinksBySellerAsync(string sellerId)

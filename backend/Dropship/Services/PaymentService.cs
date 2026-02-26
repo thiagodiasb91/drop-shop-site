@@ -1,5 +1,7 @@
+using Amazon.DynamoDBv2.Model;
 using Dropship.Domain;
 using Dropship.Repository;
+using Dropship.Responses;
 
 namespace Dropship.Services;
 
@@ -7,54 +9,41 @@ namespace Dropship.Services;
 /// Serviço para operações com pagamentos
 /// Popula informações adicionais como supplierName
 /// </summary>
-public class PaymentService
+public class PaymentService(
+    PaymentRepository paymentRepository,
+    SupplierShipmentRepository shipmentRepository,
+    SupplierRepository supplierRepository,
+    InfinityPayLinkRepository linkRepository,
+    ILogger<PaymentService> logger,
+    InfinityPayService infinityPayService)
 {
-    private readonly PaymentRepository _paymentRepository;
-    private readonly SupplierShipmentRepository _shipmentRepository;
-    private readonly SupplierRepository _supplierRepository;
-    private readonly InfinityPayLinkRepository _linkRepository;
-    private readonly ILogger<PaymentService> _logger;
-
-    public PaymentService(
-        PaymentRepository paymentRepository,
-        SupplierShipmentRepository shipmentRepository,
-        SupplierRepository supplierRepository,
-        InfinityPayLinkRepository linkRepository,
-        ILogger<PaymentService> logger)
-    {
-        _paymentRepository = paymentRepository;
-        _shipmentRepository = shipmentRepository;
-        _supplierRepository = supplierRepository;
-        _linkRepository = linkRepository;
-        _logger = logger;
-    }
-
+    
     /// <summary>
     /// Obtém pagamentos do vendedor com informações do fornecedor
     /// </summary>
     public async Task<List<PaymentQueueDomain>> GetPaymentsBySellerId(string sellerId)
     {
-        _logger.LogInformation("Getting payments by seller - SellerId: {SellerId}", sellerId);
+        logger.LogInformation("Getting payments by seller - SellerId: {SellerId}", sellerId);
 
         try
         {
-            var payments = await _paymentRepository.GetPaymentQueueBySellerId(sellerId);
+            var payments = await paymentRepository.GetPaymentQueueBySellerId(sellerId);
 
             if (payments == null || payments.Count == 0)
             {
-                _logger.LogInformation("No payments found for seller - SellerId: {SellerId}", sellerId);
+                logger.LogInformation("No payments found for seller - SellerId: {SellerId}", sellerId);
                 return [];
             }
 
             await EnrichPaymentsWithSupplierInfo(payments);
 
-            _logger.LogInformation("Returning {Count} payments - SellerId: {SellerId}", payments.Count, sellerId);
+            logger.LogInformation("Returning {Count} payments - SellerId: {SellerId}", payments.Count, sellerId);
 
             return payments;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting payments by seller - SellerId: {SellerId}", sellerId);
+            logger.LogError(ex, "Error getting payments by seller - SellerId: {SellerId}", sellerId);
             throw;
         }
     }
@@ -64,29 +53,29 @@ public class PaymentService
     /// </summary>
     public async Task<List<PaymentQueueDomain>> GetPaymentsBySellerAndStatus(string sellerId, string status)
     {
-        _logger.LogInformation("Getting payments by seller and status - SellerId: {SellerId}, Status: {Status}", sellerId, status);
+        logger.LogInformation("Getting payments by seller and status - SellerId: {SellerId}, Status: {Status}", sellerId, status);
 
         try
         {
-            var payments = await _paymentRepository.GetPaymentQueueBySellerAndStatus(sellerId, status);
+            var payments = await paymentRepository.GetPaymentQueueBySellerAndStatus(sellerId, status);
 
             if (payments == null || payments.Count == 0)
             {
-                _logger.LogInformation("No payments found - SellerId: {SellerId}, Status: {Status}", sellerId, status);
+                logger.LogInformation("No payments found - SellerId: {SellerId}, Status: {Status}", sellerId, status);
                 return new List<PaymentQueueDomain>();
             }
 
             // Enriquecer com informações do fornecedor
             await EnrichPaymentsWithSupplierInfo(payments);
 
-            _logger.LogInformation("Returning {Count} payments - SellerId: {SellerId}, Status: {Status}", 
+            logger.LogInformation("Returning {Count} payments - SellerId: {SellerId}, Status: {Status}", 
                 payments.Count, sellerId, status);
 
             return payments;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting payments by seller and status - SellerId: {SellerId}, Status: {Status}", 
+            logger.LogError(ex, "Error getting payments by seller and status - SellerId: {SellerId}, Status: {Status}", 
                 sellerId, status);
             throw;
         }
@@ -97,21 +86,21 @@ public class PaymentService
     /// </summary>
     public async Task CreatePaymentQueueAsync(PaymentQueueDomain paymentQueue)
     {
-        _logger.LogInformation(
+        logger.LogInformation(
             "Creating payment queue - SellerId: {SellerId}, SupplierId: {SupplierId}, OrderSn: {OrderSn}",
             paymentQueue.SellerId, paymentQueue.SupplierId, paymentQueue.OrderSn);
 
         try
         {
-            await _paymentRepository.CreatePaymentQueueAsync(paymentQueue);
+            await paymentRepository.CreatePaymentQueueAsync(paymentQueue);
 
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Payment queue created - SellerId: {SellerId}, SupplierId: {SupplierId}, OrderSn: {OrderSn}",
                 paymentQueue.SellerId, paymentQueue.SupplierId, paymentQueue.OrderSn);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            logger.LogError(ex,
                 "Error creating payment queue - SellerId: {SellerId}, SupplierId: {SupplierId}, OrderSn: {OrderSn}",
                 paymentQueue.SellerId, paymentQueue.SupplierId, paymentQueue.OrderSn);
             throw;
@@ -123,30 +112,29 @@ public class PaymentService
     /// Busca o link pelo webhookOrderNsu e marca como completo
     /// </summary>
     public async Task ProcessPaymentWebhookWithLinkAsync(
-        string webhookOrderNsu,
+        string linkId,
         decimal paidAmount,
         int installments,
         string transactionNsu,
-        string orderNsu,
         string captureMethod,
         string receiptUrl)
     {
-        _logger.LogInformation(
+        logger.LogInformation(
             "Processing payment webhook with link - WebhookOrderNsu: {OrderNsu}, Amount: {Amount}",
-            webhookOrderNsu, paidAmount);
+            linkId, paidAmount);
 
         try
         {
             // 1. Buscar o link pelo webhookOrderNsu
-            var link = await _linkRepository.GetLinkByWebhookOrderNsuAsync(webhookOrderNsu);
+            var link = await linkRepository.GetLinkByIdAsync(linkId);
             
             if (link == null)
             {
                 throw new InvalidOperationException(
-                    $"InfinityPay link not found - WebhookOrderNsu: {webhookOrderNsu}");
+                    $"InfinityPay link not found - WebhookOrderNsu: {linkId}");
             }
 
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Found InfinityPay link - LinkId: {LinkId}, PaymentCount: {Count}",
                 link.LinkId, link.PaymentCount);
 
@@ -163,7 +151,6 @@ public class PaymentService
                         paidAmount: paidAmount,
                         installments: installments,
                         transactionNsu: transactionNsu,
-                        orderNsu: orderNsu,
                         captureMethod: captureMethod,
                         receiptUrl: receiptUrl);
 
@@ -172,27 +159,27 @@ public class PaymentService
                 catch (Exception ex)
                 {
                     failureCount++;
-                    _logger.LogError(ex,
+                    logger.LogError(ex,
                         "Error processing payment from webhook - PaymentId: {PaymentId}, LinkId: {LinkId}",
                         paymentId, link.LinkId);
                 }
             }
 
             // 3. Atualizar status do link para "completed"
-            await _linkRepository.UpdateLinkStatusAsync(
+            await linkRepository.UpdateLinkStatusAsync(
                 linkId: link.LinkId,
                 status: "completed",
                 completedAt: DateTime.UtcNow.ToString("O"));
 
-            _logger.LogInformation(
+            logger.LogInformation(
                 "InfinityPay webhook processed with link - LinkId: {LinkId}, SuccessCount: {Success}, FailureCount: {Failure}",
                 link.LinkId, successCount, failureCount);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            logger.LogError(ex,
                 "Error processing payment webhook with link - WebhookOrderNsu: {OrderNsu}",
-                webhookOrderNsu);
+                linkId);
             throw;
         }
     }
@@ -206,18 +193,17 @@ public class PaymentService
         decimal paidAmount,
         int installments,
         string transactionNsu,
-        string orderNsu,
         string captureMethod,
         string receiptUrl)
     {
-        _logger.LogInformation(
+        logger.LogInformation(
             "Processing payment from webhook - PaymentId: {PaymentId}, Amount: {Amount}",
             paymentId, paidAmount);
 
         try
         {
             // 1. Buscar o pagamento pendente pelo paymentId
-            var payment = await _paymentRepository.GetPaymentByIdAsync(paymentId);
+            var payment = await paymentRepository.GetPaymentByIdAsync(paymentId);
             
             if (payment == null)
             {
@@ -232,14 +218,12 @@ public class PaymentService
                     $"Payment already processed - PaymentId: {paymentId}, Current Status: {payment.Status}");
             }
 
+            payment.Status = "paid";
+            payment.CompletedAt = DateTime.UtcNow.ToString("O");
             // 3. Atualizar status do pagamento para "paid"
-            await _paymentRepository.UpdatePaymentStatusAsync(
-                sellerId: payment.SellerId,
-                paymentId: paymentId,
-                status: "paid",
-                completedAt: DateTime.UtcNow.ToString("O"));
+            await paymentRepository.UpdatePayment(payment);
 
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Payment status updated to 'paid' - PaymentId: {PaymentId}, SellerId: {SellerId}", 
                 paymentId, payment.SellerId);
 
@@ -247,21 +231,20 @@ public class PaymentService
             var shipment = SupplierShipmentBuilder.CreateFromPayment(
                 paymentQueue: payment,
                 transactionNsu: transactionNsu,
-                orderNsu: orderNsu,
                 captureMethod: captureMethod,
                 receiptUrl: receiptUrl,
                 paidAmount: paidAmount,
                 installments: installments);
 
-            await _shipmentRepository.CreateShipmentAsync(shipment);
+            await shipmentRepository.CreateShipmentAsync(shipment);
 
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Supplier shipment created from payment - ShipmentId: {ShipmentId}, SupplierId: {SupplierId}, PaymentId: {PaymentId}",
                 shipment.ShipmentId, shipment.SupplierId, paymentId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            logger.LogError(ex,
                 "Error processing payment from webhook - PaymentId: {PaymentId}",
                 paymentId);
             throw;
@@ -279,7 +262,7 @@ public class PaymentService
         {
             try
             {
-                var supplier = await _supplierRepository.GetSupplierAsync(supplierId);
+                var supplier = await supplierRepository.GetSupplierAsync(supplierId);
                 var supplierName = supplier?.Name ?? "Unknown Supplier";
 
                 // Atualizar todos os pagamentos deste fornecedor com o nome
@@ -290,7 +273,7 @@ public class PaymentService
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Error getting supplier info - SupplierId: {SupplierId}", supplierId);
+                logger.LogWarning(ex, "Error getting supplier info - SupplierId: {SupplierId}", supplierId);
             }
         }
     }
@@ -304,7 +287,7 @@ public class PaymentService
         List<string> paymentIds,
         decimal totalAmount)
     {
-        _logger.LogInformation(
+        logger.LogInformation(
             "Creating InfinityPay link - SellerId: {SellerId}, PaymentIds: {Count}, Amount: {Amount}",
             sellerId, paymentIds.Count, totalAmount);
 
@@ -317,7 +300,7 @@ public class PaymentService
             }
 
             // Validar que todos os pagamentos existem e estão pending
-            var payments = await _paymentRepository.GetPaymentsByIdsAsync(paymentIds);
+            var payments = await paymentRepository.GetPaymentsByIdsAsync(paymentIds);
             
             if (payments.Count != paymentIds.Count)
             {
@@ -334,18 +317,51 @@ public class PaymentService
                     $"All payments must be pending. Found {nonPending.Count} with status: {string.Join(", ", nonPending.Select(p => p.Status).Distinct())}");
             }
 
-            // Criar o link
-            var link = InfinityPayLinkBuilder.Create(sellerId, paymentIds, totalAmount);
+            //valida que todos os pending sõa do mesmo fornecedor
+            var sameSupplier = payments.Select(x => x.SupplierId).Distinct();
             
-            _logger.LogInformation(
-                "InfinityPay link created - LinkId: {LinkId}, PaymentIds: {Count}",
-                link.LinkId, paymentIds.Count);
+            if (sameSupplier.Count() > 1)
+            {
+                throw new InvalidOperationException(
+                    $"All payments must be from the same supplier. Found suppliers: {string.Join(", ", sameSupplier)}");
+            }
+            
+            var supplier = await supplierRepository.GetSupplierAsync(sameSupplier.First());
+            var items = payments.SelectMany( x=> x.PaymentProducts)
+                .Select(p => new InfinityPayItem
+                {
+                    Description = p.Name,
+                    Quantity = p.Quantity,
+                    Price = Convert.ToInt64(p.UnitPrice)
+                }).ToList();
+            var linkId = Ulid.NewUlid().ToString();
+            
+            var infinityPayUrl = await infinityPayService.CreateLinkAsync(supplier.InfinityPayHandle,
+                items, 
+                linkId,
+                Environment.GetEnvironmentVariable("WEBHOOK_INFINITYPAY_URL")
+                );
+            
+            // Criar o link
+            var infinityPay = InfinityPayLinkBuilder.Create(sellerId, linkId, paymentIds, totalAmount, infinityPayUrl);
+            await linkRepository.CreateLinkAsync(infinityPay);
 
-            return link;
+            foreach (var payment in payments)
+            {
+                payment.InfinityPayUrl = infinityPayUrl;
+                payment.Status = "waiting-payment";
+                await paymentRepository.UpdatePayment(payment);   
+            }
+            
+            logger.LogInformation(
+                "InfinityPay link created - LinkId: {LinkId}, PaymentIds: {Count}",
+                infinityPay.LinkId, paymentIds.Count);
+
+            return infinityPay;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            logger.LogError(ex,
                 "Error creating InfinityPay link - SellerId: {SellerId}, PaymentCount: {Count}",
                 sellerId, paymentIds.Count);
             throw;

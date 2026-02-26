@@ -17,6 +17,7 @@ public class SellersController(ILogger<SellersController> logger,
                             ProductSkuSellerRepository productSkuSellerRepository,
                             ProductSellerRepository productSellerRepository,
                             ProductSupplierRepository productSupplierRepository,
+                            InfinityPayLinkRepository linkRepository,
                             PaymentService paymentService
 
      ) : ControllerBase 
@@ -599,6 +600,92 @@ public class SellersController(ILogger<SellersController> logger,
         {
             logger.LogError(ex, "Error getting payment details - PaymentId: {PaymentId}", paymentId);
             return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
+        }
+    }
+    
+    /// <summary>
+    /// Cria um link de pagamento para InfinityPay
+    /// </summary>
+    /// <param name="request">Array de paymentIds e valor total</param>
+    /// <returns>LinkId e URL de checkout</returns>
+    [HttpPost("payments/create-link")]
+    public async Task<IActionResult> CreatePaymentLink([FromBody] CreateInfinityPayLinkRequest request)
+    {
+        try
+        {
+            var sellerId = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "resourceId")?.Value;
+            
+            logger.LogInformation(
+                "Creating InfinityPay link - SellerId: {SellerId}, PaymentIds: {Count}",
+                sellerId, request.PaymentIds.Count);
+
+            // Validar campos obrigatórios
+            if (string.IsNullOrWhiteSpace(sellerId))
+            {
+                logger.LogWarning("Missing seller ID in request");
+                return BadRequest(new { error = "Seller ID is required (X-Seller-Id header)" });
+            }
+
+            if (request.PaymentIds == null || request.PaymentIds.Count == 0)
+            {
+                logger.LogWarning("No payment IDs provided - SellerId: {SellerId}", sellerId);
+                return BadRequest(new { error = "At least one payment ID is required" });
+            }
+
+            if (request.Amount <= 0)
+            {
+                logger.LogWarning("Invalid amount - SellerId: {SellerId}", sellerId);
+                return BadRequest(new { error = "Amount must be greater than 0" });
+            }
+
+            var link = await paymentService.CreateInfinityPayLinkAsync(
+                sellerId: sellerId,
+                paymentIds: request.PaymentIds,
+                totalAmount: request.Amount);
+
+
+            logger.LogInformation(
+                "InfinityPay link created successfully - LinkId: {LinkId}, SellerId: {SellerId}",
+                link.LinkId, sellerId);
+
+            return Ok(link);
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogError(ex, "Validation error creating InfinityPay link");
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error creating InfinityPay link");
+            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+        }
+    }
+    /// <summary>
+    /// Obtém informações de um link de pagamento
+    /// </summary>
+    /// <param name="linkId">ID do link (ULID)</param>
+    [HttpGet("links/{linkId}")]
+    public async Task<IActionResult> GetLink(string linkId)
+    {
+        try
+        {
+            logger.LogInformation("Getting InfinityPay link - LinkId: {LinkId}", linkId);
+
+            var link = await linkRepository.GetLinkByIdAsync(linkId);
+            
+            if (link == null)
+            {
+                logger.LogWarning("Link not found - LinkId: {LinkId}", linkId);
+                return NotFound(new { error = "Link not found" });
+            }
+
+            return Ok(link);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting InfinityPay link - LinkId: {LinkId}", linkId);
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 }

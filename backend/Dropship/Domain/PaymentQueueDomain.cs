@@ -1,14 +1,13 @@
 namespace Dropship.Domain;
 
 /// <summary>
-/// Domain para a fila de pagamento
 /// Registra pagamentos pendentes de fornecedores
 /// </summary>
 public class PaymentQueueDomain
 {
     // 🔑 Chaves DynamoDB
-    public string PK { get; set; } = default!; // Seller#{sellerId}
-    public string SK { get; set; } = default!; // PaymentQueue#Supplier#{supplierId}#Order#{orderSn}#Sku#{sku}
+    public string PK { get; set; } = default!; 
+    public string SK { get; set; } = default!; 
 
     // 📋 Identificadores
     public string PaymentId { get; set; } = default!; // ULID único
@@ -21,7 +20,7 @@ public class PaymentQueueDomain
     public long ShopId { get; set; }
 
     // 📊 Status e Datas
-    public string Status { get; set; } = "pending"; // pending, paid, failed
+    public string Status { get; set; } = "pending"; // pending, waiting-payment, paid, failed
     public string EntityType { get; set; } = "payment_queue";
     public string CreatedAt { get; set; } = default!;
     public string? CompletedAt { get; set; }
@@ -39,6 +38,7 @@ public class PaymentProduct
     public int Quantity { get; set; }
     public decimal UnitPrice { get; set; }
     public string Image { get; set; } = default!;
+    public string Name { get; set; }
 }
 
 /// <summary>
@@ -98,14 +98,15 @@ public static class PaymentQueueMapper
             TotalItems = item.ContainsKey("total_items") ? int.Parse(item["total_items"].N) : 0,
             TotalAmount = item.ContainsKey("total_amount") ? decimal.Parse(item["total_amount"].N) : 0,
             InfinityPayUrl = item.ContainsKey("infinity_pay_url") ? item["infinity_pay_url"].S : "",
-            PaymentProducts = item.ContainsKey("payment_products") && item["payment_products"].L != null 
+            PaymentProducts = item.ContainsKey("payment_products") && item["payment_products"].L != null
                 ? item["payment_products"].L.Select(p => new PaymentProduct
                 {
                     ProductId = p.M.ContainsKey("product_id") && p.M["product_id"].S != null ? p.M["product_id"].S : "",
                     Sku = p.M.ContainsKey("sku") && p.M["sku"].S != null ? p.M["sku"].S : "",
                     Quantity = p.M.ContainsKey("quantity") && p.M["quantity"].N != null ? int.Parse(p.M["quantity"].N) : 0,
                     UnitPrice = p.M.ContainsKey("unit_price") && p.M["unit_price"].N != null ? decimal.Parse(p.M["unit_price"].N) : 0,
-                    Image = p.M.ContainsKey("image") && p.M["image"].S != null ? p.M["image"].S : ""
+                    Image = p.M.ContainsKey("image") && p.M["image"].S != null ? p.M["image"].S : "",
+                    Name = p.M.ContainsKey("name") && p.M["name"].S != null ? p.M["name"].S : ""
                 }).ToList() 
                 : new List<PaymentProduct>()    
         };
@@ -156,6 +157,7 @@ public static class PaymentQueueMapper
                     { "sku", new Amazon.DynamoDBv2.Model.AttributeValue { S = product.Sku } },
                     { "quantity", new Amazon.DynamoDBv2.Model.AttributeValue { N = product.Quantity.ToString() } },
                     { "unit_price", new Amazon.DynamoDBv2.Model.AttributeValue { N = product.UnitPrice.ToString("F2") } },
+                    { "name", new Amazon.DynamoDBv2.Model.AttributeValue { S = product.Name } },
                     { "image", new Amazon.DynamoDBv2.Model.AttributeValue { S = product.Image } }
                 };
                 

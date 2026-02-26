@@ -4,7 +4,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Dropship.Services;
 
-public class OrderProcessingService(
+public class OrderService(
     ShopeeApiService shopeeApiService,
     KardexService kardexService,
     PaymentService paymentService,
@@ -12,7 +12,7 @@ public class OrderProcessingService(
     ProductSkuSellerRepository productSkuSellerRepository,
     SkuRepository skuRepository,
     ProductSkuSupplierRepository productSkuSupplierRepository,
-    ILogger<OrderProcessingService> logger)
+    ILogger<OrderService> logger)
 {
     /// <summary>
     /// Processa um pedido realizado na Shopee
@@ -117,6 +117,7 @@ public class OrderProcessingService(
                     ProductionPrice = skuSupplier.Price,
                     SupplierId = skuSeller.SupplierId,
                     Seller = seller,
+                    Name = item["item_name"]?.Value<string>() ?? "Unknown Product",
                     Image = item["image_info"]["image_url"].Value<string>()
                 });
             }
@@ -192,7 +193,8 @@ public class OrderProcessingService(
                 Sku = i.Sku,
                 Quantity = i.Quantity,
                 UnitPrice = i.ProductionPrice,
-                Image = i.Image
+                Image = i.Image,
+                Name = i.Name
             }).ToList();
             
             var paymentQueue = PaymentQueueBuilder.Create(
@@ -231,6 +233,7 @@ public class OrderProcessingService(
         public string SupplierId { get; set; } = string.Empty;
         public string Image { get; set; } = string.Empty;
         public SellerDomain Seller { get; set; } = default!;
+        public string Name { get; set; }
     }
 }
 

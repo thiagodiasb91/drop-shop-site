@@ -14,7 +14,6 @@ public class SupplierResponse
     public string Name { get; set; } = string.Empty;
     public string LegalName { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
-    public int Priority { get; set; }
     
     // Endereço
     public string Address { get; set; } = string.Empty;
@@ -28,8 +27,9 @@ public class SupplierResponse
     public string Cnpj { get; set; } = string.Empty;
     public string CstCsosn { get; set; } = string.Empty;
     
-    // Integração eNota
+    // Integração Externa
     public string EnotasId { get; set; } = string.Empty;
+    public string InfinityPayHandle { get; set; } = string.Empty;
     
     // Metadata (read-only)
     public DateTime CreatedAt { get; set; }
@@ -50,7 +50,6 @@ public static class SupplierResponseMapper
             Name = supplier.Name,
             LegalName = supplier.LegalName,
             Phone = supplier.Phone,
-            Priority = supplier.Priority,
             Address = supplier.Address,
             AddressNumber = supplier.AddressNumber,
             AddressDistrict = supplier.AddressDistrict,
@@ -60,6 +59,7 @@ public static class SupplierResponseMapper
             Cnpj = supplier.Cnpj,
             CstCsosn = supplier.CstCsosn,
             EnotasId = supplier.EnotasId,
+            InfinityPayHandle = supplier.InfinityPayHandle,
             CreatedAt = supplier.CreatedAt,
             UpdatedAt = supplier.UpdatedAt
         };
