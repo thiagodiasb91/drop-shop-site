@@ -1,5 +1,5 @@
 resource "aws_cognito_user_pool" "admin" {
-  name = "${var.project_name}-admin-pool"
+  name = "${var.project_name}-${var.environment}-admin-pool"
 
   # self_signup_enabled = false
 
@@ -57,7 +57,7 @@ resource "aws_cognito_identity_provider" "facebook" {
 
 
 resource "aws_cognito_user_pool_client" "admin_web" {
-  name         = "${var.project_name}-admin-web"
+  name         = "${var.project_name}-${var.environment}-admin-web"
   user_pool_id = aws_cognito_user_pool.admin.id
 
   generate_secret = false
@@ -87,6 +87,6 @@ resource "aws_cognito_user_pool_client" "admin_web" {
 }
 
 resource "aws_cognito_user_pool_domain" "admin" {
-  domain       = "${var.project_name}-admin-auth"
+  domain       = "${var.project_name}-${var.environment}-admin-auth"
   user_pool_id = aws_cognito_user_pool.admin.id
 }

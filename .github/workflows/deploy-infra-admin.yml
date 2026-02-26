@@ -1,4 +1,4 @@
-name: Deploy Infra
+name: Deploy Infra Admin
 
 on:
   push:
@@ -6,8 +6,8 @@ on:
       - develop
       - main
     paths:
-      - 'infra/**'
-      - '.github/workflows/deploy-infra.yml'
+      - 'infra/stacks/admin_stack/**'
+      - '.github/workflows/deploy-infra-admin.yml'
   workflow_dispatch:
 
 jobs:
