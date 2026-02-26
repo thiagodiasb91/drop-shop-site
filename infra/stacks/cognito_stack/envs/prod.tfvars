@@ -2,12 +2,10 @@ project_name           = "drop-shop"
 environment            = "prod"
 
 callback_urls = [
-  "http://localhost:5173/pages/auth/callback.html",
-  "https://admin.drop-shop.com/pages/auth/callback.html"
+  "https://d121i7s3p0c7di.cloudfront.net/callback"
 ]
 logout_urls = [
-  "http://localhost:5173",
-  "https://admin.drop-shop.com"
+  "https://d121i7s3p0c7di.cloudfront.net"
 ]
 
 facebook_client_id     = "<COLE_AQUI_O_FACEBOOK_CLIENT_ID>"
