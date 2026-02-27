@@ -1,4 +1,5 @@
-import html from "./list.html?raw"
+import html from "./list.html?raw";
+import logger from "./utils/logger.js";
 
 
 export function getData() {
@@ -21,7 +22,7 @@ export function getData() {
 
       this.start = (this.page - 1) * this.pageSize;
       this.end = this.start + this.pageSize;
-      console.log("calculatePagination", this.totalItens, this.totalPages, this.start, this.end)
+      logger.local("calculatePagination", this.totalItens, this.totalPages, this.start, this.end);
     },
 
     async fetchOrders() {
@@ -91,10 +92,10 @@ export function getData() {
         cancelled: "Cancelado"
       }[status] || status;
     }
-  }
+  };
 }
 
 export function render() {
-  console.log("page.orders-list.render.loaded");
+  logger.local("page.orders-list.render.loaded");
   return html;
 }

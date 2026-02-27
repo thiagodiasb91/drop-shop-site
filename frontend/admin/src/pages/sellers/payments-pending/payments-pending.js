@@ -1,4 +1,4 @@
-import html from "./payments-pending.html?raw"
+import html from "./payments-pending.html?raw";
 import SellersPaymentsService from "../../../services/sellers-payments.service";
 import stateHelper from "../../../utils/state.helper.js";
 import { renderGlobalLoader } from "../../../components";
@@ -8,7 +8,7 @@ export function getData() {
     loading: true,
     allOrders: [],
     selectedOrders: [],
-    search: '',
+    search: "",
     stats: {},
     currentPage: 1,
     pageSize: 5,
@@ -53,7 +53,7 @@ export function getData() {
     get paidOrders() {
       const q = this.search.toLowerCase();
       return this.allOrders.filter(o =>
-        o.status === 'paid' &&
+        o.status === "paid" &&
         (o.orderSn.toLowerCase().includes(q) || o.paymentId.toLowerCase().includes(q))
       );
     },
@@ -85,20 +85,27 @@ export function getData() {
 
     openPaymentLink(infinityPayUrl) {
       if (!infinityPayUrl) {
-        stateHelper.toast('Link de pagamento não disponível', 'error');
+        stateHelper.toast("Link de pagamento não disponível", "error");
         return;
       }
-      window.open(infinityPayUrl, '_blank');
+      window.open(infinityPayUrl, "_blank");
     },
 
     async paySelected() {
       if (this.selectedOrders.length === 0) return;
-      const selected = this.notPaidOrders.filter(o => this.selectedOrders.includes(o.paymentId))
+      const selected = this.notPaidOrders.filter(o => this.selectedOrders.includes(o.paymentId));
       const paymentIds = selected.map(o => o.paymentId);
       const amount = selected.reduce((sum, o) => sum + o.totalAmount, 0);
 
+      const hasDifferentSuppliers = selected.some(o => o.supplierId !== selected[0].supplierId);
+
+      if(hasDifferentSuppliers){
+        stateHelper.toast("Multiplos pagamentos devem ser feitos para um único fornecedor", "error");
+        return;
+      }
+
       if (paymentIds.length === 0 || amount === 0) {
-        stateHelper.toast('Nenhum pedido selecionado para pagamento', 'error');
+        stateHelper.toast("Nenhum pedido selecionado para pagamento", "error");
         return;
       }
 
@@ -118,12 +125,12 @@ export function getData() {
     async generatePaymentLink(paymentIds, amount) {
       const res = await SellersPaymentsService.createPaymentLink(paymentIds, amount);
       if (res.ok) {
-        stateHelper.toast('Link de pagamento criado com sucesso', 'success');
+        stateHelper.toast("Link de pagamento criado com sucesso", "success");
         this.openPaymentLink(res.response.url);
         await this.refresh();
       }
       else {
-        stateHelper.toast('Erro ao criar link de pagamento', 'error');
+        stateHelper.toast("Erro ao criar link de pagamento", "error");
       }
     },
     renderLoader() {
@@ -137,13 +144,12 @@ export function getData() {
         "waiting-payment": {
           text: "Link gerado", color: "bg-blue-100 text-blue-800"
         },
-      }
+      };
       return map[status] || { text: "Desconhecido", color: "bg-slate-100 text-slate-800" };
     }
-  }
+  };
 }
 
 export function render() {
-  console.log("page.orders-list.render.loaded");
   return html;
 }

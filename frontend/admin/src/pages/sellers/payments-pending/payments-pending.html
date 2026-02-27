@@ -118,8 +118,8 @@
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
 
               <div class="flex items-center gap-4 min-w-0">
-                <div @click.stop>
-                  <input type="checkbox" :value="order.paymentId" :disabled="order.status === 'waiting-payment'"
+                <div class="w-8" @click.stop>
+                  <input type="checkbox" :value="order.paymentId" x-show="order.status !== 'waiting-payment'"
                     x-model="selectedOrders" class="h-5 w-5 rounded border-slate-600 bg-indigo-900 text-indigo-600">
                 </div>
                 <div class="min-w-0">
@@ -133,8 +133,8 @@
                         class="text-[8px] bg-amber-500/20 text-amber-500 px-1.5 py-0.5 rounded font-black shrink-0">DIVIDIDA</span>
                     </template>
                   </div>
-                  <p class="text-[10px] text-slate-500 uppercase font-black truncate"
-                    x-text="'Forn: ' + order.supplierName"></p>
+                  <p class="pt-2 text-[10px] text-slate-400 uppercase font-black truncate"
+                    x-text="'Fornecedor: ' + order.supplierName"></p>
                 </div>
               </div>
 

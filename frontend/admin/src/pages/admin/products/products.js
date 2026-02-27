@@ -1,13 +1,14 @@
-import html from "./products.html?raw"
+import html from "./products.html?raw";
 import { currency } from "../../../utils/format.helper";
-import ProductsService from "../../../services/products.services"
+import ProductsService from "../../../services/products.service";
 import stateHelper from "../../../utils/state.helper";
 import { renderGlobalLoader } from "../../../components";
+import logger from "../../../utils/logger.js";
 
 export function getData() {
   return {
     loading: false,
-    search: '',
+    search: "",
     products: null,
 
     modal: {
@@ -19,19 +20,19 @@ export function getData() {
 
     async init() {
       this.loading = true;
-      this.products = await this.fetchProducts()
+      this.products = await this.fetchProducts();
       this.loading = false;
     },
     async fetchProducts() {
-      const productsResponse = await ProductsService.getAllWithSkus()
-      console.log("products", productsResponse)
+      const productsResponse = await ProductsService.getAllWithSkus();
+      logger.local("products", productsResponse);
 
       if (!productsResponse.ok) {
-        stateHelper.toast('Erro ao consultar os produtos e seus skus.', 'error');
-        return
+        stateHelper.toast("Erro ao consultar os produtos e seus skus.", "error");
+        return;
       }
 
-      return productsResponse.response
+      return productsResponse.response;
     },
     get filteredProducts() {
       if (!this.search) return this.products;
@@ -45,25 +46,25 @@ export function getData() {
       this.modal.open = true;
       this.modal.editing = false;
       this.modal.form = {
-        name: '',
+        name: "",
         active: true,
         colors: [],
         sizes: [],
-        _newColor: '',
-        _newSize: ''
-      }
+        _newColor: "",
+        _newSize: ""
+      };
     },
 
     openEdit(product) {
-      console.log("page.products.openEdit", product)
+      logger.local("page.products.openEdit", product);
       this.modal.open = true;
       this.modal.editing = true;
       this.modal.form = {
         ...JSON.parse(JSON.stringify(product)),
         colors: product.displayVariations?.colors || [],
         sizes: product.displayVariations?.sizes || [],
-        _newColor: '',
-        _newSize: ''
+        _newColor: "",
+        _newSize: ""
       };
     },
 
@@ -75,7 +76,7 @@ export function getData() {
       const val = this.modal.form._newColor?.trim();
       if (val && !this.modal.form.colors.includes(val)) {
         this.modal.form.colors.push(val);
-        this.modal.form._newColor = '';
+        this.modal.form._newColor = "";
       }
     },
     removeColor(index) {
@@ -85,7 +86,7 @@ export function getData() {
       const val = this.modal.form._newSize?.trim();
       if (val && !this.modal.form.sizes.includes(val)) {
         this.modal.form.sizes.push(val.toUpperCase());
-        this.modal.form._newSize = '';
+        this.modal.form._newSize = "";
       }
     },
     removeSize(index) {
@@ -93,11 +94,11 @@ export function getData() {
     },
     validateProduct() {
       if (!this.modal.form.name?.trim()) {
-        stateHelper.toast('O nome do produto é obrigatório.', 'error');
+        stateHelper.toast("O nome do produto é obrigatório.", "error");
         return false;
       }
       if (!this.modal.form.colors.length || !this.modal.form.sizes.length) {
-        stateHelper.toast('Adicione ao menos uma cor e um tamanho.', 'error');
+        stateHelper.toast("Adicione ao menos uma cor e um tamanho.", "error");
         return false;
       }
       return true;
@@ -112,7 +113,7 @@ export function getData() {
         const payload = {
           name: this.modal.form.name,
           active: this.modal.form.active
-        }
+        };
 
         const productRes = isEditing
           ? await ProductsService.update(this.modal.form.id, payload)
@@ -158,12 +159,12 @@ export function getData() {
 
         if (skuPromises.length > 0) await Promise.all(skuPromises);
 
-        stateHelper.toast('Produto salvo com sucesso.', 'success');
+        stateHelper.toast("Produto salvo com sucesso.", "success");
         await this.init(); // Recarrega a tabela usando o getAllWithSkus do service
         this.closeModal();
       } catch (e) {
-        console.error(e);
-        stateHelper.toast('Erro ao salvar produto.', 'error');
+        logger.error("Erro ao salvar produto", e);
+        stateHelper.toast("Erro ao salvar produto.", "error");
       } finally {
         this.modal.loading = false;
       }
@@ -176,15 +177,15 @@ export function getData() {
     },
 
     currency(value) {
-      return currency(value)
+      return currency(value);
     },
     renderLoader() {
       return renderGlobalLoader("Carregando produtos...");
     }
-  }
+  };
 }
 
 export function render() {
-  console.log("page.products.render.loaded");
+  logger.local("page.products.render.loaded");
   return html;
 }

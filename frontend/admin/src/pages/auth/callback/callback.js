@@ -1,8 +1,8 @@
 import html from "./callback.html?raw";
-import AuthService from "../../../services/auth.service.js"
+import AuthService from "../../../services/auth.service.js";
 import { navigate } from "../../../core/router.js"; 
-import CacheHelper from "../../../utils/cache.helper.js";
 import stateHelper from "../../../utils/state.helper.js";
+import logger from "../../../utils/logger.js";
 
 export function getData() {
   return {
@@ -11,9 +11,9 @@ export function getData() {
     called: false,
 
     async init() {
-      console.log("page.callback.init.executing");
+      logger.local("page.callback.init.executing");
       if (this.called) {
-        console.log("page.callback.init.alreadyCalled");
+        logger.local("page.callback.init.alreadyCalled");
         return;
       }
 
@@ -21,45 +21,45 @@ export function getData() {
 
       const code =
         new URLSearchParams(window.location.search)
-          .get("code")
+          .get("code");
 
       if (!code) {
-        console.log("page.callback.init.noCode");
-        this.message = "Código ausente"
-        this.executing = false
-        return
+        logger.local("page.callback.init.noCode");
+        this.message = "Código ausente";
+        this.executing = false;
+        return;
       }
 
-      console.log("page.callback.init.callingAuthService");
-      const callbackResponse = await AuthService.callback(code)
-      console.log("page.callback.init.callbackResponse", callbackResponse);
+      logger.local("page.callback.init.callingAuthService");
+      const callbackResponse = await AuthService.callback(code);
+      logger.local("page.callback.init.callbackResponse", callbackResponse);
 
 
       if (!callbackResponse.ok) {
-        console.error("page.callback.init.error", callbackResponse.response);
-        stateHelper.removeSession()
-        this.message = "Erro ao autenticar"
-        this.executing = false
-        return
+        logger.error("page.callback.init.error", callbackResponse.response);
+        stateHelper.removeSession();
+        this.message = "Erro ao autenticar";
+        this.executing = false;
+        return;
       }
 
-      stateHelper.setSession(callbackResponse.response.sessionToken)
-      await stateHelper.refresh()
+      stateHelper.setSession(callbackResponse.response.sessionToken);
+      await stateHelper.refresh();
 
-      this.message = "Login realizado"
-      console.log("page.callback.init.redirecting");
-      navigate("/")
-      this.executing = false
+      this.message = "Login realizado";
+      logger.local("page.callback.init.redirecting");
+      navigate("/");
+      this.executing = false;
     },
     async goToLogin() {
-      console.log("page.callback.goToLogin.redirecting");
-      navigate("/login")
-      this.executing = false
+      logger.local("page.callback.goToLogin.redirecting");
+      navigate("/login");
+      this.executing = false;
     }
-  }
+  };
 }
 
 export function render() {
-  console.log("page.callback.render.loaded");
+  logger.local("page.callback.render.loaded");
   return html;
 }

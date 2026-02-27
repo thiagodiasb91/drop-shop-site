@@ -1,17 +1,18 @@
-import html from "./initial-setup.html?raw"
-import AuthService from "../../../services/auth.service.js"
-import SuppliersService from "../../../services/suppliers.services.js"
-import { navigate } from "../../../core/router.js"
+import html from "./initial-setup.html?raw";
+import AuthService from "../../../services/auth.service.js";
+import SuppliersService from "../../../services/suppliers.service.js";
+import { navigate } from "../../../core/router.js";
 import stateHelper from "../../../utils/state.helper.js";
-import { maskCNPJ, maskPhone } from "../../../utils/format.helper.js"
+import { maskCNPJ, maskPhone } from "../../../utils/format.helper.js";
+import logger from "../../../utils/logger.js";
 
 function setStep(_this, step) {
   _this.step = {
     submit: false,
     redirect: false,
     loading: false,
-  }
-  _this.step[step] = true
+  };
+  _this.step[step] = true;
 }
 
 export function getData() {
@@ -24,7 +25,7 @@ export function getData() {
       enotasId: null,
       infinitePayId: null,
       phone: null,
-      addressState: 'SP',
+      addressState: "SP",
     },
     errors: {
       name: null,
@@ -41,21 +42,21 @@ export function getData() {
       loading: false,
     },
     async init() {
-      console.log("page.suppliers.initial-setup.init.called")
+      logger.local("page.suppliers.initial-setup.init.called");
       const logged = stateHelper.user;
-      this.userEmail = logged.user.email
+      this.userEmail = logged.user.email;
 
       if (logged?.resourceId) {
-        console.log("page.suppliers.initial-setup.init.alreadySetup", logged.user.resourceId)
+        logger.local("page.suppliers.initial-setup.init.alreadySetup", logged.user.resourceId);
         this.goToRedirect();
       }
 
-      this.$watch('form.cnpj', value => {
+      this.$watch("form.cnpj", value => {
         if (!value) return;
         this.form.cnpj = maskCNPJ(value);
       });
 
-      this.$watch('form.phone', value => {
+      this.$watch("form.phone", value => {
         if (!value) return;
         this.form.phone = maskPhone(value);
       });
@@ -68,39 +69,45 @@ export function getData() {
       if (!this.validate())
         return;
 
-      setStep(this, 'loading')
+      setStep(this, "loading");
 
-      const res = await SuppliersService.save(this.form)
+      const payload = {
+        ...this.form,
+        cnpj: this.form.cnpj.replace(/[^a-zA-Z0-9]/g, "").toUpperCase(),
+        phone: this.form.phone.replace(/\D/g, ""),
+      };
+
+      const res = await SuppliersService.save(payload);
 
       if (!res.ok) {
-        console.error("pages.suppliers.initial-setup.save.error", res.response)
+        logger.error("pages.suppliers.initial-setup.save.error", res.response);
         stateHelper.toast(
           "Houve um erro ao tentar configurar o fornecedor. Tente novamente.",
-          "error")
-        setStep(this, 'submit')
-        return
+          "error");
+        setStep(this, "submit");
+        return;
       }
-      console.log("page.suppliers.initial-setup.save.response", res)
+      logger.local("page.suppliers.initial-setup.save.response", res);
 
-      const renewResponse = await AuthService.renewToken()
-      console.log("pages.suppliers.initial-setup.renewToken.response", renewResponse)
+      const renewResponse = await AuthService.renewToken();
+      logger.local("pages.suppliers.initial-setup.renewToken.response", renewResponse);
 
       if (!renewResponse.ok) {
-        console.error("pages.suppliers.initial-setup.renewToken.error", renewResponse.response)
-        this.message = "Houve um erro ao tentar renovar o seu token. Tente novamente."
-        this.loading = false
-        return
+        logger.error("pages.suppliers.initial-setup.renewToken.error", renewResponse.response);
+        this.message = "Houve um erro ao tentar renovar o seu token. Tente novamente.";
+        this.loading = false;
+        return;
       }
 
-      stateHelper.setSession(renewResponse.response.sessionToken)
+      stateHelper.setSession(renewResponse.response.sessionToken);
 
-      console.log("pages.suppliers.initial-setup.sessionToken.set")
+      logger.local("pages.suppliers.initial-setup.sessionToken.set");
 
-      await AuthService.me(true)
+      await AuthService.me(true);
 
     },
     goToRedirect() {
-      setStep(this, 'redirect')
+      setStep(this, "redirect");
       setTimeout(() => navigate("/"), 5000);
     },
     validate() {
@@ -146,10 +153,10 @@ export function getData() {
       }
       return valid;
     }
-  }
+  };
 }
 
 export function render() {
-  console.log("page.store-setup.render.loaded");
+  logger.local("page.store-setup.render.loaded");
   return html;
 }

@@ -1,21 +1,22 @@
 import { menu } from "./bootstrap.menu";
 import { commons } from "./bootstrap.commons";
 import AuthService from "../services/auth.service.js";
+import logger from "../utils/logger.js";
 
-console.log('bootstrap.module.loaded');
+logger.local("bootstrap.module.loaded");
 export default class Bootstrap {
   constructor(Alpine) {
     this.Alpine = Alpine;
   }
 
   init() {
-    console.log('bootstrap.init.called');
+    logger.local("bootstrap.init.called");
     try {
-      registerFunctions(this.Alpine, 'menu', menu);
-      registerFunctions(this.Alpine, 'bootstrap', commons);
+      registerFunctions(this.Alpine, "menu", menu);
+      registerFunctions(this.Alpine, "bootstrap", commons);
     }
     catch (err) {
-      console.warn('bootstrap: failed to register Function', err);
+      console.warn("bootstrap: failed to register Function", err);
     }
   }
 }
@@ -28,29 +29,29 @@ const registerFunctions = (AlpineInstance, modName, modRef) => {
     return;
   }
 
-  if (typeof Alpine !== 'undefined' && Alpine && Alpine.data) {
+  if (typeof Alpine !== "undefined" && Alpine && Alpine.data) {
     register(Alpine);
     return;
   }
-}
+};
 
 
-document.addEventListener('alpine:init', () => {
-  Alpine.store('auth', {
+document.addEventListener("alpine:init", () => {
+  Alpine.store("auth", {
     user: null,    
     async refresh() {
       this.user = await AuthService.me(true); 
       return this.user;
     }
   });
-  if (!Alpine.store('toast')) {
-    Alpine.store('toast', {
+  if (!Alpine.store("toast")) {
+    Alpine.store("toast", {
       show: false,
-      message: '',
-      type: 'info',
+      message: "",
+      type: "info",
       _timer: null,
 
-      open(message, type = 'info') {
+      open(message, type = "info") {
         this.message = message;
         this.type = type;
         this.show = true;

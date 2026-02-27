@@ -1,6 +1,4 @@
-import ENV from "../config/env.js"
-import { responseHandler } from "../utils/response.handler.js"
-import CacheHelper from "../utils/cache.helper.js";
+import logger from "../utils/logger.js";
 import BaseApi from "./base.api.js";
 
 const api = new BaseApi("/sellers/payments");
@@ -24,15 +22,15 @@ const SellersPaymentsService = {
   // Simula o endpoint: GET /sellers/payments/summary  
   async getPaymentSummary() {
     return api.call(
-      `/summary`,
+      "/summary",
       {
         method: "GET",
       });
   },
 
   async getSupplierPaymentDetails(supplierId) {
+    logger.local("SellersPaymentsService.getSupplierPaymentDetails.request", supplierId);
     /* const res = await fetch(`${this.basePath}/supplier/${supplierId}`, { method: "GET" });
-    return responseHandler(res);
     */
 
     const products = [
@@ -63,7 +61,7 @@ const SellersPaymentsService = {
           feePerOrder: 1.00, // Sua taxa fixa
           ordersCount: 142,
           totalAmount: 142.00,
-          status: 'opened', // Vendedor não pode pagar ainda
+          status: "opened", // Vendedor não pode pagar ainda
           closingDate: "28/02/2026"
         },
         invoices: [
@@ -96,34 +94,36 @@ const SellersPaymentsService = {
     };
   },
   async getInvoiceDetails(invoiceId) {
+    logger.local("SellersPaymentsService.getInvoiceDetails.request", invoiceId);
+
     return new Promise((resolve) => {
       setTimeout(() => {
         resolve({
           ok: true,
           response: [
             {
-              orderId: 'SHP-9981',
+              orderId: "SHP-9981",
               totalAmount: 45.90,
               itemsCount: 2,
-              date: '10/01'
+              date: "10/01"
             },
             {
-              orderId: 'SHP-9982',
+              orderId: "SHP-9982",
               totalAmount: 66.00,
               itemsCount: 3,
-              date: '12/01'
+              date: "12/01"
             },
             {
-              orderId: 'SHP-9983',
+              orderId: "SHP-9983",
               totalAmount: 15.00,
               itemsCount: 1,
-              date: '15/01'
+              date: "15/01"
             },
             {
-              orderId: 'SHP-9984',
+              orderId: "SHP-9984",
               totalAmount: 35.00,
               itemsCount: 1,
-              date: '18/01'
+              date: "18/01"
             }
           ]
         });
@@ -133,12 +133,12 @@ const SellersPaymentsService = {
   async createPaymentLink(paymentIds, amount) {
     // POST /sellers/payments/create-link
     return api.call(
-      `/create-link`,
+      "/create-link",
       {
         method: "POST",
         body: JSON.stringify({ paymentIds, amount }),
       }
-    )    
+    );
   },
 };
 

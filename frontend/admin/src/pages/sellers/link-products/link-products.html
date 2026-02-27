@@ -45,7 +45,7 @@
 
             <button @click="toggleExpand(product)" class="flex items-center gap-2 text-xs font-medium text-indigo-400">
               <span x-text="product.expanded ? 'Ocultar' : 'Ver fornecedores'"></span>
-              <i class="ph ph-caret-down transition-transform" :class="product.expanded ? 'rotate-180' : ''"></i>
+              <i class="ph ph-caret-down transition-transform" :class="product.expanded ? 'rotate-180' : """></i>
             </button>
           </div>
 
@@ -99,7 +99,7 @@
                       <div class="bg-slate-800/40 p-2 rounded border border-slate-700/30 text-[10px]">
                         <div class="text-slate-400 font-mono truncate" x-text="sku.sku"></div>
                         <div class="flex justify-between mt-1">
-                          <span class="text-slate-300" x-text="(sku.color || '') + ' ' + (sku.size || '')"></span>
+                          <span class="text-slate-300" x-text="(sku.color || "") + ' ' + (sku.size || "")"></span>
                           <span class="font-bold text-indigo-300" x-text="'R$ ' + sku.price.toFixed(2)"></span>
                         </div>
                       </div>

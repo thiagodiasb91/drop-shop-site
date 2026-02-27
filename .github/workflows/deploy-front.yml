@@ -41,6 +41,12 @@ jobs:
             npm run build -- --mode staging
           fi
 
+      - name: Run Linter
+        run: npm run lint
+        
+      - name: Build Project
+        run: npm run build
+        
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:

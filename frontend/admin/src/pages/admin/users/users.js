@@ -1,18 +1,19 @@
-import html from "./users.html?raw"
-import { navigate } from "../../../core/router.js"
-import UsersService from "../../../services/users.services.js"
+import html from "./users.html?raw";
+import { navigate } from "../../../core/router.js";
+import UsersService from "../../../services/users.service.js";
 import stateHelper from "../../../utils/state.helper.js";
+import logger from "../../../utils/logger.js";
 
 export function getData() {
   return {
     loading: true,
-    search: '',
+    search: "",
     users: [],
     availableRoles: [
-      'admin',
-      'seller', 
-      'supplier', 
-      'dispatcher',
+      "admin",
+      "seller", 
+      "supplier", 
+      "dispatcher",
     ],
 
     init() {
@@ -20,18 +21,18 @@ export function getData() {
     },
 
     async fetchUsers() {
-      this.loading = true
-      const res = await UsersService.getAllUsers()
-      console.log("pages.users.fetchUsers.getAllUsers", res)
+      this.loading = true;
+      const res = await UsersService.getAllUsers();
+      logger.local("pages.users.fetchUsers.getAllUsers", res);
 
       if (!res.ok) {
-        console.error("pages.users.fetchUsers.getAllUsers.error", res.response)
-        stateHelper.toast('Erro ao consultar usuários.', 'error');
-        return
+        logger.error("pages.users.fetchUsers.getAllUsers.error", res.response);
+        stateHelper.toast("Erro ao consultar usuários.", "error");
+        return;
       }
 
       this.users = res.response.map(u => ({ ...u, saving: false }));
-      this.loading = false
+      this.loading = false;
     },
 
     get filteredUsers() {
@@ -45,11 +46,11 @@ export function getData() {
 
     labelRole(role) {
       return {
-        supplier: 'Fornecedor',
-        seller: 'Vendedor',
-        admin: 'Admin',
-        dispatcher: 'CD',
-        'new-user': 'Sem acesso'
+        supplier: "Fornecedor",
+        seller: "Vendedor",
+        admin: "Admin",
+        dispatcher: "CD",
+        "new-user": "Sem acesso"
       }[role];
     },
     async setRole(user, role) {
@@ -64,9 +65,9 @@ export function getData() {
 
       if (!res.ok) {
         user.role = oldRole; // Reverte em caso de erro
-        stateHelper.toast('Erro ao atualizar permissão.', 'error');
+        stateHelper.toast("Erro ao atualizar permissão.", "error");
       } else {
-        stateHelper.toast(`Usuário atualizado para ${this.labelRole(role)}`, 'success');
+        stateHelper.toast(`Usuário atualizado para ${this.labelRole(role)}`, "success");
       }
       user.saving = false;
     },
@@ -76,17 +77,17 @@ export function getData() {
       const btn = event?.currentTarget;
       if (!btn) return;
 
-      btn.classList.add('copied');
-      setTimeout(() => btn.classList.remove('copied'), 600);
+      btn.classList.add("copied");
+      setTimeout(() => btn.classList.remove("copied"), 600);
     },
     openProductLink(user) {
-      if (user.role !== 'supplier') return
-      navigate(`/suppliers/${user.id}/products`)
+      if (user.role !== "supplier") return;
+      navigate(`/suppliers/${user.id}/products`);
     }
-  }
+  };
 }
 
 export function render() {
-  console.log("page.settings.render.loaded");
+  logger.local("page.settings.render.loaded");
   return html;
 }

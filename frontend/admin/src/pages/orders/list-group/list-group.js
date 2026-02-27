@@ -1,5 +1,6 @@
-import html from "./list-group.html?raw"
+import html from "./list-group.html?raw";
 import { currency } from "../../../utils/format.helper";
+import logger from "./utils/logger.js";
 
 
 export function getData() {
@@ -64,12 +65,12 @@ export function getData() {
     },
 
     toggleSupplier(id) {
-      console.log("list-group.toggleSupplier", id);
+      logger.local("list-group.toggleSupplier", id);
       this.openedSupplier = this.openedSupplier === id ? null : id;
     },
 
     currency(v) {
-      return currency(v)
+      return currency(v);
     },
 
     statusLabel(status) {
@@ -79,10 +80,10 @@ export function getData() {
         cancelled: "Cancelado"
       }[status] || status;
     }
-  }
+  };
 }
 
 export function render() {
-  console.log("page.orders-list.render.loaded");
+  logger.local("page.orders-list.render.loaded");
   return html;
 }

@@ -1,28 +1,29 @@
-import BaseApi from "./base.api"
+import BaseApi from "./base.api";
+import logger from "../utils/logger";
 
-const baseApi = new BaseApi("/products")
+const baseApi = new BaseApi("/products");
 
 const ProductsService = {
   async getAll() {
     return baseApi.call("/", {
       method: "GET",
       headers: { "Content-Type": "application/json" },
-    })
+    });
   },
   async getAllWithSkus() {
-    const productsResponse = await ProductsService.getAll()
+    const productsResponse = await ProductsService.getAll();
 
     if (!productsResponse.ok) {
-      console.error('Erro ao consultar os produtos.');
-      return productsResponse
+      logger.error("Erro ao consultar os produtos.", productsResponse.response);
+      return productsResponse;
     }
 
     const products = await Promise.all(productsResponse.response.map(async (p) => {
-      const skusResponse = await ProductsService.getSkusByProductId(p.id)
+      const skusResponse = await ProductsService.getSkusByProductId(p.id);
 
       if (!skusResponse.ok) {
-        console.error('Erro ao consultar os skus.');
-        return skusResponse
+        logger.error("Erro ao consultar os skus.", skusResponse.response);
+        return skusResponse;
       }
       const skus = skusResponse.response;
 
@@ -33,38 +34,38 @@ const ProductsService = {
         ...p,
         skus: skus,
         displayVariations: { sizes, colors }
-      }
-    }))
+      };
+    }));
 
     return {
       ok: true,
       response: products
-    }
+    };
   },
   async getSkusByProductId(productId) {
     return baseApi.call(`/${productId}/skus`, {
       method: "GET",
-    })
+    });
   },
   async create(data) {
     return baseApi.call("/", {
       method: "POST",
       body: JSON.stringify(data)
-    })
+    });
   },
 
   async update(id, data) {
     return baseApi.call(`/${id}`, {
       method: "PUT",
       body: JSON.stringify(data)
-    })
+    });
   },
 
   async updateSku(id, data) {
     return baseApi.call(`/${id}`, {
       method: "PUT",
       body: JSON.stringify(data)
-    })
+    });
   },
 
   async createSku(productId, skuData) {
@@ -77,22 +78,19 @@ const ProductsService = {
   async deleteSku(productId, skuId) {
     return baseApi.call(`/${productId}/skus/${skuId}`, {
       method: "DELETE"
-    })
+    });
   },
 
   async delete(id) {
     return baseApi.call(`/${id}`, {
       method: "DELETE"
-    })
+    });
   },
   async getProductSuppliers(productId) {
-    console.log("ProductsService.getSuppliersForProduct.request", productId)
     return baseApi.call(`/${productId}/suppliers`, {
       method: "GET",
-    })
+    });
   }
-}
+};
 
-export default ProductsService
-
-//
+export default ProductsService;

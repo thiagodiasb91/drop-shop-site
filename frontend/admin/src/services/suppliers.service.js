@@ -1,49 +1,47 @@
-import ENV from "../config/env.js"
-import { responseHandler } from "../utils/response.handler.js"
-import CacheHelper from "../utils/cache.helper.js"
-import BaseApi from "./base.api.js"
+import BaseApi from "./base.api.js";
+import logger from "../utils/logger.js";
 
-const api = new BaseApi("/suppliers")
+const api = new BaseApi("/suppliers");
 
 const SuppliersService = {
   async save(supplier) {
-    console.log("SuppliersService.save.request", supplier)
+    logger.local("SuppliersService.save.request", supplier);
     return api.call(
-      `/`,
+      "/",
       {
         method: "POST",
         body: JSON.stringify(supplier),
       }
-    )
+    );
   },
   async get(supplierId) {
-    console.log("SuppliersService.get.request", supplierId)
+    logger.local("SuppliersService.get.request", supplierId);
 
     return api.call(
       `/${supplierId}`,
       {
         method: "GET"
       }
-    )
+    );
   },
   async getLinkedProducts() {
-    console.log("SuppliersService.get.request")
+    logger.local("SuppliersService.get.request");
 
     return api.call(
-      `/products`,
+      "/products",
       {
         method: "GET",
       }
-    )
+    );
   },
   async getLinkedProductSkus(productId) {
-    console.log("SuppliersService.getLinkedProductSkus.request", productId)
+    logger.local("SuppliersService.getLinkedProductSkus.request", productId);
     return api.call(
       `/products/${productId}/skus`,
       {
         method: "GET",
       }
-    )
+    );
   },
   async linkProduct(productId, data) {
     return api.call(`/products/${productId}`, {
@@ -55,7 +53,7 @@ const SuppliersService = {
     const body = {
       skuSupplier,
       price
-    }
+    };
     return api.call(`/products/${productId}/skus/${sku}`, {
       method: "PUT",
       body: JSON.stringify(body),
@@ -64,7 +62,7 @@ const SuppliersService = {
   async updateProductStock(productId, sku, stock) {
     const body = {
       quantity: stock,
-    }
+    };
     return api.call(`/products/${productId}/skus/${sku}`, {
       method: "PUT",
       body: JSON.stringify(body),
@@ -75,6 +73,6 @@ const SuppliersService = {
       method: "DELETE",
     });
   }
-}
+};
 
-export default SuppliersService
+export default SuppliersService;

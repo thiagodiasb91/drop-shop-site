@@ -1,23 +1,24 @@
 import html from "./login.html?raw";
 import AuthService from "../../../services/auth.service.js";
+import logger from "../../../utils/logger.js";
 
-console.log("page.login.module.loaded");
+logger.local("page.login.module.loaded");
 
 export function getData() {
-  console.log("page.login.getData.loaded");
+  logger.local("page.login.getData.loaded");
   return {
     loading: false,
 
     login() {
-      console.log("page.login.login.request");
+      logger.local("page.login.login.request");
       this.loading = true;
       AuthService.login();
     }
-  }
+  };
 }
 
 export function render() {
-  console.log("page.login.render.loaded");
+  logger.local("page.login.render.loaded");
 
   return html;
 }

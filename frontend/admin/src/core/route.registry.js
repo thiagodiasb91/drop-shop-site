@@ -27,7 +27,7 @@ export const routes = {
 
   // --- ADMIN ---
   "/admin/dashboard": {
-    allowedRoles: ['admin'],
+    allowedRoles: ["admin"],
     title: "Painel Geral",
     middlewares: RouteGuard.admin,
     group: "Principal",
@@ -36,7 +36,7 @@ export const routes = {
   },
   "/admin/users": {
     title: "Usuários",
-    allowedRoles: ['admin'],
+    allowedRoles: ["admin"],
     middlewares: RouteGuard.admin,
     group: "Cadastros",
     icon: "ph ph-users",
@@ -44,7 +44,7 @@ export const routes = {
   },
   "/admin/products": {
     title: "Catálogo Global",
-    allowedRoles: ['admin'],
+    allowedRoles: ["admin"],
     middlewares: RouteGuard.admin,
     group: "Cadastros",
     icon: "ph ph-package",
@@ -53,7 +53,7 @@ export const routes = {
 
   // --- SUPPLIERS ---
   "/suppliers/dashboard": {
-    allowedRoles: ['supplier'],
+    allowedRoles: ["supplier"],
     middlewares: RouteGuard.supplier,
     title: "Painel do Fornecedor",
     group: "Principal",
@@ -61,7 +61,7 @@ export const routes = {
     js: () => import("../pages/suppliers/dashboard/dashboard.js"),
   },
   "/suppliers/products": {
-    allowedRoles: ['supplier'],
+    allowedRoles: ["supplier"],
     middlewares: RouteGuard.supplier,
     title: "Meus Produtos",
     group: "Inventário",
@@ -69,7 +69,7 @@ export const routes = {
     js: () => import("../pages/suppliers/link-products/link-products.js"),
   },
   "/suppliers/stock": {
-    allowedRoles: ['supplier'],
+    allowedRoles: ["supplier"],
     middlewares: RouteGuard.supplier,
     title: "Estoque",
     group: "Inventário",
@@ -77,7 +77,7 @@ export const routes = {
     js: () => import("../pages/suppliers/update-stock/update-stock.js"),
   },
   "/suppliers/orders-to-send": {
-    allowedRoles: ['supplier'],
+    allowedRoles: ["supplier"],
     middlewares: RouteGuard.supplier,
     title: "Pedidos para Envio",
     group: "Operações",
@@ -85,7 +85,7 @@ export const routes = {
     js: () => import("../pages/suppliers/orders-to-send/orders-to-send.js"),
   },
   "/suppliers/setup": {
-    allowedRoles: ['supplier'],
+    allowedRoles: ["supplier"],
     middlewares: RouteGuard.supplierSetup,
     title: "Configurar Fornecedor",
     hideMenu: true,
@@ -95,7 +95,7 @@ export const routes = {
 
   // --- SELLERS ---
   "/sellers/dashboard": {
-    allowedRoles: ['seller'],
+    allowedRoles: ["seller"],
     middlewares: RouteGuard.seller,
     title: "Meu Painel",
     group: "Principal",
@@ -103,7 +103,7 @@ export const routes = {
     js: () => import("../pages/sellers/dashboard/dashboard.js"),
   },
   "/sellers/:email/store/code": {
-    allowedRoles: ['seller'],
+    allowedRoles: ["seller"],
     middlewares: RouteGuard.sellerSetup,
     title: "Retorno de Código de loja",
     hideMenu: true,
@@ -111,7 +111,7 @@ export const routes = {
     js: () => import("../pages/sellers/store-code/store-code.js"),
   },
   "/sellers/store/setup": {
-    allowedRoles: ['seller'],
+    allowedRoles: ["seller"],
     middlewares: RouteGuard.sellerSetup,
     title: "Configuração de Código de Loja",
     hideMenu: true,
@@ -119,7 +119,7 @@ export const routes = {
     js: () => import("../pages/sellers/store-setup/store-setup.js"),
   },
   "/sellers/products": {
-    allowedRoles: ['seller'],
+    allowedRoles: ["seller"],
     middlewares: RouteGuard.seller,
     title: "Meus Produtos",
     group: "Inventário",
@@ -127,7 +127,7 @@ export const routes = {
     js: () => import("../pages/sellers/link-products/link-products.js"),
   },
   "/sellers/view-stock": {
-    allowedRoles: ['seller'],
+    allowedRoles: ["seller"],
     middlewares: RouteGuard.seller,
     title: "Ver Estoque",
     group: "Inventário",
@@ -136,7 +136,7 @@ export const routes = {
     js: () => import("../pages/sellers/view-stock/view-stock.js"),
   },
   "/sellers/payments/pending": {
-    allowedRoles: ['seller'],
+    allowedRoles: ["seller"],
     middlewares: RouteGuard.seller,
     title: "Repasses",
     group: "Financeiro",
@@ -144,7 +144,7 @@ export const routes = {
     js: () => import("../pages/sellers/payments-pending/payments-pending.js"),
   },
   "/sellers/billing": {
-    allowedRoles: ['seller'],
+    allowedRoles: ["seller"],
     middlewares: RouteGuard.seller,
     title: "Faturamento",
     group: "Financeiro",
@@ -154,7 +154,7 @@ export const routes = {
 
   // --- SELLERS ---
   "/distribution-center/new": {
-    allowedRoles: ['distribution_center'],
+    allowedRoles: ["distribution_center"],
     middlewares: RouteGuard.distributionCenterSetup,
     title: "Central de Distribuição sem vínculo com Fornecedor",
     hideMenu: true,
@@ -162,7 +162,7 @@ export const routes = {
     js: () => import("../pages/commons/new-distribution-center/new-distribution-center.js"),
   },
   "/distribution-center/dashboard": {
-    allowedRoles: ['distribution_center'],
+    allowedRoles: ["distribution_center"],
     middlewares: RouteGuard.distributionCenter,
     title: "Meu Painel",
     group: "Principal",
@@ -170,7 +170,7 @@ export const routes = {
     js: () => import("../pages/distribution-center/dashboard/dashboard.js"),
   },
   "/distribution-center/orders-to-send": {
-    allowedRoles: ['distribution_center'],
+    allowedRoles: ["distribution_center"],
     middlewares: RouteGuard.distributionCenter,
     title: "Pedidos para Envio",
     group: "Operações",

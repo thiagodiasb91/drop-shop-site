@@ -1,11 +1,12 @@
-import html from "./orders-to-send.html?raw"
-import { renderGlobalLoader } from "../../../components/index"
+import html from "./orders-to-send.html?raw";
+import { renderGlobalLoader } from "../../../components/index";
+import logger from "./utils/logger.js";
 
 export function getData() {
   return {
-    search: '',
-    dateFrom: '',
-    dateTo: '',
+    search: "",
+    dateFrom: "",
+    dateTo: "",
     orders: [],
     loading: true,
 
@@ -22,9 +23,9 @@ export function getData() {
       });
     },
     clearFilters() {
-      this.search = '';
-      this.dateFrom = '';
-      this.dateTo = '';
+      this.search = "";
+      this.dateFrom = "";
+      this.dateTo = "";
     },
     toggleOrder(orderId) {
       this.orders = this.orders.map(o => {
@@ -38,38 +39,38 @@ export function getData() {
     },
 
     printLabel(order) {
-      console.log('Imprimir etiqueta do pedido:', order.id)
-      alert(`Imprimindo etiqueta do pedido ${order.code}`)
+      logger.local("Imprimir etiqueta do pedido:", order.id);
+      alert(`Imprimindo etiqueta do pedido ${order.code}`);
     },
     labelStatus(status) {
       const map = {
-        pending: 'Pendente',
-        printed: 'Impressa',
-        shipped: 'Enviada'
-      }
-      return map[status] || status
+        pending: "Pendente",
+        printed: "Impressa",
+        shipped: "Enviada"
+      };
+      return map[status] || status;
     },
     printAllPending() {
-      const pending = this.orders.filter(o => o.status === 'pending')
-      console.log('Imprimir etiquetas pendentes:', pending)
-      alert(`Imprimindo ${pending.length} etiquetas pendentes`)
+      const pending = this.orders.filter(o => o.status === "pending");
+      logger.local("Imprimir etiquetas pendentes:", pending);
+      alert(`Imprimindo ${pending.length} etiquetas pendentes`);
     },
     renderLoader() {
-      return renderGlobalLoader("Carregando pedidos...")
+      return renderGlobalLoader("Carregando pedidos...");
     }
-  }
+  };
 
 }
 
 export function render() {
-  return html
+  return html;
 }
 
 const OrdersService = {
   async getPendingOrders() {
     // Simulando delay de rede
     await new Promise(resolve => setTimeout(resolve, 800));
-    const count = 20
+    const count = 20;
 
     return Array.from({ length: count }).map((_, i) => (
       {
@@ -81,7 +82,7 @@ const OrdersService = {
           name: `Cliente ${i + 1}`,
           address: `Rua Exemplo, ${i + 10}, Bairro Teste, Cidade ${i % 3 + 1}`,
         },
-        status: 'pending',
+        status: "pending",
         expanded: false, // Controle de UI
         items: Array.from({ length: Math.ceil(Math.random() * 5) }).map((_, j) => ({
           id: `item_${i + 1}_${j + 1}`,
@@ -93,6 +94,6 @@ const OrdersService = {
           quantity: Math.ceil(Math.random() * 3),
         }))
       }
-    ))
+    ));
   }
-}
+};

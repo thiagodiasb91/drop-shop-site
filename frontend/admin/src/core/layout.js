@@ -1,22 +1,24 @@
-console.log("layout.module.loaded");
+import logger from "../utils/logger";
+
+logger.local("layout.module.loaded");
 
 const layouts = {
-  "authenticaded": () => import('../layout/layout-authenticated.html?raw'),
-  "public": () => import('../layout/layout-public.html?raw'),
-}
+  "authenticaded": () => import("../layout/layout-authenticated.html?raw"),
+  "public": () => import("../layout/layout-public.html?raw"),
+};
 
 async function getLayout(layout) {
   try {
     const l = (await layouts[layout]()).default;
     return l;
   } catch (err) {
-    throw new Error(`Falha ao carregar o ficheiro de layout: ${layout}`);
+    throw new Error(`Falha ao carregar o ficheiro de layout: ${layout} - Erro: ${err.message}`, { cause: err });
   }
 }
 
 export async function loadLayout(app, route) {
   try {
-    console.log("layout.loadLayout.request", route);
+    logger.local("layout.loadLayout.request", route);
 
     Alpine.data("setPageTitle", () => ({
       pageTitle: route.title ?? "Nada"
@@ -26,11 +28,11 @@ export async function loadLayout(app, route) {
       app.innerHTML = await getLayout(route.layout);
     }
     else if (route.public) {
-      app.innerHTML = await getLayout('public');
-      console.log("layout.loadLayout.public");
+      app.innerHTML = await getLayout("public");
+      logger.local("layout.loadLayout.public");
     } else {
-      app.innerHTML = await getLayout('authenticaded');
-      console.log("layout.loadLayout.authenticated");
+      app.innerHTML = await getLayout("authenticaded");
+      logger.local("layout.loadLayout.authenticated");
     }
 
     const content = document.getElementById("content");
@@ -41,29 +43,29 @@ export async function loadLayout(app, route) {
       return;
     }
 
-    console.log("layout.loadLayout.importing", route.js);
+    logger.local("layout.loadLayout.importing", route.js);
     const module = await route.js().catch(error => {
-      console.error("layout.loadLayout.errorImporting", error);
+      logger.error("layout.loadLayout.errorImporting", error);
       throw new Error(`Falha ao importar o módulo da rota - ${route.title}:${route.js}- Erro: ${error.message}`);
-    })
-    console.log("layout.loadLayout.getData", module?.getData);
+    });
+    logger.local("layout.loadLayout.getData", module?.getData);
 
     if (module.render) {
-      console.log("layout.loadLayout.initializingAlpineForContent");
+      logger.local("layout.loadLayout.initializingAlpineForContent");
       content.innerHTML = module.render();
     }
 
     if (module.getData) {
-      console.log("layout.loadLayout.initializingGetData");
+      logger.local("layout.loadLayout.initializingGetData");
       Alpine.data("getData", () => module.getData());
     }
 
-    console.log("layout.loadLayout.initializingLayout");
+    logger.local("layout.loadLayout.initializingLayout");
 
     Alpine.initTree(content);
   }
   catch (error) {
-    console.error("ERRO_CRITICO_LAYOUT:", error);
+    logger.error("ERRO_CRITICO_LAYOUT:", error);
 
     const app = document.getElementById("app");
     app.innerHTML = `
@@ -89,7 +91,7 @@ export async function loadLayout(app, route) {
     `;
   }
 
-  console.log("layout.loadLayout.completed");
+  logger.local("layout.loadLayout.completed");
 }
 
 
