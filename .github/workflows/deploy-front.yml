@@ -42,9 +42,11 @@ jobs:
           fi
 
       - name: Run Linter
+        working-directory: frontend/admin
         run: npm run lint
         
       - name: Build Project
+        working-directory: frontend/admin
         run: npm run build
         
       - name: Configure AWS Credentials
