@@ -1520,4 +1520,178 @@ public class ShopeeApiService
     }
 
     #endregion
+
+    #region Logistics Methods
+
+    /// <summary>
+    /// Cria o documento de envio para um ou mais pedidos
+    /// Endpoint: POST /api/v2/logistics/create_shipping_document
+    /// Ref: https://open.shopee.com/documents/v2/v2.logistics.create_shipping_document
+    ///
+    /// Deve ser chamado antes de get_shipping_document e download_shipping_document.
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="orderList">Lista de pedidos com order_sn (e opcionalmente package_number)</param>
+    /// <returns>JSON response com resultado da criação</returns>
+    public async Task<JsonDocument> CreateShippingDocumentAsync(long shopId, IEnumerable<object> orderList)
+    {
+        _logger.LogInformation("CreateShippingDocument - ShopId: {ShopId}", shopId);
+
+        try
+        {
+            var accessToken = await GetCachedAccessTokenAsync(shopId);
+            var timestamp = ShopeeApiHelper.GetCurrentTimestamp();
+            const string path = "/api/v2/logistics/create_shipping_document";
+            var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
+
+            var url = $"{urlHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
+
+            var body = new { order_list = orderList };
+
+            var jsonToPost = JsonSerializer.Serialize(body, new JsonSerializerOptions { WriteIndented = false });
+            _logger.LogInformation("CreateShippingDocument Body: {Body}", jsonToPost);
+
+            var content = new StringContent(jsonToPost, Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync(url, content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            _logger.LogDebug("CreateShippingDocument Response - StatusCode: {StatusCode}, Content: {Content}",
+                response.StatusCode, responseContent);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Failed to create shipping document: {response.StatusCode} - {responseContent}");
+            }
+
+            return JsonDocument.Parse(responseContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating shipping document - ShopId: {ShopId}", shopId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Obtém o resultado/URL do documento de envio após geração
+    /// Endpoint: POST /api/v2/logistics/get_shipping_document_result
+    /// Ref: https://open.shopee.com/documents/v2/v2.logistics.get_shipping_document_result
+    ///
+    /// Deve ser chamado após create_shipping_document.
+    /// Retorna a URL do PDF da etiqueta quando o documento estiver pronto (status READY).
+    /// Repita a chamada até o status ser READY antes de tentar o download.
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="orderList">Lista de pedidos com order_sn (e opcionalmente package_number)</param>
+    /// <param name="shippingDocumentType">Tipo do documento: THERMAL_AIR_WAYBILL, A4_AIR_WAYBILL, OFFICIAL_AIR_WAYBILL</param>
+    /// <returns>JSON response com status e URL do documento (quando READY)</returns>
+    public async Task<JsonDocument> GetShippingDocumentResultAsync(
+        long shopId,
+        IEnumerable<object> orderList,
+        string shippingDocumentType = "THERMAL_AIR_WAYBILL")
+    {
+        _logger.LogInformation("GetShippingDocumentResult - ShopId: {ShopId}, DocumentType: {DocumentType}",
+            shopId, shippingDocumentType);
+
+        try
+        {
+            var accessToken = await GetCachedAccessTokenAsync(shopId);
+            var timestamp = ShopeeApiHelper.GetCurrentTimestamp();
+            const string path = "/api/v2/logistics/get_shipping_document_result";
+            var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
+
+            var url = $"{urlHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
+
+            var body = new
+            {
+                order_list = orderList,
+                shipping_document_type = shippingDocumentType
+            };
+
+            var jsonToPost = JsonSerializer.Serialize(body, new JsonSerializerOptions { WriteIndented = false });
+            _logger.LogInformation("GetShippingDocumentResult Body: {Body}", jsonToPost);
+
+            var content = new StringContent(jsonToPost, Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync(url, content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            _logger.LogDebug("GetShippingDocumentResult Response - StatusCode: {StatusCode}, Content: {Content}",
+                response.StatusCode, responseContent);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Failed to get shipping document result: {response.StatusCode} - {responseContent}");
+            }
+
+            return JsonDocument.Parse(responseContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting shipping document result - ShopId: {ShopId}", shopId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Faz o download do documento de envio (etiqueta)
+    /// Endpoint: POST /api/v2/logistics/download_shipping_document
+    /// Ref: https://open.shopee.com/documents/v2/v2.logistics.download_shipping_document
+    ///
+    /// Deve ser chamado após create_shipping_document e somente quando get_shipping_document retornar status READY.
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="orderList">Lista de pedidos com order_sn</param>
+    /// <param name="shippingDocumentType">Tipo do documento: THERMAL_AIR_WAYBILL, A4_AIR_WAYBILL, OFFICIAL_AIR_WAYBILL</param>
+    /// <returns>JSON response com URL temporária do PDF da etiqueta</returns>
+    public async Task<JsonDocument> DownloadShippingDocumentAsync(
+        long shopId,
+        IEnumerable<object> orderList,
+        string shippingDocumentType = "THERMAL_AIR_WAYBILL")
+    {
+        _logger.LogInformation("DownloadShippingDocument - ShopId: {ShopId}, DocumentType: {DocumentType}",
+            shopId, shippingDocumentType);
+
+        try
+        {
+            var accessToken = await GetCachedAccessTokenAsync(shopId);
+            var timestamp = ShopeeApiHelper.GetCurrentTimestamp();
+            const string path = "/api/v2/logistics/download_shipping_document";
+            var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
+
+            var url = $"{urlHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
+
+            var body = new
+            {
+                order_list = orderList,
+                shipping_document_type = shippingDocumentType
+            };
+
+            var jsonToPost = JsonSerializer.Serialize(body, new JsonSerializerOptions { WriteIndented = false });
+            _logger.LogInformation("DownloadShippingDocument Body: {Body}", jsonToPost);
+
+            var content = new StringContent(jsonToPost, Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync(url, content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            _logger.LogDebug("DownloadShippingDocument Response - StatusCode: {StatusCode}, Content: {Content}",
+                response.StatusCode, responseContent);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Failed to download shipping document: {response.StatusCode} - {responseContent}");
+            }
+
+            return JsonDocument.Parse(responseContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error downloading shipping document - ShopId: {ShopId}", shopId);
+            throw;
+        }
+    }
+
+    #endregion
 }

@@ -847,6 +847,176 @@ public class ShopeeInterfaceController : ControllerBase
     }
 
     #endregion
+
+    #region Logistics Endpoints
+
+    /// <summary>
+    /// Cria o documento de envio (etiqueta) para um ou mais pedidos.
+    /// Deve ser chamado antes de get-shipping-document e download-shipping-document.
+    /// Ref: https://open.shopee.com/documents/v2/v2.logistics.create_shipping_document
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="request">Lista de pedidos para os quais criar o documento</param>
+    /// <remarks>
+    /// Exemplo de requisição:
+    ///
+    ///     POST /shopee-interface/logistics/shipping-document/create?shopId=226289035
+    ///     {
+    ///         "order_list": [
+    ///             { "order_sn": "260227RU6TQ98E" }
+    ///         ]
+    ///     }
+    ///
+    /// O campo "package_number" é opcional e necessário apenas quando o pedido possui split de pacotes.
+    /// </remarks>
+    [HttpPost("logistics/shipping-document/create")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> CreateShippingDocument(
+        [FromQuery] long shopId,
+        [FromBody] ShippingDocumentRequest request)
+    {
+        _logger.LogInformation("[SHOPEE-TEST] CreateShippingDocument - ShopId: {ShopId}, Orders: {Count}",
+            shopId, request?.OrderList?.Count ?? 0);
+
+        try
+        {
+            if (shopId <= 0)
+                return BadRequest(new { error = "Valid shopId is required" });
+
+            if (request?.OrderList == null || request.OrderList.Count == 0)
+                return BadRequest(new { error = "order_list is required and cannot be empty" });
+
+            var result = await _shopeeApiService.CreateShippingDocumentAsync(shopId, request.OrderList.Cast<object>());
+            return Ok(result.RootElement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error creating shipping document - ShopId: {ShopId}", shopId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Obtém o resultado do documento de envio, incluindo a URL do PDF da etiqueta.
+    /// Endpoint Shopee: POST /api/v2/logistics/get_shipping_document_result
+    /// Ref: https://open.shopee.com/documents/v2/v2.logistics.get_shipping_document_result
+    ///
+    /// Deve ser chamado após create_shipping_document.
+    /// Repita a chamada até o status retornar READY antes de tentar o download direto.
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="request">Lista de pedidos e tipo do documento</param>
+    /// <remarks>
+    /// Exemplo de requisição:
+    ///
+    ///     POST /shopee-interface/logistics/shipping-document/result?shopId=226289035
+    ///     {
+    ///         "order_list": [
+    ///             { "order_sn": "260227RU6TQ98E" }
+    ///         ],
+    ///         "shipping_document_type": "THERMAL_AIR_WAYBILL"
+    ///     }
+    ///
+    /// Status possíveis na resposta: PROCESSING, READY, FAILED.
+    /// Quando READY, a resposta conterá a URL do PDF da etiqueta.
+    /// </remarks>
+    [HttpPost("logistics/shipping-document/result")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetShippingDocumentResult(
+        [FromQuery] long shopId,
+        [FromBody] DownloadShippingDocumentRequest request)
+    {
+        _logger.LogInformation("[SHOPEE-TEST] GetShippingDocumentResult - ShopId: {ShopId}, Orders: {Count}, DocumentType: {DocumentType}",
+            shopId, request?.OrderList?.Count ?? 0, request?.ShippingDocumentType);
+
+        try
+        {
+            if (shopId <= 0)
+                return BadRequest(new { error = "Valid shopId is required" });
+
+            if (request?.OrderList == null || request.OrderList.Count == 0)
+                return BadRequest(new { error = "order_list is required and cannot be empty" });
+
+            var docType = string.IsNullOrWhiteSpace(request.ShippingDocumentType)
+                ? "THERMAL_AIR_WAYBILL"
+                : request.ShippingDocumentType;
+
+            var result = await _shopeeApiService.GetShippingDocumentResultAsync(shopId, request.OrderList.Cast<object>(), docType);
+            return Ok(result.RootElement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error getting shipping document result - ShopId: {ShopId}", shopId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Faz o download da etiqueta de envio.
+    /// Somente deve ser chamado após create e quando get-shipping-document retornar status READY.
+    /// Ref: https://open.shopee.com/documents/v2/v2.logistics.download_shipping_document
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="request">Lista de pedidos e tipo de documento</param>
+    /// <remarks>
+    /// Fluxo correto:
+    /// 1. POST logistics/shipping-document/create  → cria o documento
+    /// 2. POST logistics/shipping-document/status  → aguarda status READY
+    /// 3. POST logistics/shipping-document/download → baixa a etiqueta (URL do PDF)
+    ///
+    /// Exemplo de requisição:
+    ///
+    ///     POST /shopee-interface/logistics/shipping-document/download?shopId=226289035
+    ///     {
+    ///         "order_list": [
+    ///             { "order_sn": "260227RU6TQ98E" }
+    ///         ],
+    ///         "shipping_document_type": "THERMAL_AIR_WAYBILL"
+    ///     }
+    ///
+    /// Valores possíveis para shipping_document_type:
+    /// - THERMAL_AIR_WAYBILL  (etiqueta térmica - mais comum)
+    /// - A4_AIR_WAYBILL       (formato A4)
+    /// - OFFICIAL_AIR_WAYBILL (etiqueta oficial da transportadora)
+    /// </remarks>
+    [HttpPost("logistics/shipping-document/download")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> DownloadShippingDocument(
+        [FromQuery] long shopId,
+        [FromBody] DownloadShippingDocumentRequest request)
+    {
+        _logger.LogInformation("[SHOPEE-TEST] DownloadShippingDocument - ShopId: {ShopId}, Orders: {Count}, DocumentType: {DocumentType}",
+            shopId, request?.OrderList?.Count ?? 0, request?.ShippingDocumentType);
+
+        try
+        {
+            if (shopId <= 0)
+                return BadRequest(new { error = "Valid shopId is required" });
+
+            if (request?.OrderList == null || request.OrderList.Count == 0)
+                return BadRequest(new { error = "order_list is required and cannot be empty" });
+
+            var docType = string.IsNullOrWhiteSpace(request.ShippingDocumentType)
+                ? "THERMAL_AIR_WAYBILL"
+                : request.ShippingDocumentType;
+
+            var result = await _shopeeApiService.DownloadShippingDocumentAsync(shopId, request.OrderList.Cast<object>(), docType);
+            return Ok(result.RootElement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error downloading shipping document - ShopId: {ShopId}", shopId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
+    #endregion
 }
 
 /// <summary>
@@ -873,5 +1043,56 @@ public class TokenResponse
 public class CachedTokenResponse
 {
     public string AccessToken { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Request para criar ou verificar status do documento de envio
+/// </summary>
+public class ShippingDocumentRequest
+{
+    /// <summary>
+    /// Lista de pedidos. Cada item deve ter ao menos order_sn.
+    /// O campo package_number é opcional (usado quando o pedido tem split de pacotes).
+    /// Exemplo: [{ "order_sn": "260227RU6TQ98E" }]
+    /// </summary>
+    [System.Text.Json.Serialization.JsonPropertyName("order_list")]
+    public List<ShippingOrderItem> OrderList { get; set; } = new();
+}
+
+/// <summary>
+/// Request para download do documento de envio
+/// </summary>
+public class DownloadShippingDocumentRequest
+{
+    /// <summary>
+    /// Lista de pedidos. Cada item deve ter ao menos order_sn.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonPropertyName("order_list")]
+    public List<ShippingOrderItem> OrderList { get; set; } = new();
+
+    /// <summary>
+    /// Tipo do documento de envio.
+    /// Valores: THERMAL_AIR_WAYBILL (default), A4_AIR_WAYBILL, OFFICIAL_AIR_WAYBILL
+    /// </summary>
+    [System.Text.Json.Serialization.JsonPropertyName("shipping_document_type")]
+    public string ShippingDocumentType { get; set; } = "THERMAL_AIR_WAYBILL";
+}
+
+/// <summary>
+/// Item de pedido para requisições de documento de envio
+/// </summary>
+public class ShippingOrderItem
+{
+    /// <summary>
+    /// Número do pedido na Shopee
+    /// </summary>
+    [System.Text.Json.Serialization.JsonPropertyName("order_sn")]
+    public string OrderSn { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Número do pacote (opcional - usado quando o pedido tem split de pacotes)
+    /// </summary>
+    [System.Text.Json.Serialization.JsonPropertyName("package_number")]
+    public string? PackageNumber { get; set; }
 }
 
