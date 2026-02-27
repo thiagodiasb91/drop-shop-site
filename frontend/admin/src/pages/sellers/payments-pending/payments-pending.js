@@ -9,6 +9,7 @@ export function getData() {
     allOrders: [],
     selectedOrders: [],
     search: "",
+    sortConfig: "status",
     stats: {},
     currentPage: 1,
     pageSize: 5,
@@ -26,7 +27,10 @@ export function getData() {
       ]);
 
       if (resSummary.ok) {
-        this.allOrders = resSummary.response?.map(o => ({
+        this.allOrders = resSummary.response?.sort(
+          (a, b) => a.status.localeCompare(b.status)
+        )
+        .map(o => ({
           ...o,
           expanded: false,
           isSplit: resSummary.response.filter(item => item.orderSn === o.orderSn).length > 1
@@ -42,9 +46,25 @@ export function getData() {
       order.expanded = !order.expanded;
     },
 
-    // Filtros e Grupos
     get notPaidOrders() {
-      return this.allOrders.filter(o => ["pending", "waiting-payment"].includes(o.status));
+      let orders = this.allOrders.filter(o => ["pending", "waiting-payment"].includes(o.status));
+
+      return orders.sort((a, b) => {
+        switch (this.sortConfig) {
+          case "supplier":
+            return a.supplierName.localeCompare(b.supplierName);
+          case "status":
+            return a.status.localeCompare(b.status);
+          case "amount":
+            return b.totalAmount - a.totalAmount; // Maior valor primeiro
+          case "orderSn":
+            return a.orderSn.localeCompare(b.orderSn);
+          case "date":
+            return new Date(b.createdAt) - new Date(a.createdAt); // Mais recentes primeiro
+          default:
+            return 0;
+        }
+      });
     },
     get pendingOrders() {
       return this.allOrders.filter(o => ["pending"].includes(o.status));
