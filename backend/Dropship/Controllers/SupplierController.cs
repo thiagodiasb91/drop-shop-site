@@ -22,6 +22,8 @@ public class SupplierController(
     ProductSkuSupplierRepository productSkuSupplierRepository,
     ProductSupplierRepository productSupplierRepository,
     SupplierShipmentRepository supplierShipmentRepository,
+    SellerRepository sellerRepository,
+    OrderRepository orderRepository,
     SkuRepository skuRepository,
     StockServices stockServices,
     ILogger<SupplierController> logger)
@@ -314,7 +316,7 @@ public class SupplierController(
     /// Obtém todos os produtos fornecidos pelo fornecedor autenticado
     /// O ID do fornecedor é obtido automaticamente da claim "resourceId" do usuário autenticado
     /// </summary>
-    /// <returns>Lista de produtos fornecidos com informações de preço e quantidade de SKUs</returns>
+    /// <returns>Lista de produtos fornecidos com informações de preço, quantidade de SKUs e imagens</returns>
     [HttpGet("products")]
     [ProducesResponseType(typeof(ProductSupplierListResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -339,10 +341,33 @@ public class SupplierController(
                 return NotFound(new { error = "No products found for this supplier" });
             }
 
-            logger.LogInformation("Found {Count} products for supplier - SupplierId: {SupplierId}",
-                products.Count, supplierId);
+            // Buscar imagens para cada produto
+            var productsWithImages = new List<dynamic>();
+            foreach (var product in products)
+            {
+                var images = await productRepository.GetImagesByProductIdAsync(product.ProductId);
+                
+                productsWithImages.Add(new
+                {
+                    product.ProductId,
+                    product.ProductName,
+                    product.SupplierId,
+                    product.SkuCount,
+                    product.MinPrice,
+                    product.MaxPrice,
+                    product.CreatedAt,
+                    imageUrl = images.First().BrUrl
+                });
+            }
 
-            return Ok(products.ToListResponse());
+            logger.LogInformation("Found {Count} products for supplier - SupplierId: {SupplierId}",
+                productsWithImages.Count, supplierId);
+
+            return Ok(new
+            {
+                Total = productsWithImages.Count,
+                Items = productsWithImages
+            });
         }
         catch (Exception ex)
         {
@@ -665,7 +690,7 @@ public class SupplierController(
     /// </summary>
     /// <returns>Lista de shipments do fornecedor com informações de produtos, quantidades e status</returns>
     [HttpGet("shipments")]
-    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<ShipmentResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetSupplierShipments()
@@ -682,17 +707,57 @@ public class SupplierController(
             }
 
             var shipments = await supplierShipmentRepository.GetShipmentsBySupplierAsync(supplierId);
-            
+
             if (shipments == null || shipments.Count == 0)
             {
                 logger.LogWarning("No shipments found for supplier - SupplierId: {SupplierId}", supplierId);
                 return NotFound(new { error = "No shipments found for this supplier" });
             }
 
-            logger.LogInformation("Found {Count} shipments for supplier - SupplierId: {SupplierId}",
-                shipments.Count, supplierId);
+            // Enriquecer cada shipment com nome do seller
+            var sellerCache = new Dictionary<string, SellerDomain?>();
 
-            return Ok(shipments);
+            var response = new List<ShipmentResponse>();
+            foreach (var shipment in shipments)
+            {
+                // Buscar seller (com cache local)
+                if (!sellerCache.TryGetValue(shipment.SellerId, out var seller))
+                {
+                    seller = await sellerRepository.GetSellerByIdAsync(shipment.SellerId);
+                    sellerCache[shipment.SellerId] = seller;
+                }
+
+                // Montar endereço completo do cliente
+                var customerAddress = string.Join(", ",
+                    new string?[] { shipment.DeliveryAddress, shipment.DeliveryCity, shipment.DeliveryState }
+                        .Where(s => !string.IsNullOrWhiteSpace(s)));
+
+                response.Add(new ShipmentResponse
+                {
+                    OrderId = shipment.OrderSn,
+                    Date = shipment.CreatedAt,
+                    SellerName = seller?.SellerName ?? shipment.SellerId,
+                    CustomerName = shipment.RecipientName,
+                    CustomerAddress = customerAddress,
+                    Status = shipment.Status,
+                    Items = shipment.Items.Select(i => new ShipmentItemResponse
+                    {
+                        ProductId = i.ProductId,
+                        ProductName = i.Name,
+                        ImageUrl = i.Image,
+                        Price = i.UnitPrice,
+                        SkuId = i.Sku,
+                        Color = i.Color,
+                        Size = i.Size,
+                        Quantity = i.Quantity
+                    }).ToList()
+                });
+            }
+
+            logger.LogInformation("Returning {Count} shipments for supplier - SupplierId: {SupplierId}",
+                response.Count, supplierId);
+
+            return Ok(response);
         }
         catch (Exception ex)
         {

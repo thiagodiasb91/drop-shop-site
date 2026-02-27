@@ -39,7 +39,9 @@ public class PaymentProduct
     public int Quantity { get; set; }
     public decimal UnitPrice { get; set; }
     public string Image { get; set; } = default!;
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Color { get; set; } = string.Empty;
+    public string Size { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -108,7 +110,9 @@ public static class PaymentQueueMapper
                     Quantity = p.M.ContainsKey("quantity") && p.M["quantity"].N != null ? int.Parse(p.M["quantity"].N) : 0,
                     UnitPrice = p.M.ContainsKey("unit_price") && p.M["unit_price"].N != null ? decimal.Parse(p.M["unit_price"].N) : 0,
                     Image = p.M.ContainsKey("image") && p.M["image"].S != null ? p.M["image"].S : "",
-                    Name = p.M.ContainsKey("name") && p.M["name"].S != null ? p.M["name"].S : ""
+                    Name = p.M.ContainsKey("name") && p.M["name"].S != null ? p.M["name"].S : "",
+                    Color = p.M.ContainsKey("color") && p.M["color"].S != null ? p.M["color"].S : "",
+                    Size = p.M.ContainsKey("size") && p.M["size"].S != null ? p.M["size"].S : ""
                 }).ToList() 
                 : new List<PaymentProduct>()   
         };
@@ -165,7 +169,9 @@ public static class PaymentQueueMapper
                     { "quantity", new Amazon.DynamoDBv2.Model.AttributeValue { N = product.Quantity.ToString() } },
                     { "unit_price", new Amazon.DynamoDBv2.Model.AttributeValue { N = product.UnitPrice.ToString("F2") } },
                     { "name", new Amazon.DynamoDBv2.Model.AttributeValue { S = product.Name } },
-                    { "image", new Amazon.DynamoDBv2.Model.AttributeValue { S = product.Image } }
+                    { "image", new Amazon.DynamoDBv2.Model.AttributeValue { S = product.Image } },
+                    { "color", new Amazon.DynamoDBv2.Model.AttributeValue { S = product.Color } },
+                    { "size", new Amazon.DynamoDBv2.Model.AttributeValue { S = product.Size } }
                 };
                 
                 productsList.Add(new Amazon.DynamoDBv2.Model.AttributeValue { M = productMap });

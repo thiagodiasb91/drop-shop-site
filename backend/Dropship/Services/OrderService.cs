@@ -1,5 +1,6 @@
 using Dropship.Domain;
 using Dropship.Repository;
+using Dropship.Helpers;
 using Newtonsoft.Json.Linq;
 
 namespace Dropship.Services;
@@ -8,6 +9,7 @@ public class OrderService(
     ShopeeApiService shopeeApiService,
     KardexService kardexService,
     PaymentService paymentService,
+    OrderRepository orderRepository,
     SellerRepository sellerRepository,
     ProductSkuSellerRepository productSkuSellerRepository,
     SkuRepository skuRepository,
@@ -61,8 +63,22 @@ public class OrderService(
             logger.LogInformation("Processing {Count} items in order - OrderSn: {OrderSn}", 
                 itemList.Count(), orderSn);
 
-            // Agrupar itens por fornecedor
+            // Buscar seller para obter SellerId
+            var seller = await sellerRepository.GetSellerByShopIdAsync(shopId);
+            if (seller == null)
+            {
+                logger.LogError("Seller not found for shop - ShopId: {ShopId}", shopId);
+                throw new InvalidOperationException($"Seller not found for shop ID {shopId}");
+            }
+
+            // Usar mapper para extrair dados
+            var deliveryAddress = ShopeeOrderMapper.ExtractDeliveryAddress(order);
+            var invoice = ShopeeOrderMapper.ExtractInvoice(order);
+            var totals = ShopeeOrderMapper.CalculateOrderTotals(itemList);
+
+            // Agrupar itens por fornecedor e coletar todos os itens mapeados
             var itemsBySupplier = new Dictionary<string, List<OrderItemData>>();
+            var allMappedItems = new List<OrderItemMapped>();
 
             foreach (var item in itemList)
             {
@@ -73,28 +89,11 @@ public class OrderService(
                     continue;
                 }
 
-                var qtyString = item["model_quantity_purchased"]?.Value<string>();
-                if (!int.TryParse(qtyString, out var quantityPurchased))
-                {
-                    logger.LogWarning("Invalid quantity format - OrderSn: {OrderSn}, SKU: {SKU}", 
-                        orderSn, modelSku);
-                    continue;
-                }
-
-                var price = item["model_original_price"]?.Value<decimal>() ?? 0;
                 var productId = await skuRepository.GetProductIdBySkuAsync(modelSku);
-                
                 if (string.IsNullOrEmpty(productId))
                 {
                     logger.LogWarning("Product not found for SKU - SKU: {SKU}", modelSku);
                     continue;
-                }
-
-                var seller = await sellerRepository.GetSellerByShopIdAsync(shopId);
-                if (seller == null)
-                {
-                    logger.LogError("Seller not found for shop - ShopId: {ShopId}", shopId);
-                    throw new InvalidOperationException($"Seller not found for shop ID {shopId}");
                 }
 
                 var skuSeller = await productSkuSellerRepository.GetProductSkuSellerAsync(
@@ -102,25 +101,64 @@ public class OrderService(
                 var skuSupplier = await productSkuSupplierRepository.GetProductSkuSupplierAsync(
                     productId, modelSku, skuSeller.SupplierId);
 
+                // Buscar cor e tamanho do SKU no banco de dados
+                var skuDomain = await skuRepository.GetSkuAsync(productId, modelSku);
+
+                var mappedItem = ShopeeOrderMapper.MapOrderItem(
+                    item: item,
+                    productId: productId,
+                    supplierId: skuSeller.SupplierId,
+                    seller: seller,
+                    productionPrice: skuSupplier.Price,
+                    color: skuDomain?.Color ?? "",
+                    size: skuDomain?.Size ?? ""
+                );
+
+                if (mappedItem == null)
+                {
+                    logger.LogWarning("Failed to map item - SKU: {SKU}", modelSku);
+                    continue;
+                }
+
+                // Acumular todos os itens para salvar no pedido
+                allMappedItems.Add(mappedItem);
+
                 // Agrupar por SupplierId
                 if (!itemsBySupplier.ContainsKey(skuSeller.SupplierId))
-                {
                     itemsBySupplier[skuSeller.SupplierId] = new List<OrderItemData>();
-                }
 
                 itemsBySupplier[skuSeller.SupplierId].Add(new OrderItemData
                 {
-                    ProductId = productId,
-                    Sku = modelSku,
-                    Quantity = quantityPurchased,
-                    Price = price,
-                    ProductionPrice = skuSupplier.Price,
-                    SupplierId = skuSeller.SupplierId,
-                    Seller = seller,
-                    Name = item["item_name"]?.Value<string>() ?? "Unknown Product",
-                    Image = item["image_info"]["image_url"].Value<string>()
+                    ProductId = mappedItem.ProductId,
+                    Sku = mappedItem.Sku,
+                    Quantity = mappedItem.Quantity,
+                    Price = mappedItem.Price,
+                    ProductionPrice = mappedItem.ProductionPrice,
+                    SupplierId = mappedItem.SupplierId,
+                    Seller = mappedItem.Seller,
+                    Name = mappedItem.Name,
+                    Image = mappedItem.Image,
+                    Color = mappedItem.Color,
+                    Size = mappedItem.Size
                 });
             }
+
+            // Criar OrderDomain após loop com todos os itens populados
+            var orderDomain = ShopeeOrderMapper.CreateOrderDomain(
+                orderSn: orderSn,
+                shopId: shopId,
+                sellerId: seller.SellerId,
+                status: status,
+                totals: totals,
+                deliveryAddress: deliveryAddress,
+                invoice: invoice,
+                items: ShopeeOrderMapper.MapOrderItems(allMappedItems)
+            );
+
+            await orderRepository.CreateOrderAsync(orderDomain);
+            logger.LogInformation(
+                "Order record created - OrderSn: {OrderSn}, SellerId: {SellerId}, Items: {Count}",
+                orderSn, seller.SellerId, allMappedItems.Count);
 
             // Processar cada fornecedor com seus itens consolidados
             foreach (var supplierGroup in itemsBySupplier)
@@ -194,7 +232,9 @@ public class OrderService(
                 Quantity = i.Quantity,
                 UnitPrice = i.ProductionPrice,
                 Image = i.Image,
-                Name = i.Name
+                Name = i.Name,
+                Color = i.Color,
+                Size = i.Size
             }).ToList();
             
             var paymentQueue = PaymentQueueBuilder.Create(
@@ -233,7 +273,9 @@ public class OrderService(
         public string SupplierId { get; set; } = string.Empty;
         public string Image { get; set; } = string.Empty;
         public SellerDomain Seller { get; set; } = default!;
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Color { get; set; } = string.Empty;
+        public string Size { get; set; } = string.Empty;
     }
 }
 

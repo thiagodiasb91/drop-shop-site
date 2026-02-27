@@ -14,6 +14,7 @@ public class PaymentService(
     SupplierShipmentRepository shipmentRepository,
     SupplierRepository supplierRepository,
     InfinityPayLinkRepository linkRepository,
+    OrderRepository orderRepository,
     ILogger<PaymentService> logger,
     InfinityPayService infinityPayService)
 {
@@ -220,21 +221,32 @@ public class PaymentService(
 
             payment.Status = "paid";
             payment.CompletedAt = DateTime.UtcNow.ToString("O");
-            // 3. Atualizar status do pagamento para "paid"
             await paymentRepository.UpdatePayment(payment);
 
             logger.LogInformation(
                 "Payment status updated to 'paid' - PaymentId: {PaymentId}, SellerId: {SellerId}", 
                 paymentId, payment.SellerId);
 
-            // 4. Criar registro de romaneio (shipment) do fornecedor
+            // 3. Buscar dados do pedido para endereço de entrega
+            OrderDomain? order = null;
+            if (!string.IsNullOrEmpty(payment.OrderSn) && !string.IsNullOrEmpty(payment.SellerId))
+            {
+                order = await orderRepository.GetOrderBySnAsync(payment.SellerId, payment.OrderSn);
+                if (order == null)
+                    logger.LogWarning(
+                        "Order not found for shipment address - OrderSn: {OrderSn}, SellerId: {SellerId}",
+                        payment.OrderSn, payment.SellerId);
+            }
+
+            // 4. Criar registro de romaneio com endereço de entrega
             var shipment = SupplierShipmentBuilder.CreateFromPayment(
                 paymentQueue: payment,
                 transactionNsu: transactionNsu,
                 captureMethod: captureMethod,
                 receiptUrl: receiptUrl,
                 paidAmount: paidAmount,
-                installments: installments);
+                installments: installments,
+                order: order);
 
             await shipmentRepository.CreateShipmentAsync(shipment);
 
