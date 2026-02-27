@@ -1,6 +1,6 @@
 import html from "./orders-to-send.html?raw";
 import { renderGlobalLoader } from "../../../components/index";
-import logger from "./utils/logger.js";
+import logger from "../../../utils/logger.js";
 
 export function getData() {
   return {

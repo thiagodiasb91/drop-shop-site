@@ -1,7 +1,7 @@
 import html from "./dashboard.html?raw";
 import stateHelper from "../../../utils/state.helper.js";
 import ENV from "../../../config/env.js";
-import logger from "../../utils/logger.js";
+import logger from "../../../utils/logger.js";
 
 export function getData() {
     return {

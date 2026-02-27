@@ -1,6 +1,6 @@
 import html from "./list-group.html?raw";
 import { currency } from "../../../utils/format.helper";
-import logger from "./utils/logger.js";
+import logger from "../../../utils/logger.js";
 
 
 export function getData() {

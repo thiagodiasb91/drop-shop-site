@@ -1,5 +1,5 @@
 import html from "./list.html?raw";
-import logger from "./utils/logger.js";
+import logger from "../../../utils/logger.js";
 
 
 export function getData() {

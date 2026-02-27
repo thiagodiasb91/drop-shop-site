@@ -1,4 +1,4 @@
-import logger from "./utils/logger.js";
+import logger from "../utils/logger.js";
 import BaseApi from "./base.api.js";
 
 const api = new BaseApi("/sellers");
