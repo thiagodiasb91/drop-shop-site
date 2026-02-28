@@ -1,10 +1,9 @@
-import html from "./link-products.html?raw"
-import { router, back, navigate } from "../../../core/router.js"
-import SupplierService from "../../../services/suppliers.services.js"
-import productService from "../../../services/products.services.js"
-import AuthService from "../../../services/auth.service.js"
-import ProductsService from "../../../services/products.services.js"
+import html from "./link-products.html?raw";
+import { navigate } from "../../../core/router.js";
+import SupplierService from "../../../services/suppliers.service.js";
+import productService from "../../../services/products.service.js";
 import stateHelper from "../../../utils/state.helper.js";
+import logger from "../../../utils/logger.js";
 
 export function getData() {
   return {
@@ -12,85 +11,85 @@ export function getData() {
     supplierEmail: null,
     products: [],
     linkedProducts: [],
-    search: '',
-    filter: 'all',
+    search: "",
+    filter: "all",
     nextCursor: null,
     loading: true,
     originalSkuData: {},
 
     async init() {
-      console.log('page.supplier-products.init.called')
-      await this.resolveSupplier()
-      await this.loadLinkedProducts()
-      await this.loadProducts(true)
-      this.loading = false
+      logger.local("page.supplier-products.init.called");
+      await this.resolveSupplier();
+      await this.loadLinkedProducts();
+      await this.loadProducts(true);
+      this.loading = false;
     },
 
     async resolveSupplier() {
-      const log_prefix = 'page.supplier-products.resolveSupplier'
-      console.log(`${log_prefix}.call`);
+      const log_prefix = "page.supplier-products.resolveSupplier";
+      logger.local(`${log_prefix}.call`);
 
       const params = new URLSearchParams(location.search);
-      console.log(`${log_prefix}.params`, params)
+      logger.local(`${log_prefix}.params`, params);
 
       const loggedInfo = stateHelper.user;
-      console.log(`${log_prefix}.loggedInfo`, loggedInfo)
+      logger.local(`${log_prefix}.loggedInfo`, loggedInfo);
 
 
-      if (loggedInfo.role === 'supplier') {
-        this.supplierId = loggedInfo.resourceId
-        this.supplierEmail = loggedInfo.user.email
+      if (loggedInfo.role === "supplier") {
+        this.supplierId = loggedInfo.resourceId;
+        this.supplierEmail = loggedInfo.user.email;
       }
-      else if (loggedInfo.role == 'admin') {
-        const supplierId = params.get("supplierId")
+      else if (loggedInfo.role === "admin") {
+        const supplierId = params.get("supplierId");
         if (!supplierId) {
-          console.log(`${log_prefix}.loggedInfo.admin.supplierIdNotFound`)
+          logger.local(`${log_prefix}.loggedInfo.admin.supplierIdNotFound`);
           stateHelper.toast(
-            'Supplier ID não informado',
-            'error'
-          )
-          return
+            "Supplier ID não informado",
+            "error"
+          );
+          return;
         }
-        this.supplierId = supplierId
-        await this.fetchSupplier()
+        this.supplierId = supplierId;
+        await this.fetchSupplier();
       }
       else {
-        console.log(`${log_prefix}.loggedInfo.roleNotAllowed`, loggedInfo.role)
+        logger.local(`${log_prefix}.loggedInfo.roleNotAllowed`, loggedInfo.role);
         stateHelper.toast(
-          'Você não tem permissão para acessar essa página',
-          'error'
-        )
-        navigate('/')
+          "Você não tem permissão para acessar essa página",
+          "error"
+        );
+        navigate("/");
       }
 
-      console.log(`${log_prefix}.supplierId`, this.supplierId)
-      return
+      logger.local(`${log_prefix}.supplierId`, this.supplierId);
+      return;
     },
     async fetchSupplier() {
-      const supplier = await SupplierService.get(this.supplierId)
-      this.supplierEmail = supplier?.email || ''
+      const supplier = await SupplierService.get(this.supplierId);
+      this.supplierEmail = supplier?.email || "";
     },
     async loadLinkedProducts() {
-      console.log('page.supplier-products.loadLinkedProducts.called', this.supplierId)
-      const linkedProducts = await SupplierService.getLinkedProducts(this.supplierId)
-      console.log('page.supplier-products.loadLinkedProducts.response', linkedProducts.response)
-      this.linkedProducts = linkedProducts.ok ? linkedProducts.response : []
+      logger.local("page.supplier-products.loadLinkedProducts.called", this.supplierId);
+      const linkedProducts = await SupplierService.getLinkedProducts(this.supplierId);
+      logger.local("page.supplier-products.loadLinkedProducts.response", linkedProducts.response);
+      this.linkedProducts = linkedProducts.ok ? linkedProducts.response : [];
     },
     async loadProducts(reset = false) {
       if (reset) {
-        this.products = []
+        this.products = [];
         this.originalLinks = new Set();
         this.originalSkuData = {};
       }
 
       try {
-        const products = await productService.getAll()
-        console.log('page.supplier-products.loadProducts.products', products)
+        const products = await productService.getAll();
+        logger.local("page.supplier-products.loadProducts.products", products);
 
         for (const p of products.response) {
-          console.log('page.supplier-products.loadProducts.linkedProducts', this.linkedProducts)
+          logger.local("page.supplier-products.loadProducts.linkedProducts", this.linkedProducts);
 
-          const isLinked = this.linkedProducts?.some(lp => lp.productId === p.id)
+          const isLinked = this.linkedProducts?.some(lp => lp.productId === p.id);
 
           const productObj = {
             ...p,
@@ -98,7 +97,7 @@ export function getData() {
             skus: [],
             loadingSkus: false,
             skusLoaded: false
-          }
+          };
 
           this.products.push(productObj);
 
@@ -110,11 +109,11 @@ export function getData() {
         }
       }
       catch (ex) {
-        console.error('page.supplier-products.loadProducts.error', ex)
+        logger.error("page.supplier-products.loadProducts.error", ex);
         stateHelper.toast(
-          'Erro ao carregar produtos',
-          'error'
-        )
+          "Erro ao carregar produtos",
+          "error"
+        );
       }
     },
     async fetchProductSkus(productRef) {
@@ -122,7 +121,7 @@ export function getData() {
       if (product.skusLoaded || product.loadingSkus) return;
 
       product.loadingSkus = true;
-      console.log(`Carregando SKUs para o produto: ${product.id}`);
+      logger.local(`Carregando SKUs para o produto: ${product.id}`);
       try {
         // 1. Busca SKUs da plataforma
         const platformSkusRes = await productService.getSkusByProductId(product.id);
@@ -147,8 +146,8 @@ export function getData() {
             color: s.color,
             size: s.size,
             platformSku: s.sku,
-            skuSupplier: linked ? linked.skuSupplier : '',
-            costPrice: linked ? linked.price : ''
+            skuSupplier: linked ? linked.skuSupplier : "",
+            costPrice: linked ? linked.price : ""
           };
 
           // Salva estado original para o "HasChanges" funcionar
@@ -162,12 +161,12 @@ export function getData() {
 
         product.skusLoaded = true;
       } catch (err) {
-        console.error('Erro crítico ao carregar variações:', err);
-        stateHelper.toast('Não foi possível carregar as variações deste produto.', 'error');
+        logger.error("Erro crítico ao carregar variações:", err);
+        stateHelper.toast("Não foi possível carregar as variações deste produto.", "error");
         product.selected = false;
       } finally {
         product.loadingSkus = false;
-        console.log(`Fim do carregamento para: ${product.id}`);
+        logger.local(`Fim do carregamento para: ${product.id}`);
       }
     },
     getGroupedSkus(product) {
@@ -186,28 +185,28 @@ export function getData() {
     async saveLinks() {
       this.loading = true;
 
-      const selected = this.products.filter(p => p.selected)
-      const supplierSkus = []
+      const selected = this.products.filter(p => p.selected);
+      const supplierSkus = [];
 
       for (const p of selected) {
         for (const sku of p.skus) {
           if (!sku.costPrice) {
             stateHelper.toast(
-              'Preencha todos os preços',
-              'error'
-            )
+              "Preencha todos os preços",
+              "error"
+            );
             this.loading = false;
-            return
+            return;
           }
           if (supplierSkus.includes(sku.skuSupplier)) {
             stateHelper.toast(
               `Existem registros com sku repetido (sku fornecedor= '${sku.skuSupplier}')`,
-              'error'
-            )
+              "error"
+            );
             this.loading = false;
-            return
+            return;
           }
-          supplierSkus.push(sku.skuSupplier)
+          supplierSkus.push(sku.skuSupplier);
 
         }
       }
@@ -248,53 +247,53 @@ export function getData() {
         }
 
         await Promise.all(promises);
-        stateHelper.toast('Alterações salvas com sucesso!', 'success');
+        stateHelper.toast("Alterações salvas com sucesso!", "success");
 
         // Recarrega para sincronizar o originalSkuData com o banco
         await this.loadLinkedProducts();
         await this.loadProducts(true);
 
       } catch (ex) {
-        console.error(ex);
-        stateHelper.toast('Erro ao salvar algumas alterações.', 'error');
+        logger.error(ex);
+        stateHelper.toast("Erro ao salvar algumas alterações.", "error");
       } finally {
         this.loading = false;
       }
 
-      stateHelper.toast('Vínculos salvos com sucesso', 'success')
+      stateHelper.toast("Vínculos salvos com sucesso", "success");
     },
     async cancel() {
       this.loading = true;
       await this.loadProducts(true);
       this.loading = false;
-      stateHelper.toast('Alterações descartadas.', 'info');
+      stateHelper.toast("Alterações descartadas.", "info");
     },
     get filteredProducts() {
-      let list = this.products
-      if (this.filter === 'isLinked') {
-        list = list.filter(p => p.selected)
+      let list = this.products;
+      if (this.filter === "isLinked") {
+        list = list.filter(p => p.selected);
       }
 
-      if (this.filter === 'unlinked') {
-        list = list.filter(p => !p.selected)
+      if (this.filter === "unlinked") {
+        list = list.filter(p => !p.selected);
       }
 
       if (this.search) {
-        const q = this.search.toLowerCase()
+        const q = this.search.toLowerCase();
         list = list.filter(p =>
           p.name.toLowerCase().includes(q)
-        )
+        );
       }
 
-      return list
+      return list;
     },
     applyPriceToAll(product, price) {
       if (!price || price < 0) {
         stateHelper.toast(
-          'Informe um valor válido para continuar',
-          'error'
-        )
-        return
+          "Informe um valor válido para continuar",
+          "error"
+        );
+        return;
       }
       product.skus.forEach(sku => {
         sku.costPrice = price;
@@ -302,7 +301,7 @@ export function getData() {
 
       stateHelper.toast(
         `Preço R$ ${price} aplicado a todos os SKUs de ${product.name}`,
-        'info');
+        "info");
     },
     get includedCount() {
       return this.products.filter(p => p.selected && !this.originalLinks.has(p.id)).length;
@@ -344,9 +343,9 @@ export function getData() {
       return this.includedCount > 0 || this.removedCount > 0 || this.updatedSkusCount > 0;
     },
 
-  }
+  };
 }
 
 export function render() {
-  return html
+  return html;
 }

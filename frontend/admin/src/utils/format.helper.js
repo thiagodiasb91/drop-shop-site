@@ -11,7 +11,7 @@ export function roleName(roleName) {
     "seller": "Vendedor",
     "admin": "Admin",
     "distribution_center": "Centro de Distribuição",
-  }[roleName] || "Indefinido"
+  }[roleName] || "Indefinido";
 }
 
 export const maskCNPJ = (v) => {

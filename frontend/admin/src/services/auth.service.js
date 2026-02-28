@@ -1,34 +1,35 @@
-import ENV from "../config/env"
-import CacheHelper from "../utils/cache.helper.js"
-import stateHelper from "../utils/state.helper.js"
-import BaseApi from "./base.api.js"
+import ENV from "../config/env";
+import CacheHelper from "../utils/cache.helper.js";
+import stateHelper from "../utils/state.helper.js";
+import BaseApi from "./base.api.js";
+import logger from "../utils/logger.js";
 
-const api = new BaseApi("/auth")
+const api = new BaseApi("/auth");
 
 const AuthService = {
   _mePromise: null,
   async login() {
-    console.log("AuthService.login.request")
-    window.location.href = `${ENV.API_BASE_URL}/auth/login`
+    logger.local("AuthService.login.request");
+    window.location.href = `${ENV.API_BASE_URL}/auth/login`;
   },
   async callback(code) {
-    console.log("AuthService.callback.request", code)
+    logger.local("AuthService.callback.request", code);
     return api.call("/callback", {
       method: "POST",
       credentials: "include",
       body: JSON.stringify({ code }),
-    })
+    });
   },
 
   async me(force = false) {
     if (!force) {
-      const cachedMe = CacheHelper.get("me.data")
-      const expiresAt = CacheHelper.get("me.expiresAt")
+      const cachedMe = CacheHelper.get("me.data");
+      const expiresAt = CacheHelper.get("me.expiresAt");
 
       if (cachedMe && expiresAt && Date.now() < expiresAt * 1000) {
-        console.log("AuthService.me.cached", cachedMe, expiresAt, isValid)
-        console.log("AuthService.me.returningCached", cachedMe)
-        return cachedMe
+        logger.local("AuthService.me.cached", cachedMe, expiresAt);
+        logger.local("AuthService.me.returningCached", cachedMe);
+        return cachedMe;
       }
     }
 
@@ -36,59 +37,59 @@ const AuthService = {
 
     this._mePromise = (async () => {
       try {
-        const res = await api.call("/me")
+        const res = await api.call("/me");
 
         if (res.status === 401) {
-          console.log("AuthService.me.unauthorized")
-          this.logout()
-          return null
+          logger.local("AuthService.me.unauthorized");
+          this.logout();
+          return null;
         }
 
         if (!res.ok) {
-          stateHelper.toast("Erro ao obter dados do usuário", "error")
-          return null
+          stateHelper.toast("Erro ao obter dados do usuário", "error");
+          return null;
         }
 
         const data = await res.response;
-        console.log("AuthService.me.api.response", data)
+        logger.local("AuthService.me.api.response", data);
 
         // Simula resposta da API
         // data.role = 'supplier';
         // data.role = 'seller';
         // data.role = 'distribution_center';
 
-        stateHelper.setAuthenticated(data, data.session?.exp)
+        stateHelper.setAuthenticated(data, data.session?.exp);
 
-        return data
+        return data;
       }
       finally {
         this._mePromise = null;
       }
-    })()
-    return this._mePromise
+    })();
+    return this._mePromise;
   },
 
   async confirmCode(code, shopId, email) {
-    console.log("AuthService.confirmCode.request", code, shopId, email)
+    logger.local("AuthService.confirmCode.request", code, shopId, email);
     return api.call("/confirm-shopee", {
       method: "POST",
       body: JSON.stringify({ code, shopId, email })
-    })
+    });
   },
 
   async renewToken() {
-    console.log("AuthService.renewToken.request")
+    logger.local("AuthService.renewToken.request");
     return api.call(
-      `/renew`,
+      "/renew",
       {
         method: "POST"
-      })
+      });
   },
 
   async logout() {
-    console.log("AuthService.logout.request")
-    stateHelper.setLogout()
+    logger.local("AuthService.logout.request");
+    stateHelper.setLogout();
   },
-}
+};
 
-export default AuthService
+export default AuthService;

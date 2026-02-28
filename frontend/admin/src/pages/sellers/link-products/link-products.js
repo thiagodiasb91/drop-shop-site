@@ -1,14 +1,15 @@
-import html from "./link-products.html?raw"
-import SellersService from "../../../services/sellers.services"
-import ProductsService from "../../../services/products.services"
+import html from "./link-products.html?raw";
+import SellersService from "../../../services/sellers.service";
+import ProductsService from "../../../services/products.service";
 import stateHelper from "../../../utils/state.helper.js";
+import logger from "../../../utils/logger.js";
 
 export function getData() {
   return {
     loading: true,
 
-    search: '',
-    filter: 'all',
+    search: "",
+    filter: "all",
     originalLinks: new Map(),
     products: [],
     showErrors: false,
@@ -31,7 +32,7 @@ export function getData() {
             supplierId: p.supplierId,
             salePrice: p.price || null
           }])
-        )
+        );
 
         this.products = resProductsWithSuppliers.response.map(p => {
           const original = this.originalLinks.get(p.id);
@@ -44,7 +45,7 @@ export function getData() {
             suppliers: [],
             loadingSuppliers: false,
             hasError: false
-          }
+          };
         });
         this.showErrors = false;
 
@@ -173,7 +174,7 @@ export function getData() {
 
       if (hasInvalid) {
         this.showErrors = true;
-        stateHelper.toast('Por favor, corrija os erros antes de salvar.', 'error');
+        stateHelper.toast("Por favor, corrija os erros antes de salvar.", "error");
         this.loading = false;
         return;
       }
@@ -197,34 +198,34 @@ export function getData() {
       const toUnlink = this.products.filter(p => !p.selectedSupplierId && this.originalLinks.has(p.id));
       const promises = [
         ...toLink?.map(p => {
-          console.log(`Linkando ${p.id} para ${p.selectedSupplierId} com preço ${p.salePrice}`)
+          logger.local(`Linkando ${p.id} para ${p.selectedSupplierId} com preço ${p.salePrice}`);
           return SellersService.linkProduct(p.id, p.selectedSupplierId, p.salePrice);
-        }),
+        }) || [],
         ...toUpdate?.map(p => {
-          console.log(`Atualizando link ${p.id} para ${p.selectedSupplierId} com preço ${p.salePrice}`)
+          logger.local(`Atualizando link ${p.id} para ${p.selectedSupplierId} com preço ${p.salePrice}`);
           return SellersService.updateProductLink(p.id, p.selectedSupplierId, p.salePrice);
-        }),
+        }) || [],
         ...toUnlink?.map(p => {
-          console.log(`Removendo link ${p.id}`)
+          logger.local(`Removendo link ${p.id}`);
           const originalData = this.originalLinks.get(p.id);
-          console.log(`Removendo link do produto ${p.id} com o fornecedor ${originalData.supplierId}`);
+          logger.local(`Removendo link do produto ${p.id} com o fornecedor ${originalData.supplierId}`);
           return SellersService.unlinkProduct(p.id, originalData.supplierId);
-        })
+        }) || []
       ];
 
       try {
-        console.log("Executando as seguintes operações:");
+        logger.local("Executando as seguintes operações:");
         const responses = await Promise.all(promises);
         const hasAnyErrors = responses.filter(p => p.ok === false);
         if (hasAnyErrors.length > 0) {
-          stateHelper.toast(`Algumas alterações não puderam ser salvas.(${hasAnyErrors.length}/${responses.length})`, 'error');
+          stateHelper.toast(`Algumas alterações não puderam ser salvas.(${hasAnyErrors.length}/${responses.length})`, "error");
         } else {
-          stateHelper.toast('Vínculos atualizados com sucesso', 'success');
+          stateHelper.toast("Vínculos atualizados com sucesso", "success");
         }
         await this.refresh();
       } catch (e) {
-        console.error("Erro ao processar salvamento:", e);
-        stateHelper.toast('Erro ao salvar algumas alterações', 'error');
+        logger.error("Erro ao processar salvamento:", e);
+        stateHelper.toast("Erro ao salvar algumas alterações", "error");
       } finally {
         this.saving = false;
         this.loading = false;
@@ -232,12 +233,12 @@ export function getData() {
     },
 
     goBack() {
-      history.back()
+      history.back();
     }
-  }
+  };
 }
 
 export function render() {
-  console.log("page.vierw-stock.render.loaded");
+  logger.local("page.vierw-stock.render.loaded");
   return html;
 }

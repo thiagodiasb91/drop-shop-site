@@ -30,17 +30,24 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/admin/package-lock.json
 
-      - name: Install & Build
+      - name: Run Install
+        working-directory: frontend/admin
+        run: npm install
+        
+      - name: Run Linter
+        working-directory: frontend/admin
+        run: npm run lint
+        
+      - name: Run Build
         working-directory: frontend/admin
         run: |
-          npm install
           # Se for main, usa 'production'. Se for develop, usa 'staging'.
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
             npm run build -- --mode production
           else
             npm run build -- --mode staging
           fi
-
+      
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:

@@ -46,7 +46,7 @@
                 class="h-4 w-4 rounded border-slate-600 bg-slate-900 text-indigo-600 focus:ring-indigo-500" />
               <span class="text-sm font-bold text-slate-200" x-text="product.name"></span>
               <span class="text-[10px] text-slate-500 font-bold uppercase whitespace-nowrap px-3"
-                x-text="product.skusLoaded ? `${product.skus.length} variações` : ''"></span>
+                x-text="product.skusLoaded ? `${product.skus.length} variações` : """></span>
             </label>
             <div x-show="product.selected && product.skusLoaded"
               class="rounded-lg max-w-sm bg-indigo-500/5 px-4 py-3 border-t border-b border-slate-700/50 flex flex-wrap items-center justify-between gap-2">
@@ -55,7 +55,7 @@
                 <span class="text-[10px] uppercase font-black text-slate-400 tracking-widest">Preço Global</span>
               </div>
 
-              <div class="flex items-center gap-2" x-data="{ globalPrice: '' }">
+              <div class="flex items-center gap-2" x-data="{ globalPrice: "" }">
                 <div class="relative">
                   <span class="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-500">R$</span>
                   <input type="number" step="0.01" placeholder="0,00" x-model="globalPrice"

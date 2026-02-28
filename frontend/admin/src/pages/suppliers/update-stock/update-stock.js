@@ -1,13 +1,14 @@
-import html from "./update-stock.html?raw"
-import ProductsService from "../../../services/products.services";
-import SuppliersService from "../../../services/suppliers.services";
+import html from "./update-stock.html?raw";
+import ProductsService from "../../../services/products.service";
+import SuppliersService from "../../../services/suppliers.service";
 import stateHelper from "../../../utils/state.helper.js";
+import logger from "../../../utils/logger.js";
 
 export function getData() {
   return {
     loading: true,
-    search: '',
-    supplierEmail: '',
+    search: "",
+    supplierEmail: "",
 
     products: [],
     hasChanges: false,
@@ -16,9 +17,9 @@ export function getData() {
     async init() {
       this.loading = true;
       const logged = stateHelper.user;
-      this.supplierEmail = logged?.user?.email
+      this.supplierEmail = logged?.user?.email;
 
-      this.products = await this.fetchProducts()
+      this.products = await this.fetchProducts();
 
       // guarda estoque original
       this.products.forEach(p =>
@@ -35,7 +36,7 @@ export function getData() {
       try {
         const productsResponse = await SuppliersService.getLinkedProducts();
         const linkedProducts = productsResponse.response || [];
-        let response = []
+        let response = [];
         for (const p of linkedProducts) {
           const [skusRes, linkedSkusRes] = await Promise.all([
             ProductsService.getSkusByProductId(p.productId),
@@ -56,15 +57,15 @@ export function getData() {
               stock: linkedSku.quantity,
               originalStock: linkedSku.quantity,
               changed: false
-            })
+            });
           }
 
-          p.open = (linkedSkus.length > 0)
+          p.open = (linkedSkus.length > 0);
           if (productSkus.length > 0) {
             response.push({
               id: p.productId,
               name: p.productName,
-              imageUrl: p.productImage || `https://picsum.photos/${Math.floor(Math.random() * 500)}?text=Produto+${p.productId}`,
+              imageUrl: p.imageUrl,
               open: false, // Começa fechado para melhor visualização
               stock: productSkus.reduce((acc, cur) => acc + cur.stock, 0),
               skus: productSkus
@@ -73,7 +74,7 @@ export function getData() {
         }
         return response;
       } catch (error) {
-        console.error("Erro ao carregar produtos:", error);
+        logger.error("Erro ao carregar produtos:", error);
         stateHelper.toast("Erro ao carregar lista de estoque", "error");
         return [];
       }
@@ -82,7 +83,7 @@ export function getData() {
     getGroupedSkus(product) {
       if (!product.skus) return {};
       return product.skus.reduce((acc, sku) => {
-        const color = sku.color || 'Padrão';
+        const color = sku.color || "Padrão";
         if (!acc[color]) acc[color] = [];
         acc[color].push(sku);
         return acc;
@@ -90,7 +91,7 @@ export function getData() {
     },
     markAsChanged(sku) {
       // Garante que o valor seja numérico e trata campos vazios como 0
-      if (sku.stock === '' || sku.stock === null) sku.stock = 0;
+      if (sku.stock === "" || sku.stock === null) sku.stock = 0;
 
       sku.changed = sku.stock !== sku.originalStock;
       this.updateChanges();
@@ -124,7 +125,7 @@ export function getData() {
 
       const hasErrors = this.products.some(p => p.skus.some(s => s.error));
       if (hasErrors) {
-        stateHelper.toast('Corrija os campos com erros antes de salvar.', 'error');
+        stateHelper.toast("Corrija os campos com erros antes de salvar.", "error");
         return;
       }
 
@@ -133,15 +134,15 @@ export function getData() {
         const errors = results.filter(r => !r.ok);
 
         if (errors.length > 0) {
-          stateHelper.toast(`Erro em ${errors.length} atualizações.`, 'error');
+          stateHelper.toast(`Erro em ${errors.length} atualizações.`, "error");
         } else {
-          stateHelper.toast(`${changedList.length} SKU(s) atualizado(s) com sucesso`, 'success');
+          stateHelper.toast(`${changedList.length} SKU(s) atualizado(s) com sucesso`, "success");
           // Reinicia para limpar os estados de "changed" e resetar o originalStock
           await this.init();
         }
       } catch (ex) {
-        console.error(ex);
-        stateHelper.toast('Erro crítico ao salvar estoque.', 'error');
+        logger.error("Erro ao salvar estoque", ex);
+        stateHelper.toast("Erro crítico ao salvar estoque.","error" );
       } finally {
         this.loading = false;
       }
@@ -163,5 +164,5 @@ export function getData() {
 }
 
 export function render() {
-  return html
+  return html;
 }

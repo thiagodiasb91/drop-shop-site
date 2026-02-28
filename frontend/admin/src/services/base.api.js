@@ -1,6 +1,7 @@
 import ENV from "../config/env.js";
 import CacheHelper from "../utils/cache.helper.js";
 import stateHelper from "../utils/state.helper.js";
+import logger from "../utils/logger.js";
 
 const BASE_URL = ENV.API_BASE_URL;
 
@@ -8,17 +9,17 @@ function handleUnauthorized(res) {
   if (res.status === 401) {
     console.warn("Sessão expirada ou inválida. Limpando dados...");
 
-    stateHelper.setLogout()
+    stateHelper.setLogout();
 
     if (window.Alpine) {
-      const authStore = Alpine.store('auth');
+      const authStore = Alpine.store("auth");
       if (authStore) authStore.user = null;
     }
 
     // window.location.href = "/login";
-    return false
+    return false;
   }
-  return true
+  return true;
 }
 
 class BaseApi {
@@ -53,14 +54,21 @@ class BaseApi {
         return { ok: false, status: 401 };
       }
 
+      res.ok = res.status >= 200 && res.status < 300;
+      
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw { status: res.status, ...errorData };
+        throw { 
+          ok: false, 
+          message: res.statusText, 
+          status: res.status, 
+          ...errorData 
+        };
       }
 
       try{
-        const data = await res.json()
-        const response = data.items ? data.items : data
+        const data = await res.json();
+        const response = data.items ? data.items : data;
         
         return {
           ok: true,
@@ -69,7 +77,7 @@ class BaseApi {
         };
       }
       catch(err){
-        console.error("Error parsing JSON response:", err);
+        logger.error("Error parsing JSON response:", err);
         return {
           ok: false,
           status: res?.status,
@@ -78,7 +86,7 @@ class BaseApi {
       }
 
     } catch (error) {
-      console.error(`API Error [${endpoint}]:`, error);
+      logger.error(`API Error [${endpoint}]:`, error);
       throw error;
     }
   };

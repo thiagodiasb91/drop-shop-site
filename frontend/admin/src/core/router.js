@@ -1,18 +1,18 @@
 import { loadLayout } from "./layout.js";
 import { routes } from "./route.registry.js";
-import RouteGuard from "./route.guard.js";
 import stateHelper from "../utils/state.helper.js";
+import logger from "../utils/logger.js";
 
 export const router = {
   current: {
-    path: '',
+    path: "",
     params: {},
     route: null
   }
 };
 
 export async function initRouter() {
-  console.log("router.initRouter.request", location.pathname);
+  logger.local("router.initRouter.request", location.pathname);
   window.addEventListener("popstate", render);
   await render();
 }
@@ -24,16 +24,16 @@ export function back() {
 let isRedirecting = false;
 
 export async function navigate(path) {
-  console.log("router.navigate.request", path, isRedirecting);
+  logger.local("router.navigate.request", path, isRedirecting);
 
   if (location.pathname === path) {
-    console.log("router.navigate.isAlreadyOnRoute");
+    logger.local("router.navigate.isAlreadyOnRoute");
     isRedirecting = false;
     return;
   }
 
   if (isRedirecting) {
-    console.log("router.navigate.isAlreadyRedirecting");
+    logger.local("router.navigate.isAlreadyRedirecting");
     return;
   }
   isRedirecting = true;
@@ -42,21 +42,21 @@ export async function navigate(path) {
   isRedirecting = false;
   await render();
 
-  window.dispatchEvent(new Event('popstate'));
-  console.log("router.navigate.completed");
+  window.dispatchEvent(new Event("popstate"));
+  logger.local("router.navigate.completed");
 }
 
 async function render() {
-  console.log("router.render.request", location.pathname);
+  logger.local("router.render.request", location.pathname);
   const path = location.pathname;
   const { route, params } = matchRoute(path);
-  console.log("router.render.route", route, params, stateHelper.user);
+  logger.local("router.render.route", route, params, stateHelper.user);
 
   router.current = {
     path,
     route,
     params
-  }
+  };
 
   const logged = stateHelper.user;
 
@@ -64,8 +64,8 @@ async function render() {
     for (const middleware of route.middlewares) {
       const result = await middleware(logged, route, path);
 
-      if (typeof result === 'string') {
-        console.log(`[Router] Bloqueado por middleware. Redirecionando para: ${result}`);
+      if (typeof result === "string") {
+        logger.local(`[Router] Bloqueado por middleware. Redirecionando para: ${result}`);
         navigate(result);
         return;
       }
@@ -78,7 +78,7 @@ async function render() {
   const app = document.getElementById("app");
   app.innerHTML = "";
 
-  console.log("router.render.loadingLayoutForRoute", path, route);
+  logger.local("router.render.loadingLayoutForRoute", path, route);
   await loadLayout(app, route);
 }
 

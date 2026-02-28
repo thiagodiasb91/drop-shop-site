@@ -1,4 +1,4 @@
-import html from "./billing.html?raw"
+import html from "./billing.html?raw";
 import SellersPaymentsService from "../../../services/sellers-payments.service.js";
 import stateHelper from "../../../utils/state.helper.js";
 
@@ -8,14 +8,14 @@ export function getData() {
     showPaymentModal: false,
     stats: { currentCycle: null, invoices: [] },
     pixData: {
-      qrcode: '',
-      copyPaste: '',
+      qrcode: "",
+      copyPaste: "",
       loading: false
     },
     async init() {
       this.loading = true;
       await new Promise(resolve => setTimeout(resolve, 800));
-      const res = await SellersPaymentsService.getBillingInformations()
+      const res = await SellersPaymentsService.getBillingInformations();
 
       if (res.ok) {
         this.stats = {
@@ -26,7 +26,7 @@ export function getData() {
             expanded: false,
             loadingDetails: false
           }))
-        }
+        };
       }
       this.loading = false;
     },
@@ -51,21 +51,20 @@ export function getData() {
     },
     copyPix() {
       navigator.clipboard.writeText(this.pixData.copyPaste);
-      stateHelper.toast('Código Copiado!', 'success');
+      stateHelper.toast("Código Copiado!", "success");
     },
     statusLabel(status) {
       const map = {
-        opened: { text: 'Aberto', color: 'bg-blue-500/10 text-blue-500' },
-        pending: { text: 'Pendente', color: 'bg-yellow-500/10 text-yellow-500' },
-        paid: { text: 'Pago', color: 'bg-green-500/10 text-green-500' },
-        overdue: { text: 'Atrasado', color: 'bg-red-500/10 text-red-500' }
+        opened: { text: "Aberto", color: "bg-blue-500/10 text-blue-500" },
+        pending: { text: "Pendente", color: "bg-yellow-500/10 text-yellow-500" },
+        paid: { text: "Pago", color: "bg-green-500/10 text-green-500" },
+        overdue: { text: "Atrasado", color: "bg-red-500/10 text-red-500" }
       };
-      return map[status] || { text: status, color: 'bg-gray-500/10 text-gray-500' };
+      return map[status] || { text: status, color: "bg-gray-500/10 text-gray-500" };
     }
-  }
+  };
 }
 
 export function render() {
-  console.log("page.payments-monthly.render.loaded");
   return html;
 }

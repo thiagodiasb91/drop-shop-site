@@ -1,6 +1,7 @@
-import html from "./dashboard.html?raw"
+import html from "./dashboard.html?raw";
 import stateHelper from "../../../utils/state.helper.js";
 import ENV from "../../../config/env.js";
+import logger from "../../../utils/logger.js";
 
 export function getData() {
     return {
@@ -24,7 +25,7 @@ export function getData() {
         },
 
         async fetchData() {
-            console.log("Buscando métricas de fornecedor...");
+            logger.local("Buscando métricas de fornecedor...");
 
             // MOCK - Simulação do que viria do seu backend
             this.stats = {
@@ -33,31 +34,31 @@ export function getData() {
                 outOfStockCount: 3,        // SKUs que atingiram 0 no estoque
                 activeSellers: 18,         // Quantos vendedores únicos fizeram pedidos
                 recentKardex: [
-                    { id: 1, sku: 'TSHIRT-BLUE-L', type: 'OUT', quantity: 2, origin: 'Vendedor: João Silva' },
-                    { id: 2, sku: 'TSHIRT-RED-M', type: 'IN', quantity: 50, origin: 'Ajuste de Inventário' },
-                    { id: 3, sku: 'PHONE-CASE-X', type: 'OUT', quantity: 1, origin: 'Vendedor: Maria Importados' },
-                    { id: 4, sku: 'PHONE-CASE-X', type: 'OUT', quantity: 5, origin: 'Vendedor: TechStore' }
+                    { id: 1, sku: "TSHIRT-BLUE-L", type: "OUT", quantity: 2, origin: "Vendedor: João Silva" },
+                    { id: 2, sku: "TSHIRT-RED-M", type: "IN", quantity: 50, origin: "Ajuste de Inventário" },
+                    { id: 3, sku: "PHONE-CASE-X", type: "OUT", quantity: 1, origin: "Vendedor: Maria Importados" },
+                    { id: 4, sku: "PHONE-CASE-X", type: "OUT", quantity: 5, origin: "Vendedor: TechStore" }
                 ],
                 topSellers: [
-                    { id: 1, name: 'João Silva Me', percentage: 45 },
-                    { id: 2, name: 'TechStore BR', percentage: 30 },
-                    { id: 3, name: 'Maria Importados', percentage: 25 }
+                    { id: 1, name: "João Silva Me", percentage: 45 },
+                    { id: 2, name: "TechStore BR", percentage: 30 },
+                    { id: 3, name: "Maria Importados", percentage: 25 }
                 ]
             };
         },
 
         formatCurrency(value) {
-            return new Intl.NumberFormat('pt-BR', {
-                style: 'currency',
-                currency: 'BRL'
+            return new Intl.NumberFormat("pt-BR", {
+                style: "currency",
+                currency: "BRL"
             }).format(value);
         },
         openSupport() {
             const phone = ENV.CONTACT_PHONE;
             const message = encodeURIComponent(`Olá! Sou o fornecedor ${this.loggedInfo?.user.email} e preciso de ajuda com o painel.`);
-            window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+            window.open(`https://wa.me/${phone}?text=${message}`, "_blank");
         }
-    }
+    };
 }
 
 export function render() {
