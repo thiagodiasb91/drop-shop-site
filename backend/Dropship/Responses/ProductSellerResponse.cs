@@ -42,6 +42,8 @@ public class ProductSellerResponse
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public string SupplierId { get; set; }
+    public long MarketplaceItemId { get; set; }
+    public decimal Price { get; set; }
 }
 
 /// <summary>
@@ -67,7 +69,7 @@ public static class ProductSkuSellerResponseMapper
             SellerId = domain.SellerId,
             Marketplace = domain.Marketplace,
             StoreId = domain.StoreId,
-            MarketplaceProductId = domain.MarketplaceProductId,
+            MarketplaceProductId = domain.MarketplaceItemId,
             MarketplaceModelId = domain.MarketplaceModelId,
             Price = domain.Price,
             SupplierId = domain.SupplierId,
@@ -102,6 +104,8 @@ public static class ProductSellerResponseMapper
             Marketplace = domain.Marketplace,
             StoreId = domain.StoreId,
             SupplierId = domain.SupplierId,
+            Price = domain.Price,
+            MarketplaceItemId = domain.MarketplaceItemId,
             SkuCount = domain.SkuCount,
             CreatedAt = domain.CreatedAt,
             UpdatedAt = domain.UpdatedAt

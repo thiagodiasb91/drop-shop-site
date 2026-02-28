@@ -217,6 +217,8 @@ public class SkuRepository
         }
     }
 
+    
+    
     /// <summary>
     /// Lista todos os SKUs no sistema
     /// Usa query no DynamoDB com GSI_RELATIONS_LOOKUP
@@ -275,6 +277,52 @@ public class SkuRepository
         {
             _logger.LogError(ex, "Error updating SKU quantity - ProductId: {ProductId}, SKU: {Sku}",
                 productId, sku);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Obtém o ID do produto a partir do código SKU
+    /// Usa GSI_RELATIONS_LOOKUP para busca eficiente
+    /// A GSI tem SK = Sku# como chave, permitindo buscar pelo SKU
+    /// 
+    /// Exemplo de resposta:
+    /// PK: "Product#01KH3GK4W031DXKGKQVKK2DT8S"
+    /// SK: "Sku#01248.574.61"
+    /// 
+    /// Retorna: "01KH3GK4W031DXKGKQVKK2DT8S"
+    /// </summary>
+    public async Task<string?> GetProductIdBySkuAsync(string sku)
+    {
+        _logger.LogInformation("Getting product ID by SKU - SKU: {SKU}", sku);
+
+        try
+        {
+            var items = await _repository.QueryTableAsync(
+                indexName: "GSI_RELATIONS_LOOKUP",
+                keyConditionExpression: "SK = :sk",
+                expressionAttributeValues: new Dictionary<string, AttributeValue>
+                {
+                    { ":sk", new AttributeValue { S = $"Sku#{sku}" } }
+                }
+            );
+
+            if (items.Count == 0)
+            {
+                _logger.LogWarning("Product not found for SKU - SKU: {SKU}", sku);
+                return null;
+            }
+
+            // Extrair productId da chave PK: "Product#{productId}"
+            var pkValue = items[0]["PK"].S;  // Product#01KH3GK4W031DXKGKQVKK2DT8S
+            var productId = pkValue.Replace("Product#", "");  // 01KH3GK4W031DXKGKQVKK2DT8S
+
+            _logger.LogInformation("Product found by SKU - SKU: {SKU}, ProductId: {ProductId}", sku, productId);
+            return productId;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting product ID by SKU - SKU: {SKU}", sku);
             throw;
         }
     }

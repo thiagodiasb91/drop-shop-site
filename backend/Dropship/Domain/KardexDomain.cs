@@ -1,3 +1,6 @@
+using Amazon.DynamoDBv2.Model;
+using Dropship.Helpers;
+
 namespace Dropship.Domain;
 
 public class KardexDomain
@@ -20,25 +23,23 @@ public class KardexDomain
 /// </summary>
 public static class KardexMapper
 {
-    public static KardexDomain ToDomain(this Dictionary<string, Amazon.DynamoDBv2.Model.AttributeValue> item)
+    public static KardexDomain ToDomain(this Dictionary<string, AttributeValue> item)
     {
         return new KardexDomain
         {
-            PK = item.ContainsKey("PK") ? item["PK"].S : string.Empty,
-            SK = item.ContainsKey("SK") ? item["SK"].S : string.Empty,
-            Date = item.ContainsKey("date") ? item["date"].S : string.Empty,
-            EntityType = item.ContainsKey("entityType") ? item["entityType"].S : string.Empty,
-            Operation = item.ContainsKey("operation") ? item["operation"].S : string.Empty,
-            ProductId = item.ContainsKey("product_id") ? item["product_id"].S : string.Empty,
-            Quantity = item.ContainsKey("quantity") && int.TryParse(item["quantity"].N, out var qty) ? qty : 0,
-            SupplierId = item.ContainsKey("supplier_id") ? item["supplier_id"].S : string.Empty,
-            OrderSn = item.ContainsKey("ordersn") ? item["ordersn"].S : null,
-            ShopId = item.ContainsKey("shop_id") && long.TryParse(item["shop_id"].N, out var shopId) ? shopId : null
+            PK = item.GetS("PK"),
+            SK = item.GetS("SK"),
+            Date = item.GetS("date"),
+            EntityType = item.GetS("entity_type"),
+            Operation = item.GetS("operation"),
+            ProductId = item.GetS("product_id"),
+            Quantity = item.GetN<int>("quantity"),
+            SupplierId = item.GetS("supplier_id"),
+            OrderSn = item.GetSNullable("ordersn"),
+            ShopId = item.GetUnixTimestampNullable("shop_id"),
         };
     }
 
-    public static List<KardexDomain> ToDomainList(this List<Dictionary<string, Amazon.DynamoDBv2.Model.AttributeValue>> items)
-    {
-        return items.Select(ToDomain).ToList();
-    }
+    public static List<KardexDomain> ToDomainList(this List<Dictionary<string, AttributeValue>> items)
+        => items.Select(ToDomain).ToList();
 }

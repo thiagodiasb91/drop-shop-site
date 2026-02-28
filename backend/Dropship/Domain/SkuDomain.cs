@@ -1,4 +1,5 @@
 using Amazon.DynamoDBv2.Model;
+using Dropship.Helpers;
 
 namespace Dropship.Domain;
 
@@ -35,38 +36,19 @@ public static class SkuMapper
 {
     public static SkuDomain ToDomain(this Dictionary<string, AttributeValue> item)
     {
-        // Parsear CreatedAt
-        var createdAtString = item.ContainsKey("created_at") ? item["created_at"].S : DateTime.UtcNow.ToString("O");
-        DateTime.TryParse(createdAtString, null, System.Globalization.DateTimeStyles.RoundtripKind, out var createdAt);
-
-        // Parsear UpdatedAt
-        var updatedAtString = item.ContainsKey("updated_at") ? item["updated_at"].S : null;
-        DateTime.TryParse(updatedAtString, null, System.Globalization.DateTimeStyles.RoundtripKind, out var updatedAt);
-
-        // Parsear Quantity
-        var quantityString = item.ContainsKey("quantity") ? item["quantity"].N : "0";
-        int.TryParse(quantityString, out var quantity);
-
         return new SkuDomain
         {
-            // Chaves
-            PK = item.ContainsKey("PK") ? item["PK"].S : "",
-            SK = item.ContainsKey("SK") ? item["SK"].S : "",
-
-            // Identificadores
-            Id = item.ContainsKey("sku") ? item["sku"].S : "",
-            ProductId = item.ContainsKey("product_id") ? item["product_id"].S : "",
-            EntityType = item.ContainsKey("entity_type") ? item["entity_type"].S : "sku",
-
-            // Informações
-            Sku = item.ContainsKey("sku") ? item["sku"].S : "",
-            Size = item.ContainsKey("size") ? item["size"].S : "",
-            Color = item.ContainsKey("color") ? item["color"].S : "",
-            Quantity = quantity,
-
-            // Metadata
-            CreatedAt = createdAt,
-            UpdatedAt = updatedAtString != null ? updatedAt : null
+            PK        = item.GetS("PK"),
+            SK        = item.GetS("SK"),
+            Id        = item.GetS("sku"),
+            ProductId = item.GetS("product_id"),
+            EntityType= item.GetS("entity_type", "sku"),
+            Sku       = item.GetS("sku"),
+            Size      = item.GetS("size"),
+            Color     = item.GetS("color"),
+            Quantity  = item.GetN<int>("quantity"),
+            CreatedAt = item.GetDateTimeS("created_at"),
+            UpdatedAt = item.GetDateTimeSNullable("updated_at"),
         };
     }
 }

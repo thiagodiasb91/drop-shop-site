@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
+using System.Globalization;
 using Amazon.CognitoIdentityProvider;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
@@ -12,11 +13,25 @@ using Dropship.Repository;
 using Dropship.Services;
 using Dropship.Middlewares;
 using Dropship.Logging;
+using Dropship.Responses;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Logging.Console;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure culture to use English format (dot as decimal separator)
+var cultureInfo = new CultureInfo("en-US")
+{
+    NumberFormat = new NumberFormatInfo
+    {
+        NumberDecimalSeparator = ".",
+        CurrencyDecimalSeparator = ".",
+        PercentDecimalSeparator = "."
+    }
+};
+CultureInfo.DefaultThreadCurrentCulture = cultureInfo;
+CultureInfo.DefaultThreadCurrentUICulture = cultureInfo;
 
 // Configure built-in logging with CorrelationId at the start of each message
 builder.Logging.ClearProviders();
@@ -24,9 +39,8 @@ builder.Logging.ClearProviders();
 // Register custom formatter options
 builder.Services.Configure<CorrelationIdFormatterOptions>(options =>
 {
-    options.TimestampFormat = "yyyy-MM-dd HH:mm:ss.fff";
-    options.IncludeScopes = true;
-    options.UseUtcTimestamp = false;
+    options.UseUtcTimestamp = true;
+    options.ServiceName = Environment.GetEnvironmentVariable("SERVICE_NAME") ?? "dropship-api";
 });
 
 // Register custom console formatter
@@ -198,10 +212,18 @@ builder.Services.AddScoped<ProductSkuSupplierRepository>();
 builder.Services.AddScoped<ProductSupplierRepository>();
 builder.Services.AddScoped<ProductSkuSellerRepository>();
 builder.Services.AddScoped<ProductSellerRepository>();
+builder.Services.AddScoped<InfinityPayLinkRepository>();
+builder.Services.AddScoped<OrderRepository>();
 builder.Services.AddScoped<KardexService>();
+builder.Services.AddScoped<PaymentRepository>();
+builder.Services.AddScoped<SupplierShipmentRepository>();
+builder.Services.AddScoped<InfinityPayLinkRepository>();
 builder.Services.AddScoped<PaymentService>();
 builder.Services.AddScoped<AuthenticationService>();
 builder.Services.AddScoped<ShopeeService>();
+builder.Services.AddScoped<StockServices>();
+builder.Services.AddScoped<OrderService>();
+builder.Services.AddScoped<InfinityPayService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddAuthorization();
 

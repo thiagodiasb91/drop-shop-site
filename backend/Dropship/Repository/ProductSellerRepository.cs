@@ -36,12 +36,10 @@ public class ProductSellerRepository
 
         try
         {
-            var createdAtUtc = DateTime.UtcNow.ToString("O");
-
             var record = new ProductSellerDomain
             {
                 Pk = $"Seller#{marketplace}#{sellerId}",
-                Sk = $"Product#{productId}#Supplier#{supplierId}",
+                Sk = $"Product#{productId}",
                 EntityType = "product_seller",
                 ProductId = productId,
                 ProductName = productName,
@@ -54,21 +52,7 @@ public class ProductSellerRepository
                 CreatedAt = DateTime.UtcNow
             };
 
-            var item = new Dictionary<string, AttributeValue>
-            {
-                { "PK", new AttributeValue { S = record.Pk } },
-                { "SK", new AttributeValue { S = record.Sk } },
-                { "entity_type", new AttributeValue { S = record.EntityType } },
-                { "product_id", new AttributeValue { S = record.ProductId } },
-                { "product_name", new AttributeValue { S = record.ProductName } },
-                { "seller_id", new AttributeValue { S = record.SellerId } },
-                { "supplier_id", new AttributeValue() { S = supplierId} },
-                { "marketplace", new AttributeValue { S = record.Marketplace } },
-                { "store_id", new AttributeValue { N = record.StoreId.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
-                { "sku_count", new AttributeValue { N = record.SkuCount.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
-                { "created_at", new AttributeValue { S = createdAtUtc } }
-            };
-
+            var item = record.ToDynamoDb();
             await _repository.PutItemAsync(item);
 
             _logger.LogInformation("Product-seller META created - ProductId: {ProductId}, SellerId: {SellerId}",
@@ -83,11 +67,11 @@ public class ProductSellerRepository
             throw;
         }
     }
-
+    
     /// <summary>
     /// Obtém todos os produtos vinculados a um vendedor em um marketplace específico
     /// </summary>
-    public async Task<List<ProductSellerDomain>> GetProductsBySellerAsync(string sellerId)
+    public async Task<List<ProductSellerDomain>> GetProductsBySeller(string sellerId)
     {
         _logger.LogInformation("Getting products for seller - SellerId: {SellerId}", sellerId);
 
@@ -123,11 +107,10 @@ public class ProductSellerRepository
             throw;
         }
     }
-
     /// <summary>
     /// Obtém um registro específico de Product-Seller
     /// </summary>
-    public async Task<ProductSellerDomain?> GetProductSellerAsync(string sellerId, string marketplace, string productId)
+    public async Task<ProductSellerDomain?> GetProductSeller(string sellerId, string marketplace, string productId)
     {
         _logger.LogInformation("Getting product-seller record - SellerId: {SellerId}, ProductId: {ProductId}",
             sellerId, productId);
@@ -136,12 +119,22 @@ public class ProductSellerRepository
         {
             var key = new Dictionary<string, AttributeValue>
             {
-                { "PK", new AttributeValue { S = $"Seller#{marketplace}#{sellerId}" } },
-                { "SK", new AttributeValue { S = $"Product#{productId}" } }
+                { ":pk", new AttributeValue { S = $"Seller#{marketplace}#{sellerId}" } },
+                { ":sk", new AttributeValue { S = $"Product#{productId}" } }
             };
+           
+            var items = await _repository.QueryTableAsync(
+                keyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+                expressionAttributeValues: key
+            );
 
-            var item = await _repository.GetItemAsync(key);
-            return item != null ? ProductSellerMapper.ToDomain(item) : null;
+            if (items == null || items.Count == 0)
+            {
+                _logger.LogDebug("No products found for seller - SellerId: {SellerId}", sellerId);
+                return null;
+            }
+
+            return ProductSellerMapper.ToDomain(items.First());
         }
         catch (Exception ex)
         {
@@ -151,41 +144,6 @@ public class ProductSellerRepository
         }
     }
 
-    /// <summary>
-    /// Atualiza a contagem de SKUs de um produto-vendedor
-    /// </summary>
-    public async Task<ProductSellerDomain?> UpdateSkuCountAsync(string sellerId, string marketplace, string productId, int skuCount)
-    {
-        _logger.LogInformation("Updating SKU count - SellerId: {SellerId}, ProductId: {ProductId}, Count: {Count}",
-            sellerId, productId, skuCount);
-
-        try
-        {
-            var key = new Dictionary<string, AttributeValue>
-            {
-                { "PK", new AttributeValue { S = $"Seller#{marketplace}#{sellerId}" } },
-                { "SK", new AttributeValue { S = $"Product#{productId}" } }
-            };
-
-            var updateExpression = "SET sku_count = :count, updated_at = :updated_at";
-            var expressionAttributeValues = new Dictionary<string, AttributeValue>
-            {
-                { ":count", new AttributeValue { N = skuCount.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
-                { ":updated_at", new AttributeValue { S = DateTime.UtcNow.ToString("O") } }
-            };
-
-            await _repository.UpdateItemAsync(key, updateExpression, expressionAttributeValues);
-
-            var item = await _repository.GetItemAsync(key);
-            return item != null ? ProductSellerMapper.ToDomain(item) : null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating SKU count - SellerId: {SellerId}, ProductId: {ProductId}",
-                sellerId, productId);
-            throw;
-        }
-    }
 
     /// <summary>
     /// Remove um produto da lista de produtos vinculados a um vendedor
@@ -290,6 +248,29 @@ public class ProductSellerRepository
         {
             _logger.LogError(ex, "Error updating marketplace model ID - ProductId: {ProductId}, SKU: {Sku}",
                 productId, sku);
+            throw;
+        }
+    }
+
+    public async Task Update(ProductSellerDomain productSeller)
+    {
+        _logger.LogInformation("Updating - ProductId: {ProductId}, SellerId: {SellerId}, NewPrice: {NewPrice}",
+            productSeller.ProductId, productSeller.SellerId, productSeller.Price);
+
+        try
+        {
+            productSeller.UpdatedAt = DateTime.UtcNow;
+            var item = productSeller.ToDynamoDb();
+            
+            await _repository.PutItemAsync(item);
+            
+            _logger.LogInformation("updated - ProductId: {ProductId}, SellerId: {SellerId}, NewPrice: {NewPrice}",
+                productSeller.ProductId, productSeller.SellerId, productSeller.Price);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating - ProductId: {ProductId}, SellerId: {SellerId}",
+                productSeller.ProductId, productSeller.SellerId);
             throw;
         }
     }

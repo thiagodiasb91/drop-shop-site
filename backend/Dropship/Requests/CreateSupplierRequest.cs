@@ -29,12 +29,6 @@ public class CreateSupplierRequest
     public string Phone { get; set; } = string.Empty;
 
     /// <summary>
-    /// Prioridade (0+)
-    /// </summary>
-    [Range(0, int.MaxValue, ErrorMessage = "Priority must be a non-negative number")]
-    public int Priority { get; set; } = 0;
-    
-    /// <summary>
     /// Rua/logradouro
     /// </summary>
     [StringLength(200)]
@@ -87,6 +81,8 @@ public class CreateSupplierRequest
     /// ID no sistema eNota (opcional)
     /// </summary>
     public string? EnotasId { get; set; }
+
+    public string InfinityPayHandle { get; set; }
 
     /// <summary>
     /// Validação customizada para CNPJ

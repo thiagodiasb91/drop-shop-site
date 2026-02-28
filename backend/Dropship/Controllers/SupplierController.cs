@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using Dropship.Repository;
 using Dropship.Requests;
 using Dropship.Responses;
+using Dropship.Services;
+using JetBrains.Annotations;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Dropship.Controllers;
@@ -13,13 +15,18 @@ namespace Dropship.Controllers;
 [ApiController]
 [Route("suppliers")]
 [Authorize]
-public class SupplierController(SupplierRepository supplierRepository, 
-                                UserRepository userRepository, 
-                                ProductRepository productRepository,
-                                ProductSkuSupplierRepository productSkuSupplierRepository,
-                                ProductSupplierRepository productSupplierRepository,
-                                SkuRepository skuRepository,
-                                ILogger<SupplierController> logger)
+public class SupplierController(
+    SupplierRepository supplierRepository,
+    UserRepository userRepository,
+    ProductRepository productRepository,
+    ProductSkuSupplierRepository productSkuSupplierRepository,
+    ProductSupplierRepository productSupplierRepository,
+    SupplierShipmentRepository supplierShipmentRepository,
+    SellerRepository sellerRepository,
+    OrderRepository orderRepository,
+    SkuRepository skuRepository,
+    StockServices stockServices,
+    ILogger<SupplierController> logger)
     : ControllerBase
 {
     /// <summary>
@@ -238,6 +245,14 @@ public class SupplierController(SupplierRepository supplierRepository,
                 return BadRequest(new { error = "Product has no SKUs" });
             }
 
+            var productSupplier = await productSupplierRepository.GetProductBySupplier(supplierId, productId);
+
+            if (productSupplier is not null)
+            {
+                logger.LogWarning("Product already linked to supplier - ProductId: {ProductId}, SupplierId: {SupplierId}", productId, supplierId);
+                return BadRequest(new { error = "Product already linked to supplier" });
+            }
+            
             var productSkuSuppliers = new List<ProductSkuSupplierDomain>();
             foreach (var sku in skus)
             {
@@ -301,7 +316,7 @@ public class SupplierController(SupplierRepository supplierRepository,
     /// Obtém todos os produtos fornecidos pelo fornecedor autenticado
     /// O ID do fornecedor é obtido automaticamente da claim "resourceId" do usuário autenticado
     /// </summary>
-    /// <returns>Lista de produtos fornecidos com informações de preço e quantidade de SKUs</returns>
+    /// <returns>Lista de produtos fornecidos com informações de preço, quantidade de SKUs e imagens</returns>
     [HttpGet("products")]
     [ProducesResponseType(typeof(ProductSupplierListResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -326,10 +341,33 @@ public class SupplierController(SupplierRepository supplierRepository,
                 return NotFound(new { error = "No products found for this supplier" });
             }
 
-            logger.LogInformation("Found {Count} products for supplier - SupplierId: {SupplierId}",
-                products.Count, supplierId);
+            // Buscar imagens para cada produto
+            var productsWithImages = new List<dynamic>();
+            foreach (var product in products)
+            {
+                var images = await productRepository.GetImagesByProductIdAsync(product.ProductId);
+                
+                productsWithImages.Add(new
+                {
+                    product.ProductId,
+                    product.ProductName,
+                    product.SupplierId,
+                    product.SkuCount,
+                    product.MinPrice,
+                    product.MaxPrice,
+                    product.CreatedAt,
+                    imageUrl = images.First().BrUrl
+                });
+            }
 
-            return Ok(products.ToListResponse());
+            logger.LogInformation("Found {Count} products for supplier - SupplierId: {SupplierId}",
+                productsWithImages.Count, supplierId);
+
+            return Ok(new
+            {
+                Total = productsWithImages.Count,
+                Items = productsWithImages
+            });
         }
         catch (Exception ex)
         {
@@ -462,7 +500,7 @@ public class SupplierController(SupplierRepository supplierRepository,
             logger.LogInformation("Found {Count} SKUs for supplier - ProductId: {ProductId}, SupplierId: {SupplierId}",
                 skus.Count, productId, supplierId);
   
-            var suppliers = skus.Select(x => x.SupplierId);
+            var suppliers = skus.Select(x => x.SupplierId).Distinct().ToList();
             var supplierList = new List<SupplierDomain>();
 
             foreach (var suppliersId in suppliers)
@@ -520,10 +558,13 @@ public class SupplierController(SupplierRepository supplierRepository,
             }
             
             var updated = await productSkuSupplierRepository.UpdateSkuSupplier(
-                productId, sku, supplierId, request.SkuSupplier, request.price, request.Quantity);
+                productId, sku, supplierId, request.SkuSupplier ?? sku, request.price, request.Quantity);
 
+            if(request.Quantity.HasValue)
+                await stockServices.UpdateStockSupplier(supplierId, productId, sku, request.Quantity.Value);
+            
             if (updated == null)
-            {
+            { 
                 logger.LogWarning("Product-SKU-Supplier record not found - ProductId: {ProductId}, SKU: {Sku}",
                     productId, sku);
                 return NotFound(new { error = "Product-SKU-Supplier record not found" });
@@ -581,7 +622,7 @@ public class SupplierController(SupplierRepository supplierRepository,
             {
                 try
                 {
-                    await productSkuSupplierRepository.UpdateSkuSupplier(productId, sku.Sku, supplierId, sku.SkuSupplier, sku.Price, sku.Quantity);
+                    await productSkuSupplierRepository.UpdateSkuSupplier(productId, sku.Sku, supplierId, sku.SkuSupplier ?? sku.Sku, sku.Price, sku.Quantity);
                 }
                 catch (Exception ex)
                 {
@@ -609,7 +650,7 @@ public class SupplierController(SupplierRepository supplierRepository,
     [HttpDelete("products/{productId}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> RemoveSupplierFromSku(string productId)
+    public async Task<IActionResult> RemoveSupplierFromProduct(string productId)
     {
         var supplierId = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "resourceId")?.Value;
         logger.LogInformation(
@@ -631,6 +672,7 @@ public class SupplierController(SupplierRepository supplierRepository,
             }
 
             await productSupplierRepository.RemoveProductSupplierAsync(supplierId, productId);
+            
             logger.LogInformation("Supplier removed successfully - ProductId: {ProductId}", productId);
 
             return NoContent();
@@ -641,4 +683,126 @@ public class SupplierController(SupplierRepository supplierRepository,
             return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
         }
     }
+    
+    /// <summary>
+    /// Obtém todos os shipments do fornecedor autenticado
+    /// O ID do fornecedor é obtido automaticamente da claim "resourceId" do usuário autenticado
+    /// </summary>
+    /// <returns>Lista de shipments do fornecedor com informações de produtos, quantidades e status</returns>
+    [HttpGet("shipments")]
+    [ProducesResponseType(typeof(List<ShipmentResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetSupplierShipments()
+    {
+        var supplierId = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "resourceId")?.Value;
+        logger.LogInformation("Getting shipments for supplier - SupplierId: {SupplierId}", supplierId);
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(supplierId))
+            {
+                logger.LogWarning("Supplier ID not found in claims");
+                return BadRequest(new { error = "Supplier ID not found in authentication claims" });
+            }
+
+            var shipments = await supplierShipmentRepository.GetShipmentsBySupplierAsync(supplierId);
+
+            if (shipments == null || shipments.Count == 0)
+            {
+                logger.LogWarning("No shipments found for supplier - SupplierId: {SupplierId}", supplierId);
+                return NotFound(new { error = "No shipments found for this supplier" });
+            }
+
+            // Enriquecer cada shipment com nome do seller
+            var sellerCache = new Dictionary<string, SellerDomain?>();
+
+            var response = new List<ShipmentResponse>();
+            foreach (var shipment in shipments)
+            {
+                // Buscar seller (com cache local)
+                if (!sellerCache.TryGetValue(shipment.SellerId, out var seller))
+                {
+                    seller = await sellerRepository.GetSellerByIdAsync(shipment.SellerId);
+                    sellerCache[shipment.SellerId] = seller;
+                }
+
+                // Montar endereço completo do cliente
+                var customerAddress = string.Join(", ",
+                    new string?[] { shipment.DeliveryAddress, shipment.DeliveryCity, shipment.DeliveryState }
+                        .Where(s => !string.IsNullOrWhiteSpace(s)));
+
+                response.Add(new ShipmentResponse
+                {
+                    OrderId = shipment.OrderSn,
+                    Date = shipment.CreatedAt,
+                    SellerName = seller?.SellerName ?? shipment.SellerId,
+                    CustomerName = shipment.RecipientName,
+                    CustomerAddress = customerAddress,
+                    Status = shipment.Status,
+                    Items = shipment.Items.Select(i => new ShipmentItemResponse
+                    {
+                        ProductId = i.ProductId,
+                        ProductName = i.Name,
+                        ImageUrl = i.Image,
+                        Price = i.UnitPrice,
+                        SkuId = i.Sku,
+                        Color = i.Color,
+                        Size = i.Size,
+                        Quantity = i.Quantity
+                    }).ToList()
+                });
+            }
+
+            logger.LogInformation("Returning {Count} shipments for supplier - SupplierId: {SupplierId}",
+                response.Count, supplierId);
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting shipments for supplier - SupplierId: {SupplierId}", supplierId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
+        }
+    }
+    
+    /// <summary>
+    /// Obtém os detalhes de um shipment específico
+    /// </summary>
+    /// <param name="shipmentId">ID do shipment</param>
+    /// <returns>Informações detalhadas do shipment</returns>
+    [HttpGet("shipments/{shipmentId}")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetShipmentById(string shipmentId)
+    {
+        logger.LogInformation("Getting shipment details - ShipmentId: {ShipmentId}", shipmentId);
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(shipmentId))
+            {
+                logger.LogWarning("Invalid shipment ID provided");
+                return BadRequest(new { error = "Shipment ID is required" });
+            }
+
+            var shipment = await supplierShipmentRepository.GetShipmentByIdAsync(supplierId: "", shipmentId);
+            
+            if (shipment == null)
+            {
+                logger.LogWarning("Shipment not found - ShipmentId: {ShipmentId}", shipmentId);
+                return NotFound(new { error = "Shipment not found" });
+            }
+
+            logger.LogInformation("Found shipment - ShipmentId: {ShipmentId}", shipmentId);
+
+            return Ok(shipment);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting shipment - ShipmentId: {ShipmentId}", shipmentId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
+        }
+    }
+    
 }

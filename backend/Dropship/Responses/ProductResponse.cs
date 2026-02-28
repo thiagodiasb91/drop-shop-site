@@ -59,9 +59,4 @@ public static class ProductResponseMapper
             Items = products.Select(p => p.ToItemResponse()).ToList()
         };
     }
-
-    public static List<ProductResponse> ToResponse(this List<Domain.ProductDomain> products)
-    {
-        return products.Select(p => p.ToResponse()).ToList();
-    }
 }

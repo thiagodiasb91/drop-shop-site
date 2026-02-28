@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Dropship.Requests;
 using Microsoft.AspNetCore.Mvc;
 using Dropship.Services;
@@ -335,6 +336,47 @@ public class ShopeeInterfaceController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Deleta um item/produto existente
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="itemId">ID do item a ser deletado</param>
+    /// <remarks>
+    /// Nota: Esta operação é irreversível. O item será completamente removido da loja.
+    /// Certifique-se de que deseja deletar o item antes de fazer a requisição.
+    /// </remarks>
+    [HttpDelete("items/{itemId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> DeleteItem(
+        [FromQuery] long shopId,
+        [FromRoute] long itemId)
+    {
+        _logger.LogInformation("[SHOPEE-TEST] DeleteItem - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+
+        try
+        {
+            if (shopId <= 0)
+            {
+                return BadRequest(new { error = "Valid shopId is required" });
+            }
+
+            if (itemId <= 0)
+            {
+                return BadRequest(new { error = "Valid itemId is required" });
+            }
+
+            var result = await _shopeeApiService.DeleteItemAsync(shopId, itemId);
+            return Ok(result.RootElement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error deleting item - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
     #endregion
 
     #region Model/Variation Endpoints
@@ -531,6 +573,190 @@ public class ShopeeInterfaceController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Deleta um modelo/variação de um item
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="itemId">ID do item</param>
+    /// <param name="modelId">ID do modelo a ser deletado</param>
+    /// <remarks>
+    /// Nota: Se o item possui apenas um modelo, ele não poderá ser deletado.
+    /// A API retornará um erro neste caso.
+    /// </remarks>
+    [HttpDelete("items/{itemId}/models/{modelId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> DeleteModel(
+        [FromQuery] long shopId,
+        [FromRoute] long itemId,
+        [FromRoute] long modelId)
+    {
+        _logger.LogInformation("[SHOPEE-TEST] DeleteModel - ShopId: {ShopId}, ItemId: {ItemId}, ModelId: {ModelId}", shopId, itemId, modelId);
+
+        try
+        {
+            if (shopId <= 0)
+            {
+                return BadRequest(new { error = "Valid shopId is required" });
+            }
+
+            if (itemId <= 0)
+            {
+                return BadRequest(new { error = "Valid itemId is required" });
+            }
+
+            if (modelId <= 0)
+            {
+                return BadRequest(new { error = "Valid modelId is required" });
+            }
+
+            var result = await _shopeeApiService.DeleteModelAsync(shopId, itemId, modelId);
+            return Ok(result.RootElement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error deleting model - ShopId: {ShopId}, ItemId: {ItemId}, ModelId: {ModelId}", shopId, itemId, modelId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Atualiza o preço de um item/produto ou de modelos específicos
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="itemId">ID do item</param>
+    /// <param name="priceList">Lista de preços com original_price (e opcionalmente model_id para variações)</param>
+    /// <remarks>
+    /// Exemplos de priceList:
+    /// 
+    /// 1. Item sem variações:
+    /// [
+    ///   { "original_price": 100.00 }
+    /// ]
+    /// 
+    /// 2. Item com variações (múltiplos modelos):
+    /// [
+    ///   { "model_id": 111, "original_price": 100.00 },
+    ///   { "model_id": 222, "original_price": 150.00 }
+    /// ]
+    /// </remarks>
+    [HttpPut("items/{itemId}/price")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> UpdatePrice(
+        [FromQuery] long shopId,
+        [FromRoute] long itemId,
+        [FromBody] UpdatePriceRequest request)
+    {
+        _logger.LogInformation("[SHOPEE-TEST] UpdatePrice - ShopId: {ShopId}, ItemId: {ItemId}, PriceCount: {PriceCount}",
+            shopId, itemId, request.PriceList?.Count ?? 0);
+
+        try
+        {
+            if (shopId <= 0)
+            {
+                return BadRequest(new { error = "Valid shopId is required" });
+            }
+
+            if (itemId <= 0)
+            {
+                return BadRequest(new { error = "Valid itemId is required" });
+            }
+
+            if (request?.PriceList == null || request.PriceList.Count == 0)
+            {
+                return BadRequest(new { error = "priceList is required and cannot be empty" });
+            }
+
+            // Validar que cada item em priceList tem original_price válido
+            foreach (var price in request.PriceList)
+            {
+                if (price.OriginalPrice <= 0)
+                {
+                    return BadRequest(new { error = "Each price in priceList must have 'original_price' greater than 0" });
+                }
+            }
+
+            var result = await _shopeeApiService.UpdatePriceAsync(shopId, itemId, request.PriceList);
+            return Ok(result.RootElement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error updating price - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Atualiza estoque de um item/produto ou de modelos específicos
+    /// Endpoint: POST /api/v2/product/update_stock
+    /// Ref: https://open.shopee.com/documents/v2/v2.product.update_stock
+    /// 
+    /// Pode ser usado para:
+    /// 1. Atualizar estoque do item inteiro (sem modelos)
+    /// 2. Atualizar estoque de modelos específicos (variações)
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="itemId">ID do item</param>
+    /// <param name="modelId"></param>
+    /// <param name="request">Request contendo lista de estoques</param>
+    /// <remarks>
+    /// Exemplo 1 - Item sem variações:
+    /// {
+    ///   "stock_list": [
+    ///     { "stock": 100 }
+    ///   ]
+    /// }
+    /// 
+    /// Exemplo 2 - Item com variações:
+    /// {
+    ///   "stock_list": [
+    ///     { "model_id": 111, "stock": 100 },
+    ///     { "model_id": 222, "stock": 150 }
+    ///   ]
+    /// }
+    /// </remarks>
+    [HttpPut("items/{itemId}/models/{modelId}/stock")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> UpdateStock(
+        [FromQuery] long shopId,
+        [FromRoute] long itemId,
+        [FromRoute] long modelId,
+        [FromBody] UpdateStockRequest request)
+    {
+        _logger.LogInformation("[SHOPEE-TEST] UpdateStock - ShopId: {ShopId}, ItemId: {ItemId}, ModelId: {ModelId}", shopId, itemId, modelId);
+
+        try
+        {
+            if (shopId <= 0)
+            {
+                return BadRequest(new { error = "Valid shopId is required" });
+            }
+
+            if (itemId <= 0)
+            {
+                return BadRequest(new { error = "Valid itemId is required" });
+            }
+
+            if (modelId <= 0)
+            {
+                return BadRequest(new { error = "ModelId is required and cannot be empty" });
+            }
+
+            var result = await _shopeeApiService.UpdateStockAsync(shopId, itemId, modelId, request.Quantity);
+            return Ok(result.RootElement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error updating stock - ShopId: {ShopId}, ItemId: {ItemId}", shopId, itemId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
     #endregion
 
     #region Order Endpoints
@@ -622,6 +848,400 @@ public class ShopeeInterfaceController : ControllerBase
     }
 
     #endregion
+
+    #region Logistics Endpoints
+
+    /// <summary>
+    /// Obtém os parâmetros de logística de um pedido antes de confirmar o envio.
+    /// Retorna endereço de coleta, time slots, transportadora e número de rastreio.
+    /// Ref: https://open.shopee.com/documents/v2/v2.logistics.get_shipping_parameter
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="orderSn">Número do pedido</param>
+    /// <param name="packageNumber">Número do pacote (opcional — usar quando o pedido tem split de pacotes)</param>
+    /// <remarks>
+    /// Exemplo de requisição:
+    ///
+    ///     GET /shopee-interface/logistics/shipping-parameter?shopId=226289035&amp;orderSn=260227RU6TQ98E
+    ///
+    /// Com package_number:
+    ///
+    ///     GET /shopee-interface/logistics/shipping-parameter?shopId=226289035&amp;orderSn=260227RU6TQ98E&amp;packageNumber=PKG-001
+    /// </remarks>
+    [HttpGet("logistics/shipping-parameter")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetShippingParameter(
+        [FromQuery] long shopId,
+        [FromQuery] string orderSn,
+        [FromQuery] string? packageNumber = null)
+    {
+        _logger.LogInformation("[SHOPEE-TEST] GetShippingParameter - ShopId: {ShopId}, OrderSn: {OrderSn}", shopId, orderSn);
+
+        try
+        {
+            if (shopId <= 0)
+                return BadRequest(new { error = "Valid shopId is required" });
+
+            if (string.IsNullOrWhiteSpace(orderSn))
+                return BadRequest(new { error = "orderSn is required" });
+
+            var result = await _shopeeApiService.GetShippingParameterAsync(shopId, orderSn, packageNumber);
+            return Ok(result.RootElement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error getting shipping parameter - ShopId: {ShopId}, OrderSn: {OrderSn}", shopId, orderSn);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Obtém o número de rastreio de um pedido.
+    /// Ref: https://open.shopee.com/documents/v2/v2.logistics.get_tracking_number
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="orderSn">Número do pedido</param>
+    /// <param name="packageNumber">Número do pacote (opcional — usar quando o pedido tem split de pacotes)</param>
+    /// <remarks>
+    /// Exemplo de requisição:
+    ///
+    ///     GET /shopee-interface/logistics/tracking-number?shopId=226289035&amp;orderSn=260227RU6TQ98E
+    ///
+    /// Com package_number:
+    ///
+    ///     GET /shopee-interface/logistics/tracking-number?shopId=226289035&amp;orderSn=260227RU6TQ98E&amp;packageNumber=PKG-001
+    ///
+    /// Resposta esperada:
+    ///
+    ///     {
+    ///       "response": {
+    ///         "tracking_number": "BR123456789",
+    ///         "pltnm": false,
+    ///         "hint": ""
+    ///       }
+    ///     }
+    /// </remarks>
+    [HttpGet("logistics/tracking-number")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetTrackingNumber(
+        [FromQuery] long shopId,
+        [FromQuery] string orderSn,
+        [FromQuery] string? packageNumber = null)
+    {
+        _logger.LogInformation("[SHOPEE-TEST] GetTrackingNumber - ShopId: {ShopId}, OrderSn: {OrderSn}", shopId, orderSn);
+
+        try
+        {
+            if (shopId <= 0)
+                return BadRequest(new { error = "Valid shopId is required" });
+
+            if (string.IsNullOrWhiteSpace(orderSn))
+                return BadRequest(new { error = "orderSn is required" });
+
+            var result = await _shopeeApiService.GetTrackingNumberAsync(shopId, orderSn, packageNumber);
+            return Ok(result.RootElement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error getting tracking number - ShopId: {ShopId}, OrderSn: {OrderSn}", shopId, orderSn);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Obtém o histórico detalhado de rastreio de um pedido (todas as movimentações).
+    /// Ref: https://open.shopee.com/documents/v2/v2.logistics.get_tracking_info
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="orderSn">Número do pedido</param>
+    /// <param name="packageNumber">Número do pacote (opcional — usar quando o pedido tem split de pacotes)</param>
+    /// <remarks>
+    /// Exemplo de requisição:
+    ///
+    ///     GET /shopee-interface/logistics/tracking-info?shopId=226289035&amp;orderSn=260227RU6TQ98E
+    ///
+    /// Com package_number:
+    ///
+    ///     GET /shopee-interface/logistics/tracking-info?shopId=226289035&amp;orderSn=260227RU6TQ98E&amp;packageNumber=PKG-001
+    ///
+    /// Resposta esperada:
+    ///
+    ///     {
+    ///       "response": {
+    ///         "tracking_number": "BR123456789",
+    ///         "shipping_carrier": "Correios",
+    ///         "tracking_info": [
+    ///           {
+    ///             "update_time": 1706901234,
+    ///             "description": "Objeto postado",
+    ///             "status": "SHIPPED"
+    ///           }
+    ///         ]
+    ///       }
+    ///     }
+    /// </remarks>
+    [HttpGet("logistics/tracking-info")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetTrackingInfo(
+        [FromQuery] long shopId,
+        [FromQuery] string orderSn,
+        [FromQuery] string? packageNumber = null)
+    {
+        _logger.LogInformation("[SHOPEE-TEST] GetTrackingInfo - ShopId: {ShopId}, OrderSn: {OrderSn}", shopId, orderSn);
+
+        try
+        {
+            if (shopId <= 0)
+                return BadRequest(new { error = "Valid shopId is required" });
+
+            if (string.IsNullOrWhiteSpace(orderSn))
+                return BadRequest(new { error = "orderSn is required" });
+
+            var result = await _shopeeApiService.GetTrackingInfoAsync(shopId, orderSn, packageNumber);
+            return Ok(result.RootElement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error getting tracking info - ShopId: {ShopId}, OrderSn: {OrderSn}", shopId, orderSn);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Obtém os parâmetros disponíveis para geração do documento de envio (etiqueta).
+    /// Retorna os tipos de documento disponíveis e informações necessárias antes de chamar create_shipping_document.
+    /// Ref: https://open.shopee.com/documents/v2/v2.logistics.get_shipping_document_parameter
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="request">Lista de pedidos com order_sn e opcionalmente package_number</param>
+    /// <remarks>
+    /// Exemplo de requisição:
+    ///
+    ///     POST /shopee-interface/logistics/shipping-document-parameter?shopId=226289035
+    ///     {
+    ///         "order_list": [
+    ///             { "order_sn": "201201E81SYYKE", "package_number": "60489687088750" },
+    ///             { "order_sn": "201201V81SYYDG" }
+    ///         ]
+    ///     }
+    ///
+    /// Fluxo recomendado:
+    /// 1. POST logistics/shipping-document-parameter → verifica tipos disponíveis
+    /// 2. POST logistics/shipping-document/create    → cria o documento
+    /// 3. POST logistics/shipping-document/result    → aguarda status READY
+    /// 4. POST logistics/shipping-document/download  → baixa o PDF
+    /// </remarks>
+    [HttpPost("logistics/shipping-document-parameter")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetShippingDocumentParameter(
+        [FromQuery] long shopId,
+        [FromBody] ShippingDocumentRequest request)
+    {
+        _logger.LogInformation("[SHOPEE-TEST] GetShippingDocumentParameter - ShopId: {ShopId}, Orders: {Count}",
+            shopId, request?.OrderList?.Count ?? 0);
+
+        try
+        {
+            if (shopId <= 0)
+                return BadRequest(new { error = "Valid shopId is required" });
+
+            if (request?.OrderList == null || request.OrderList.Count == 0)
+                return BadRequest(new { error = "order_list is required and cannot be empty" });
+
+            var result = await _shopeeApiService.GetShippingDocumentParameterAsync(shopId, request.OrderList.Cast<object>());
+            return Ok(result.RootElement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error getting shipping document parameter - ShopId: {ShopId}", shopId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Cria o documento de envio (etiqueta) para um ou mais pedidos.
+    /// Deve ser chamado antes de get-shipping-document e download-shipping-document.
+    /// Ref: https://open.shopee.com/documents/v2/v2.logistics.create_shipping_document
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="request">Lista de pedidos para os quais criar o documento</param>
+    /// <remarks>
+    /// Exemplo de requisição:
+    ///
+    ///     POST /shopee-interface/logistics/shipping-document/create?shopId=226289035
+    ///     {
+    ///         "order_list": [
+    ///             { "order_sn": "260227RU6TQ98E" }
+    ///         ]
+    ///     }
+    ///
+    /// O campo "package_number" é opcional e necessário apenas quando o pedido possui split de pacotes.
+    /// </remarks>
+    [HttpPost("logistics/shipping-document/create")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> CreateShippingDocument(
+        [FromQuery] long shopId,
+        [FromBody] ShippingDocumentRequest request)
+    {
+        _logger.LogInformation("[SHOPEE-TEST] CreateShippingDocument - ShopId: {ShopId}, Orders: {Count}",
+            shopId, request?.OrderList?.Count ?? 0);
+
+        try
+        {
+            if (shopId <= 0)
+                return BadRequest(new { error = "Valid shopId is required" });
+
+            if (request?.OrderList == null || request.OrderList.Count == 0)
+                return BadRequest(new { error = "order_list is required and cannot be empty" });
+
+            var result = await _shopeeApiService.CreateShippingDocumentAsync(shopId, request.OrderList);
+            return Ok(result.RootElement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error creating shipping document - ShopId: {ShopId}", shopId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Obtém o resultado do documento de envio, incluindo a URL do PDF da etiqueta.
+    /// Endpoint Shopee: POST /api/v2/logistics/get_shipping_document_result
+    /// Ref: https://open.shopee.com/documents/v2/v2.logistics.get_shipping_document_result
+    ///
+    /// Deve ser chamado após create_shipping_document.
+    /// Repita a chamada até o status retornar READY antes de tentar o download direto.
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="request">Lista de pedidos e tipo do documento</param>
+    /// <remarks>
+    /// Exemplo de requisição:
+    ///
+    ///     POST /shopee-interface/logistics/shipping-document/result?shopId=226289035
+    ///     {
+    ///         "order_list": [
+    ///             { "order_sn": "260227RU6TQ98E" }
+    ///         ],
+    ///         "shipping_document_type": "THERMAL_AIR_WAYBILL"
+    ///     }
+    ///
+    /// Status possíveis na resposta: PROCESSING, READY, FAILED.
+    /// Quando READY, a resposta conterá a URL do PDF da etiqueta.
+    /// </remarks>
+    [HttpPost("logistics/shipping-document/result")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetShippingDocumentResult(
+        [FromQuery] long shopId,
+        [FromBody] DownloadShippingDocumentRequest request)
+    {
+        _logger.LogInformation("[SHOPEE-TEST] GetShippingDocumentResult - ShopId: {ShopId}, Orders: {Count}, DocumentType: {DocumentType}",
+            shopId, request?.OrderList?.Count ?? 0, request?.ShippingDocumentType);
+
+        try
+        {
+            if (shopId <= 0)
+                return BadRequest(new { error = "Valid shopId is required" });
+
+            if (request?.OrderList == null || request.OrderList.Count == 0)
+                return BadRequest(new { error = "order_list is required and cannot be empty" });
+
+            var docType = string.IsNullOrWhiteSpace(request.ShippingDocumentType)
+                ? "THERMAL_AIR_WAYBILL"
+                : request.ShippingDocumentType;
+
+            var result = await _shopeeApiService.GetShippingDocumentResultAsync(shopId, request.OrderList.Cast<object>(), docType);
+            return Ok(result.RootElement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error getting shipping document result - ShopId: {ShopId}", shopId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Faz o download da etiqueta de envio.
+    /// Somente deve ser chamado após create e quando get-shipping-document retornar status READY.
+    /// Ref: https://open.shopee.com/documents/v2/v2.logistics.download_shipping_document
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="request">Lista de pedidos e tipo de documento</param>
+    /// <remarks>
+    /// Fluxo correto:
+    /// 1. POST logistics/shipping-document/create  → cria o documento
+    /// 2. POST logistics/shipping-document/status  → aguarda status READY
+    /// 3. POST logistics/shipping-document/download → baixa a etiqueta (URL do PDF)
+    ///
+    /// Exemplo de requisição:
+    ///
+    ///     POST /shopee-interface/logistics/shipping-document/download?shopId=226289035
+    ///     {
+    ///         "order_list": [
+    ///             { "order_sn": "260227RU6TQ98E" }
+    ///         ],
+    ///         "shipping_document_type": "THERMAL_AIR_WAYBILL"
+    ///     }
+    ///
+    /// Valores possíveis para shipping_document_type:
+    /// - THERMAL_AIR_WAYBILL  (etiqueta térmica - mais comum)
+    /// - A4_AIR_WAYBILL       (formato A4)
+    /// - OFFICIAL_AIR_WAYBILL (etiqueta oficial da transportadora)
+    /// </remarks>
+    [HttpPost("logistics/shipping-document/download")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> DownloadShippingDocument(
+        [FromQuery] long shopId,
+        [FromBody] DownloadShippingDocumentRequest request)
+    {
+        _logger.LogInformation("[SHOPEE-TEST] DownloadShippingDocument - ShopId: {ShopId}, Orders: {Count}, DocumentType: {DocumentType}",
+            shopId, request?.OrderList?.Count ?? 0, request?.ShippingDocumentType);
+
+        try
+        {
+            if (shopId <= 0)
+                return BadRequest(new { error = "Valid shopId is required" });
+
+            if (request?.OrderList == null || request.OrderList.Count == 0)
+                return BadRequest(new { error = "order_list is required and cannot be empty" });
+
+            var docType = string.IsNullOrWhiteSpace(request.ShippingDocumentType)
+                ? "THERMAL_AIR_WAYBILL"
+                : request.ShippingDocumentType;
+
+            var (fileBytes, contentType) = await _shopeeApiService.DownloadShippingDocumentAsync(
+                shopId, request.OrderList.Cast<object>(), docType);
+
+            var fileName = docType == "THERMAL_AIR_WAYBILL"
+                ? $"shipping_label_{shopId}_{DateTime.UtcNow:yyyyMMddHHmmss}.pdf"
+                : $"shipping_document_{shopId}_{DateTime.UtcNow:yyyyMMddHHmmss}.pdf";
+
+            _logger.LogInformation("[SHOPEE-TEST] DownloadShippingDocument - returning file: {FileName}, Bytes: {Bytes}",
+                fileName, fileBytes.Length);
+
+            return File(fileBytes, contentType, fileName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SHOPEE-TEST] Error downloading shipping document - ShopId: {ShopId}", shopId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
+    #endregion
 }
 
 /// <summary>
@@ -648,5 +1268,64 @@ public class TokenResponse
 public class CachedTokenResponse
 {
     public string AccessToken { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Request para criar ou verificar status do documento de envio
+/// </summary>
+public class ShippingDocumentRequest
+{
+    /// <summary>
+    /// Lista de pedidos. Cada item deve ter ao menos order_sn.
+    /// O campo package_number é opcional (usado quando o pedido tem split de pacotes).
+    /// Exemplo: [{ "order_sn": "260227RU6TQ98E" }]
+    /// </summary>
+    [System.Text.Json.Serialization.JsonPropertyName("order_list")]
+    public List<ShippingOrderItem> OrderList { get; set; } = new();
+}
+
+/// <summary>
+/// Request para download do documento de envio
+/// </summary>
+public class DownloadShippingDocumentRequest
+{
+    /// <summary>
+    /// Lista de pedidos. Cada item deve ter ao menos order_sn.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonPropertyName("order_list")]
+    public List<ShippingOrderItem> OrderList { get; set; } = new();
+
+    /// <summary>
+    /// Tipo do documento de envio.
+    /// Valores: THERMAL_AIR_WAYBILL (default), A4_AIR_WAYBILL, OFFICIAL_AIR_WAYBILL
+    /// </summary>
+    [System.Text.Json.Serialization.JsonPropertyName("shipping_document_type")]
+    public string ShippingDocumentType { get; set; } = "THERMAL_AIR_WAYBILL";
+}
+
+/// <summary>
+/// Item de pedido para requisições de documento de envio
+/// </summary>
+public class ShippingOrderItem
+{
+    /// <summary>
+    /// Número do pedido na Shopee
+    /// </summary>
+    [JsonPropertyName("order_sn")]
+    public string OrderSn { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Número do pacote (opcional - usado quando o pedido tem split de pacotes)
+    /// </summary>
+    [JsonPropertyName("package_number")]
+    public string? PackageNumber { get; set; }
+    /// <summary>
+    /// Número do pacote (opcional - usado quando o pedido tem split de pacotes)
+    /// </summary>
+    [JsonPropertyName("tracking_number")]
+    public string? TrackingNumber { get; set; }
+    
+    [JsonPropertyName("shipping_document_type")]
+    public string ShippingDocumentType { get; set; } = "NORMAL_AIR_WAYBILL";
 }
 

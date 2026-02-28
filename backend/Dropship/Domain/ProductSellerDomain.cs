@@ -1,3 +1,7 @@
+using System.Globalization;
+using Amazon.DynamoDBv2.Model;
+using Dropship.Helpers;
+
 namespace Dropship.Domain;
 
 /// <summary>
@@ -35,48 +39,60 @@ public class ProductSellerDomain
 /// </summary>
 public static class ProductSellerMapper
 {
-    public static ProductSellerDomain ToDomain(this Dictionary<string, Amazon.DynamoDBv2.Model.AttributeValue> item)
+    public static ProductSellerDomain ToDomain(this Dictionary<string, AttributeValue> item)
     {
-        // Parsear CreatedAt
-        var createdAtString = item.ContainsKey("created_at") ? item["created_at"].S : DateTime.UtcNow.ToString("O");
-        DateTime.TryParse(createdAtString, null, System.Globalization.DateTimeStyles.RoundtripKind, out var createdAt);
-
-        // Parsear UpdatedAt
-        var updatedAtString = item.ContainsKey("updated_at") ? item["updated_at"].S : null;
-        DateTime.TryParse(updatedAtString, null, System.Globalization.DateTimeStyles.RoundtripKind, out var updatedAt);
-
         return new ProductSellerDomain
         {
-            // Chaves
-            Pk = item.ContainsKey("PK") ? item["PK"].S : "",
-            Sk = item.ContainsKey("SK") ? item["SK"].S : "",
-
-            // Identificadores
-            EntityType = item.ContainsKey("entity_type") ? item["entity_type"].S : "product_seller",
-            ProductId = item.ContainsKey("product_id") ? item["product_id"].S : "",
-            ProductName = item.ContainsKey("product_name") ? item["product_name"].S : "",
-            SellerId = item.ContainsKey("seller_id") ? item["seller_id"].S : "",
-            SupplierId = item.ContainsKey("supplier_id") ? item["supplier_id"].S : "",
-
-            // Marketplace
-            Marketplace = item.ContainsKey("marketplace") ? item["marketplace"].S : "",
-            StoreId = item.ContainsKey("store_id") && long.TryParse(item["store_id"].N, out var storeId) ? storeId : 0,
-
-            MarketplaceItemId = item.ContainsKey("marketplace_item_id") && long.TryParse(item["marketplace_item_id"].N, out var itemId) ? itemId : 0,
-            Price = item.ContainsKey("price") && decimal.TryParse(item["price"].N, out var price) ? price : 0,
-
-            // Dados
-            SkuCount = item.ContainsKey("sku_count") && int.TryParse(item["sku_count"].N, out var count) ? count : 0,
-
-            // Metadata
-            CreatedAt = createdAt,
-            UpdatedAt = updatedAtString != null ? updatedAt : null
+            Pk                = item.GetS("PK"),
+            Sk                = item.GetS("SK"),
+            EntityType        = item.GetS("entity_type", "product_seller"),
+            ProductId         = item.GetS("product_id"),
+            ProductName       = item.GetS("product_name"),
+            SellerId          = item.GetS("seller_id"),
+            SupplierId        = item.GetS("supplier_id"),
+            Marketplace       = item.GetS("marketplace"),
+            StoreId           = item.GetN<long>("store_id"),
+            MarketplaceItemId = item.GetN<long>("marketplace_item_id"),
+            Price             = item.GetDecimal("price"),
+            SkuCount          = item.GetN<int>("sku_count"),
+            CreatedAt         = item.GetDateTimeS("created_at"),
+            UpdatedAt         = item.GetDateTimeSNullable("updated_at"),
         };
     }
 
-    public static List<ProductSellerDomain> ToDomainList(this List<Dictionary<string, Amazon.DynamoDBv2.Model.AttributeValue>> items)
+    /// <summary>
+    /// Converte ProductSellerDomain para Dictionary pronto para salvar no DynamoDB
+    /// </summary>
+    public static Dictionary<string, AttributeValue> ToDynamoDb(this ProductSellerDomain domain)
+    {
+        var item = new Dictionary<string, AttributeValue>
+        {
+            { "PK", new AttributeValue { S = domain.Pk } },
+            { "SK", new AttributeValue { S = domain.Sk } },
+            { "entity_type", new AttributeValue { S = domain.EntityType } },
+            { "product_id", new AttributeValue { S = domain.ProductId } },
+            { "product_name", new AttributeValue { S = domain.ProductName } },
+            { "seller_id", new AttributeValue { S = domain.SellerId } },
+            { "supplier_id", new AttributeValue { S = domain.SupplierId } },
+            { "marketplace", new AttributeValue { S = domain.Marketplace } },
+            { "store_id", new AttributeValue { N = domain.StoreId.ToString(CultureInfo.InvariantCulture) } },
+            { "marketplace_item_id", new AttributeValue { N = domain.MarketplaceItemId.ToString(CultureInfo.InvariantCulture) } },
+            { "price", new AttributeValue { N = domain.Price.ToString("0.00", CultureInfo.InvariantCulture) } },
+            { "sku_count", new AttributeValue { N = domain.SkuCount.ToString(CultureInfo.InvariantCulture) } },
+            { "created_at", new AttributeValue { S = domain.CreatedAt.ToString("O") } },
+        };
+
+        // Adicionar updated_at se fornecido
+        if (domain.UpdatedAt.HasValue)
+        {
+            item["updated_at"] = new AttributeValue { S = domain.UpdatedAt.Value.ToString("O") };
+        }
+
+        return item;
+    }
+
+    public static List<ProductSellerDomain> ToDomainList(this List<Dictionary<string, AttributeValue>> items)
     {
         return items.Select(ToDomain).ToList();
     }
 }
-

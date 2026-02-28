@@ -1,3 +1,4 @@
+using Amazon.DynamoDBv2.Model;
 using System.Globalization;
 
 namespace Dropship.Domain;
@@ -31,7 +32,7 @@ public class PaymentDomain
 
 public static class PaymentMapper
 {
-    public static PaymentDomain ToDomain(this Dictionary<string, Amazon.DynamoDBv2.Model.AttributeValue> item)
+    public static PaymentDomain ToDomain(this Dictionary<string, AttributeValue> item)
     {
         return new PaymentDomain
         {

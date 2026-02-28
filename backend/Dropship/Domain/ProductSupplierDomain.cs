@@ -1,3 +1,6 @@
+using Amazon.DynamoDBv2.Model;
+using Dropship.Helpers;
+
 namespace Dropship.Domain;
 
 /// <summary>
@@ -31,37 +34,25 @@ public class ProductSupplierDomain
 /// </summary>
 public static class ProductSupplierMapper
 {
-    public static ProductSupplierDomain ToDomain(this Dictionary<string, Amazon.DynamoDBv2.Model.AttributeValue> item)
+    public static ProductSupplierDomain ToDomain(this Dictionary<string, AttributeValue> item)
     {
-        // Parsear CreatedAt - formato ISO 8601
-        var createdAtString = item.ContainsKey("created_at") ? item["created_at"].S : DateTime.UtcNow.ToString("O");
-        DateTime.TryParse(createdAtString, null, System.Globalization.DateTimeStyles.RoundtripKind, out var createdAt);
-
         return new ProductSupplierDomain
         {
-            // Chaves
-            Pk = item.ContainsKey("PK") ? item["PK"].S : "",
-            Sk = item.ContainsKey("SK") ? item["SK"].S : "",
-
-            // Identificadores
-            EntityType = item.ContainsKey("entity_type") ? item["entity_type"].S : "product_supplier",
-            ProductId = item.ContainsKey("product_id") ? item["product_id"].S : "",
-            SupplierId = item.ContainsKey("supplier_id") ? item["supplier_id"].S : "",
-            ProductName = item.ContainsKey("product_name") ? item["product_name"].S : "",
-
-            SkuCount = item.ContainsKey("sku_count") && int.TryParse(item["sku_count"].N, out var count) ? count : 0,
-            
-            // Preços com CultureInfo.InvariantCulture
-            MinPrice = item.ContainsKey("min_price") && decimal.TryParse(item["min_price"].N, System.Globalization.CultureInfo.InvariantCulture, out var minPrice) ? minPrice : 0,
-            MaxPrice = item.ContainsKey("max_price") && decimal.TryParse(item["max_price"].N, System.Globalization.CultureInfo.InvariantCulture, out var maxPrice) ? maxPrice : 0,
-            
-            CreatedAt = createdAt
+            Pk          = item.GetS("PK"),
+            Sk          = item.GetS("SK"),
+            EntityType  = item.GetS("entity_type", "product_supplier"),
+            ProductId   = item.GetS("product_id"),
+            SupplierId  = item.GetS("supplier_id"),
+            ProductName = item.GetS("product_name"),
+            SkuCount    = item.GetN<int>("sku_count"),
+            MinPrice    = item.GetDecimal("min_price"),
+            MaxPrice    = item.GetDecimal("max_price"),
+            CreatedAt   = item.GetDateTimeS("created_at"),
         };
     }
 
-    public static List<ProductSupplierDomain> ToDomainList(this List<Dictionary<string, Amazon.DynamoDBv2.Model.AttributeValue>> items)
+    public static List<ProductSupplierDomain> ToDomainList(this List<Dictionary<string, AttributeValue>> items)
     {
         return items.Select(ToDomain).ToList();
     }
 }
-

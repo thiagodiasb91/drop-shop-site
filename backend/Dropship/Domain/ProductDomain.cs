@@ -1,4 +1,5 @@
 using Amazon.DynamoDBv2.Model;
+using Dropship.Helpers;
 
 namespace Dropship.Domain;
 
@@ -34,28 +35,18 @@ public static class ProductMapper
 {
     public static ProductDomain ToDomain(this Dictionary<string, AttributeValue> item)
     {
-        // Parsear CreatedAt
-        var createdAtString = item.ContainsKey("created_at") ? item["created_at"].S : DateTime.UtcNow.ToString("O");
-        DateTime.TryParse(createdAtString, null, System.Globalization.DateTimeStyles.RoundtripKind, out var createdAt);
-
-        // Parsear UpdatedAt
-        var updatedAtString = item.ContainsKey("updated_at") ? item["updated_at"].S : null;
-        DateTime.TryParse(updatedAtString, null, System.Globalization.DateTimeStyles.RoundtripKind, out var updatedAt);
-
         return new ProductDomain
         {
-            PK = item.TryGetValue("PK", out var pk) ? pk.S : "",
-            SK = item.TryGetValue("SK", out var sk) ? sk.S : "",
-
-            Id = item.ContainsKey("product_id") ? item["product_id"].S : "",
-            EntityType = item.ContainsKey("entity_type") ? item["entity_type"].S : "product",
-            
-            Name = item.ContainsKey("product_name") ? item["product_name"].S : "",
-            Description = item.ContainsKey("product_description") ? item["product_description"].S : "",
-            ImageUrl = item.ContainsKey("product_image_url") ? item["product_image_url"].S : "",
-            CreatedAt = createdAt,
-            CategoryId = item.TryGetValue("product_category_id", out var categoryId) ? int.Parse(categoryId.N) : default,
-            UpdatedAt = updatedAtString != null ? updatedAt : null
+            PK          = item.GetS("PK"),
+            SK          = item.GetS("SK"),
+            Id          = item.GetS("product_id"),
+            EntityType  = item.GetS("entity_type", "product"),
+            Name        = item.GetS("product_name"),
+            Description = item.GetS("product_description"),
+            ImageUrl    = item.GetS("product_image_url"),
+            CategoryId  = item.GetN<int>("product_category_id"),
+            CreatedAt   = item.GetDateTimeS("created_at"),
+            UpdatedAt   = item.GetDateTimeSNullable("updated_at"),
         };
     }
 }

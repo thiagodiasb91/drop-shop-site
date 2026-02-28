@@ -1,3 +1,6 @@
+using Amazon.DynamoDBv2.Model;
+using Dropship.Helpers;
+
 namespace Dropship.Domain;
 
 public class UserDomain
@@ -13,18 +16,16 @@ public class UserDomain
 
 public static class UserMapper
 {
-    public static UserDomain ToDomain(this Dictionary<string, Amazon.DynamoDBv2.Model.AttributeValue> item)
+    public static UserDomain ToDomain(this Dictionary<string, AttributeValue> item)
     {
-        var resourceId = item.ContainsKey("resource_id") ? item["resource_id"].S : null;
-        
-        return new UserDomain 
+        return new UserDomain
         {
-            PK = item["PK"].S,
-            SK = item["SK"].S,
-            Email = item["email"].S,
-            Id = item["id"].S,
-            Role = item["role"].S,
-            ResourceId = resourceId
+            PK         = item.GetS("PK"),
+            SK         = item.GetS("SK"),
+            Email      = item.GetS("email"),
+            Id         = item.GetS("id"),
+            Role       = item.GetS("role"),
+            ResourceId = item.GetSNullable("resource_id"),
         };
     }
 }

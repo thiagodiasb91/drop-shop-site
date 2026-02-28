@@ -1,88 +1,96 @@
-using Dropship.Repository;
 using Microsoft.AspNetCore.Mvc;
+using Dropship.Services;
 using Dropship.Requests;
 using Dropship.Responses;
-using Dropship.Services;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Dropship.Controllers;
 
 /// <summary>
-/// Controller para webhooks do Shopee
+/// Controller para processar webhooks do InfinityPay
+/// Recebe notificações de pagamentos e atualiza o status
 /// </summary>
 [ApiController]
-[Route("shopee")]
-public class ShopeeWebhookController(
+[Route("webhook")]
+public class WebhookController(
+    PaymentService paymentService,
     ShopeeService shopeeService,
-    ShopeeApiService shopeeApiService,
-    SellerRepository sellerRepository,
-    ILogger<ShopeeWebhookController> logger)
+    ILogger<WebhookController> logger)
     : ControllerBase
 {
-    private const int EventCodeNewOrderReceived = 3;
-
+    private const int EventCodeNewOrderReceived = 3;    
     /// <summary>
-    /// Gera a URL para autorização do Shopee
-    /// Esta é a URL que deve ser fornecida ao cliente para autorizar a API
-    /// A URL de redirect será configurada para: https://inv6sa4cb0.execute-api.us-east-1.amazonaws.com/dev/shopee/auth?email={email}
+    /// Webhook para notificação de pagamento do InfinityPay
+    /// Formato orderNsu esperado: paymentId1-paymentId2-...-paymentIdN
+    /// Suporta múltiplos pagamentos em um único webhook
+    /// Exemplo: abc123def456-xyz789uvw012-qrs345tuvwxy
     /// </summary>
-    /// <param name="email">Email do usuário que será autorizado</param>
-    /// <returns>URL de autorização com assinatura HMAC</returns>
-    [HttpGet("auth-url")]
-    [AllowAnonymous]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public IActionResult GetAuthorizationUrl([FromQuery] string email)
+    [HttpPost("infinitypay/payment")]
+    public async Task<IActionResult> ProcessPaymentWebhook([FromBody] InfinityPayWebhookRequest request)
     {
-        var origin = Request.Headers.Origin;
-        logger.LogInformation("Generating Shopee authorization URL - Email: {Email}", email);
-
-        if (string.IsNullOrWhiteSpace(email))
-        {
-            logger.LogWarning("Invalid request - email parameter is required");
-            return BadRequest(new ShopeeWebhookResponse
-            {
-                StatusCode = 400,
-                Message = "Email parameter is required"
-            });
-        }
-
         try
         {
-            var authUrl = shopeeApiService.GetAuthUrl(email, origin);
+            logger.LogInformation(
+                "Received InfinityPay webhook - InvoiceSlug: {InvoiceSlug}, Amount: {Amount}, OrderNsu: {OrderNsu}",
+                request.InvoiceSlug, request.PaidAmount, request.OrderNsu);
 
-            logger.LogInformation("Shopee authorization URL generated successfully - Email: {Email}", email);
+            // Validar campos obrigatórios
+            if (string.IsNullOrWhiteSpace(request.InvoiceSlug))
+            {
+                logger.LogWarning("InfinityPay webhook missing invoice_slug");
+                return BadRequest(new { error = "invoice_slug is required" });
+            }
+
+            if (string.IsNullOrWhiteSpace(request.OrderNsu))
+            {
+                logger.LogWarning("InfinityPay webhook missing order_nsu");
+                return BadRequest(new { error = "order_nsu is required" });
+            }
+
+            logger.LogInformation(
+                "Processing InfinityPay payment - InvoiceSlug: {InvoiceSlug}, Amount: {Amount}, OrderNsu: {OrderNsu}",
+                request.InvoiceSlug, request.PaidAmount, request.OrderNsu);
+
+            // Processar o pagamento usando o link
+            // O orderNsu aqui é o webhookOrderNsu que contém os paymentIds
+            await paymentService.ProcessPaymentWebhookWithLinkAsync(
+                linkId: request.OrderNsu,
+                paidAmount: request.PaidAmount / 100m,
+                installments: request.Installments,
+                transactionNsu: request.TransactionNsu,
+                captureMethod: request.CaptureMethod,
+                receiptUrl: request.ReceiptUrl);
+
+            logger.LogInformation(
+                "InfinityPay payment processed successfully - InvoiceSlug: {InvoiceSlug}",
+                request.InvoiceSlug);
 
             return Ok(new
             {
                 statusCode = 200,
-                message = "Authorization URL generated successfully",
-                authUrl
+                message = "Payment processed successfully",
+                invoiceSlug = request.InvoiceSlug,
+                orderNsu = request.OrderNsu
             });
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogError(ex, "Invalid operation in InfinityPay webhook");
+            return NotFound(new { error = ex.Message });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error generating Shopee authorization URL - Email: {Email}", email);
-            return StatusCode(StatusCodes.Status500InternalServerError, new ShopeeWebhookResponse
-            {
-                StatusCode = 500,
-                Message = "Error generating authorization URL"
-            });
+            logger.LogError(ex, "Error processing InfinityPay webhook");
+            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
         }
     }
-
-    [HttpGet("/sellers/{email}/store/code")]
-    public async Task<IActionResult> MockResponseTest([FromRoute] string email, [FromQuery] string code, [FromQuery(Name = "shop_id")] long shopId)
-    {
-        return Ok(await shopeeApiService.GetCachedAccessTokenAsync(shopId, code));
-    }
     
-    /// <summary>
+     /// <summary>
     /// Webhook para receber eventos do Shopee
     /// </summary>
     /// <param name="request">Payload do webhook do Shopee</param>
     /// <returns>Resposta do webhook</returns>
-    [HttpPost("/webhook")]
+    [HttpPost("shopee")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(ShopeeWebhookResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ShopeeWebhookResponse), StatusCodes.Status400BadRequest)]
@@ -158,6 +166,17 @@ public class ShopeeWebhookController(
                     });
                 }
 
+                
+                if (request.Data.Status != "READY_TO_SHIP")
+                {
+                    logger.LogWarning("Order status is not READY_TO_SHIP - OrderSn: {OrderSn}, Status: {Status}", request.Data.OrderSn, request.Data.Status);
+                    
+                    return StatusCode(400,new
+                    {
+                        message = $"Order status {request.Data.Status} is not READY_TO_SHIP, skipping processing" 
+                    });
+                }
+                
                 // Processar ordem
                 await shopeeService.ProcessOrderReceivedAsync(
                     request.ShopId,
@@ -205,3 +224,8 @@ public class ShopeeWebhookController(
         }
     }
 }
+
+
+
+
+

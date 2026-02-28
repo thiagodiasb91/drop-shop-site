@@ -66,8 +66,9 @@ public class ProductSkuSupplierRepository
             { "sku", new AttributeValue { S = record.Sku } },
             { "supplier_id", new AttributeValue { S = record.SupplierId } },
             { "sku_supplier", new AttributeValue { S = record.SkuSupplier} },
-            { "price", new AttributeValue { N = record.Price.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
-            { "quantity", new AttributeValue { N = record.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture) } }
+            { "price", new AttributeValue { N = record.Price.ToString() } },
+            { "quantity", new AttributeValue { N = record.Quantity.ToString() } },
+            { "created_at", new AttributeValue { S = DateTime.UtcNow.ToString("O") } }
         };
 
         await _repository.PutItemAsync(item);
@@ -128,13 +129,14 @@ public class ProductSkuSupplierRepository
             {
                 { ":pk", new AttributeValue { S = $"Product#{productId}" } },
                 { ":sk_pattern", new AttributeValue { S = $"Sku#" } },
-                { ":supplier", new AttributeValue { S = supplierId } }
+                { ":supplier", new AttributeValue { S = supplierId } },
+                { ":entity_type", new AttributeValue{ S = "product_sku_supplier"} }
             };
 
             var items = await _repository.QueryTableAsync(
                 keyConditionExpression: "PK = :pk AND begins_with(SK, :sk_pattern)",
                 expressionAttributeValues: expressionAttributeValues,
-                filterExpression: "supplier_id = :supplier"
+                filterExpression: "supplier_id = :supplier AND entity_type = :entity_type"
             );
 
             if (items == null || items.Count == 0)
@@ -277,6 +279,45 @@ public class ProductSkuSupplierRepository
         {
             _logger.LogError(ex, "Error getting product-sku-supplier record - ProductId: {ProductId}, SKU: {Sku}",
                 productId, sku);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Atualiza o estoque do fornecedor (subtrai a quantidade vendida)
+    /// Chamado quando um pedido é processado e precisa descontar do estoque do fornecedor
+    /// </summary>
+    public async Task UpdateSupplierStockAsync(string productId, string sku, string supplierId, int quantity)
+    {
+        _logger.LogInformation(
+            "Updating supplier stock - ProductId: {ProductId}, SKU: {SKU}, SupplierId: {SupplierId}, Quantity: {Quantity}",
+            productId, sku, supplierId, quantity);
+
+        try
+        {
+            var key = new Dictionary<string, AttributeValue>
+            {
+                { "PK", new AttributeValue { S = $"Product#{productId}" } },
+                { "SK", new AttributeValue { S = $"Sku#{sku}#Supplier#{supplierId}" } }
+            };
+
+            await _repository.UpdateItemAsync(
+                key: key,
+                updateExpression: "SET quantity = quantity - :quantity",
+                expressionAttributeValues: new Dictionary<string, AttributeValue>
+                {
+                    { ":quantity", new AttributeValue { N = quantity.ToString() } }
+                }
+            );
+
+            _logger.LogInformation("Supplier stock updated - ProductId: {ProductId}, SKU: {SKU}, SupplierId: {SupplierId}",
+                productId, sku, supplierId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Error updating supplier stock - ProductId: {ProductId}, SKU: {SKU}, SupplierId: {SupplierId}",
+                productId, sku, supplierId);
             throw;
         }
     }

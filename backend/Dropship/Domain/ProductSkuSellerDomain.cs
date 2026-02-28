@@ -1,3 +1,7 @@
+using System.Globalization;
+using Amazon.DynamoDBv2.Model;
+using Dropship.Helpers;
+
 namespace Dropship.Domain;
 
 /// <summary>
@@ -23,7 +27,7 @@ public class ProductSkuSellerDomain
     // Marketplace
     public string Marketplace { get; set; } = default!; // ex: "shopee", "mercado_livre"
     public long StoreId { get; set; } // ID da loja no marketplace (ex: shop_id Shopee)
-    public string MarketplaceProductId { get; set; } = string.Empty; // ID do produto no marketplace
+    public string MarketplaceItemId { get; set; } = string.Empty; // ID do produto no marketplace
     public string MarketplaceModelId { get; set; } = string.Empty; // ID do modelo/SKU no marketplace
 
     // Dados
@@ -78,48 +82,64 @@ public static class ProductSkuSellerFactory
 /// </summary>
 public static class ProductSkuSellerMapper
 {
-    public static ProductSkuSellerDomain ToDomain(this Dictionary<string, Amazon.DynamoDBv2.Model.AttributeValue> item)
+    public static ProductSkuSellerDomain ToDomain(this Dictionary<string, AttributeValue> item)
     {
-        // Parsear CreatedAt
-        var createdAtString = item.ContainsKey("created_at") ? item["created_at"].S : DateTime.UtcNow.ToString("O");
-        DateTime.TryParse(createdAtString, null, System.Globalization.DateTimeStyles.RoundtripKind, out var createdAt);
-
-        // Parsear UpdatedAt
-        var updatedAtString = item.ContainsKey("updated_at") ? item["updated_at"].S : null;
-        DateTime.TryParse(updatedAtString, null, System.Globalization.DateTimeStyles.RoundtripKind, out var updatedAt);
-
         return new ProductSkuSellerDomain
         {
-            // Chaves
-            Pk = item.ContainsKey("PK") ? item["PK"].S : "",
-            Sk = item.ContainsKey("SK") ? item["SK"].S : "",
-
-            // Identificadores
-            EntityType = item.ContainsKey("entity_type") ? item["entity_type"].S : "product_sku_seller",
-            ProductId = item.ContainsKey("product_id") ? item["product_id"].S : "",
-            Sku = item.ContainsKey("sku") ? item["sku"].S : "",
-            SellerId = item.ContainsKey("seller_id") ? item["seller_id"].S : "",
-            SupplierId = item.ContainsKey("supplier_id") ? item["supplier_id"].S : "",
-
-            // Marketplace
-            Marketplace = item.ContainsKey("marketplace") ? item["marketplace"].S : "",
-            StoreId = item.ContainsKey("store_id") && long.TryParse(item["store_id"].N, out var storeId) ? storeId : 0,
-            MarketplaceProductId = item.ContainsKey("marketplace_item_id") ? item["marketplace_item_id"].S : "",
-            MarketplaceModelId = item.ContainsKey("marketplace_model_id") ? item["marketplace_model_id"].S : "",
-
-            // Dados
-            Price = item.ContainsKey("price") && decimal.TryParse(item["price"].N, System.Globalization.CultureInfo.InvariantCulture, out var price) ? price : 0,
-            Quantity = item.ContainsKey("quantity") && long.TryParse(item["quantity"].N, out var qty) ? qty : 0,
-
-            // Metadata
-            CreatedAt = createdAt,
-            UpdatedAt = updatedAtString != null ? updatedAt : null
+            Pk                 = item.GetS("PK"),
+            Sk                 = item.GetS("SK"),
+            EntityType         = item.GetS("entity_type", "product_sku_seller"),
+            ProductId          = item.GetS("product_id"),
+            Sku                = item.GetS("sku"),
+            SellerId           = item.GetS("seller_id"),
+            SupplierId         = item.GetS("supplier_id"),
+            Marketplace        = item.GetS("marketplace"),
+            StoreId            = item.GetN<long>("store_id"),
+            MarketplaceItemId  = item.GetS("marketplace_item_id"),
+            MarketplaceModelId = item.GetS("marketplace_model_id"),
+            Price              = item.GetDecimal("price"),
+            Quantity           = item.GetN<long>("quantity"),
+            CreatedAt          = item.GetDateTimeS("created_at"),
+            UpdatedAt          = item.GetDateTimeSNullable("updated_at"),
         };
     }
 
-    public static List<ProductSkuSellerDomain> ToDomainList(this List<Dictionary<string, Amazon.DynamoDBv2.Model.AttributeValue>> items)
+    /// <summary>
+    /// Converte ProductSkuSellerDomain para Dictionary pronto para salvar no DynamoDB
+    /// </summary>
+    public static Dictionary<string, AttributeValue> ToDynamoDb(this ProductSkuSellerDomain domain)
+    {
+        var item = new Dictionary<string, AttributeValue>
+        {
+            { "PK", new AttributeValue { S = domain.Pk } },
+            { "SK", new AttributeValue { S = domain.Sk } },
+            { "entity_type", new AttributeValue { S = domain.EntityType } },
+            { "product_id", new AttributeValue { S = domain.ProductId } },
+            { "sku", new AttributeValue { S = domain.Sku } },
+            { "supplier_id", new AttributeValue { S = domain.SupplierId } },
+            { "seller_id", new AttributeValue { S = domain.SellerId } },
+            { "marketplace", new AttributeValue { S = domain.Marketplace } },
+            { "store_id", new AttributeValue { N = domain.StoreId.ToString(CultureInfo.InvariantCulture) } },
+            { "marketplace_item_id", new AttributeValue { S = domain.MarketplaceItemId } },
+            { "marketplace_model_id", new AttributeValue { S = domain.MarketplaceModelId } },
+            { "price", new AttributeValue { N = domain.Price.ToString("0.00", CultureInfo.InvariantCulture) } },
+            { "quantity", new AttributeValue { N = domain.Quantity.ToString(CultureInfo.InvariantCulture) } },
+            { "color", new AttributeValue { S = domain.Color } },
+            { "size", new AttributeValue { S = domain.Size } },
+            { "created_at", new AttributeValue { S = domain.CreatedAt.ToString("O") } }
+        };
+
+        // Adicionar updated_at se fornecido
+        if (domain.UpdatedAt.HasValue)
+        {
+            item["updated_at"] = new AttributeValue { S = domain.UpdatedAt.Value.ToString("O") };
+        }
+
+        return item;
+    }
+
+    public static List<ProductSkuSellerDomain> ToDomainList(this List<Dictionary<string, AttributeValue>> items)
     {
         return items.Select(ToDomain).ToList();
     }
 }
-

@@ -53,30 +53,11 @@ public class ProductSkuSellerRepository(DynamoDbRepository repository, ILogger<P
 
     /// <summary>
     /// Cria um registro de Product-SKU-Seller no banco
-    /// Recebe o domain já construído
+    /// Recebe o domain já construído e o persiste usando o mapper
     /// </summary>
     private async Task<ProductSkuSellerDomain> CreateProductSkuSellerAsync(ProductSkuSellerDomain domain)
     {
-        var createdAtUtc = DateTime.UtcNow.ToString("O");
-
-        var item = new Dictionary<string, AttributeValue>
-        {
-            { "PK", new AttributeValue { S = domain.Pk } },
-            { "SK", new AttributeValue { S = domain.Sk } },
-            { "entity_type", new AttributeValue { S = domain.EntityType } },
-            { "product_id", new AttributeValue { S = domain.ProductId } },
-            { "sku", new AttributeValue { S = domain.Sku } },
-            { "supplier_id", new AttributeValue() { S = domain.SupplierId} },
-            { "seller_id", new AttributeValue { S = domain.SellerId } },
-            { "marketplace", new AttributeValue { S = domain.Marketplace } },
-            { "store_id", new AttributeValue { N = domain.StoreId.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
-            { "marketplace_product_id", new AttributeValue { S = domain.MarketplaceProductId } },
-            { "marketplace_model_id", new AttributeValue { S = domain.MarketplaceModelId } },
-            { "price", new AttributeValue { N = domain.Price.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) } },
-            { "quantity", new AttributeValue { N = domain.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture) } },
-            { "created_at", new AttributeValue { S = createdAtUtc } }
-        };
-
+        var item = domain.ToDynamoDb();
         await repository.PutItemAsync(item);
 
         return domain;
@@ -126,22 +107,16 @@ public class ProductSkuSellerRepository(DynamoDbRepository repository, ILogger<P
     /// <summary>
     /// Atualiza o preço de um SKU
     /// </summary>
-    public async Task<ProductSkuSellerDomain?> UpdatePriceAsync(
-        string productId,
-        string sku,
-        string sellerId,
-        string marketplace,
-        decimal price)
+    public async Task<ProductSkuSellerDomain?> UpdatePriceAsync(ProductSkuSellerDomain domain, decimal price)
     {
-        logger.LogInformation("Updating seller price - ProductId: {ProductId}, SKU: {Sku}, Price: {Price}",
-            productId, sku, price);
+        logger.LogInformation("Updating seller price - ProductId: {ProductId}, SKU: {Sku}, Price: {Price}", domain.ProductId, domain.Sku, price);
 
         try
         {
             var key = new Dictionary<string, AttributeValue>
             {
-                { "PK", new AttributeValue { S = $"Product#{productId}" } },
-                { "SK", new AttributeValue { S = $"Sku#{sku}#Seller#{marketplace}#{sellerId}" } }
+                { "PK", new AttributeValue { S = domain.Pk } },
+                { "SK", new AttributeValue { S = domain.Sk } }
             };
 
             var updateExpression = "SET price = :price, updated_at = :updated_at";
@@ -158,15 +133,85 @@ public class ProductSkuSellerRepository(DynamoDbRepository repository, ILogger<P
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error updating price - ProductId: {ProductId}, SKU: {Sku}",
-                productId, sku);
+            logger.LogError(ex, "Error updating price - ProductId: {ProductId}, SKU: {Sku}", domain.ProductId, domain.Sku);
             throw;
         }
     }
+    
+    /// <summary>
+    /// Atualiza o preço de um SKU
+    /// </summary>
+    public async Task<ProductSkuSellerDomain?> UpdateStockAsync(ProductSkuSellerDomain domain, int quantity)
+    {
+        logger.LogInformation("Updating seller price - ProductId: {ProductId}, SKU: {Sku}, Price: {Price}", domain.ProductId, domain.Sku, domain.Price);
+
+        try
+        {
+            var key = new Dictionary<string, AttributeValue>
+            {
+                { "PK", new AttributeValue { S = domain.Pk } },
+                { "SK", new AttributeValue { S = domain.Sk } }
+            };
+
+            var updateExpression = "SET quantity = :quantity, updated_at = :updated_at";
+            var expressionAttributeValues = new Dictionary<string, AttributeValue>
+            {
+                { ":quantity", new AttributeValue { N = quantity.ToString() } },
+                { ":updated_at", new AttributeValue { S = DateTime.UtcNow.ToString("O") } }
+            };
+
+            await repository.UpdateItemAsync(key, updateExpression, expressionAttributeValues);
+
+            var item = await repository.GetItemAsync(key);
+            return item != null ? ProductSkuSellerMapper.ToDomain(item) : null;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error updating price - ProductId: {ProductId}, SKU: {Sku}", domain.ProductId, domain.Sku);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Atualiza o supplier de um SKU
+    /// </summary>
+    public async Task<ProductSkuSellerDomain?> UpdateSupplierAsync(ProductSkuSellerDomain domain, string supplierId)
+    {
+        logger.LogInformation("Updating supplier - ProductId: {ProductId}, SKU: {Sku}, SupplierId: {SupplierId}", 
+            domain.ProductId, domain.Sku, supplierId);
+
+        try
+        {
+            var key = new Dictionary<string, AttributeValue>
+            {
+                { "PK", new AttributeValue { S = domain.Pk } },
+                { "SK", new AttributeValue { S = domain.Sk } }
+            };
+
+            var updateExpression = "SET supplier_id = :supplier_id, updated_at = :updated_at";
+            var expressionAttributeValues = new Dictionary<string, AttributeValue>
+            {
+                { ":supplier_id", new AttributeValue { S = supplierId } },
+                { ":updated_at", new AttributeValue { S = DateTime.UtcNow.ToString("O") } }
+            };
+
+            await repository.UpdateItemAsync(key, updateExpression, expressionAttributeValues);
+
+            var item = await repository.GetItemAsync(key);
+            return item != null ? ProductSkuSellerMapper.ToDomain(item) : null;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error updating supplier - ProductId: {ProductId}, SKU: {Sku}", 
+                domain.ProductId, domain.Sku);
+            throw;
+        }
+    }
+    
     /// <summary>
     /// Remove um vendedor de um SKU
     /// </summary>
-    public async Task<bool> RemoveSellerFromSkuAsync(string productId, string sku, string sellerId, string marketplace, string supplierId)
+    public async Task<bool> RemoveSellerFromSkuAsync(string productId, string sku, string sellerId, string marketplace)
     {
         logger.LogInformation("Removing seller from SKU - ProductId: {ProductId}, SKU: {Sku}, SellerId: {SellerId}",
             productId, sku, sellerId);
@@ -176,7 +221,7 @@ public class ProductSkuSellerRepository(DynamoDbRepository repository, ILogger<P
             var key = new Dictionary<string, AttributeValue>
             {
                 { "PK", new AttributeValue { S = $"Product#{productId}" } },
-                { "SK", new AttributeValue { S = $"Sku#{sku}#Seller#{marketplace}#{sellerId}#Suppliers#{supplierId}" } }
+                { "SK", new AttributeValue { S = $"Sku#{sku}#Seller#{marketplace}#{sellerId}" } }
             };
 
             await repository.DeleteItemAsync(key);
@@ -213,6 +258,38 @@ public class ProductSkuSellerRepository(DynamoDbRepository repository, ILogger<P
 
             var item = await repository.GetItemAsync(key);
             return item != null ? ProductSkuSellerMapper.ToDomain(item) : null;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting product-sku-seller record - ProductId: {ProductId}, SKU: {Sku}",
+                productId, sku);
+            throw;
+        }
+    }
+    
+    /// <summary>
+    /// Obtém um registro específico de Product-SKU-Seller
+    /// </summary>
+    public async Task<List<ProductSkuSellerDomain>?> GetProductSkuSellerBySupplier(
+        string productId, string sku, string marketplace, string supplierId)
+    {
+        logger.LogInformation("Getting product-sku-seller record - ProductId: {ProductId}, SKU: {Sku}, Supplier: {SupplierId}",
+            productId, sku, supplierId);
+
+        try
+        {
+            var items = await repository.QueryTableAsync(
+                keyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+                expressionAttributeValues: new Dictionary<string, AttributeValue>
+                {
+                    { ":pk", new AttributeValue { S = $"Product#{productId}" } },
+                    { ":sk", new AttributeValue { S = $"Sku#{sku}#Seller#{marketplace}" } },
+                    { ":supplier_id", new AttributeValue { S = supplierId } }
+                },
+                filterExpression: "supplier_id = :supplier_id"
+            );
+                
+            return items != null ? items.Select(ProductSkuSellerMapper.ToDomain).ToList() : null;
         }
         catch (Exception ex)
         {

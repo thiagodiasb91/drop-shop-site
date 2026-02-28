@@ -5,24 +5,25 @@ namespace Dropship.Repository;
 
 public class DynamoDbRepository(IAmazonDynamoDB client)
 {
-    private const string TableName = "catalog-core";
+    private string _tableName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "development" ? "catalog-core" : "catalog-core-prd";
 
     public async Task<Dictionary<string, AttributeValue>?> GetItemAsync(Dictionary<string, AttributeValue> key)
     {
-        var response = await client.GetItemAsync(TableName, key);
+        var response = await client.GetItemAsync(_tableName, key);
         return response != null && response.Item != null && response.Item.Any() ? response.Item : null;
     }
 
-    public async Task<PutItemResponse> PutItemAsync(Dictionary<string, AttributeValue> item)
+    public async Task PutItemAsync(Dictionary<string, AttributeValue> item)
     {
-        return await client.PutItemAsync(TableName, item);
+        await client.PutItemAsync(_tableName, item);
     }
 
-    public async Task<UpdateItemResponse> UpdateItemAsync(Dictionary<string, AttributeValue> key, string updateExpression, Dictionary<string, AttributeValue> expressionAttributeValues)
+    public async Task UpdateItemAsync(Dictionary<string, AttributeValue> key, string updateExpression,
+        Dictionary<string, AttributeValue> expressionAttributeValues)
     {
-        return await client.UpdateItemAsync(new UpdateItemRequest
+        await client.UpdateItemAsync(new UpdateItemRequest
         {
-            TableName = TableName,
+            TableName = _tableName,
             Key = key,
             UpdateExpression = updateExpression,
             ExpressionAttributeValues = expressionAttributeValues,
@@ -32,7 +33,7 @@ public class DynamoDbRepository(IAmazonDynamoDB client)
 
     public async Task<DeleteItemResponse> DeleteItemAsync(Dictionary<string, AttributeValue> key)
     {
-        return await client.DeleteItemAsync(TableName, key);
+        return await client.DeleteItemAsync(_tableName, key);
     }
 
     public async Task<List<Dictionary<string, AttributeValue>>> QueryTableAsync(
@@ -44,7 +45,7 @@ public class DynamoDbRepository(IAmazonDynamoDB client)
     {
         var request = new QueryRequest
         {
-            TableName = TableName,
+            TableName = _tableName,
             KeyConditionExpression = keyConditionExpression
         };
 

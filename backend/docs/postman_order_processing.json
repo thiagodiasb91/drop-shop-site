@@ -1,0 +1,101 @@
+{
+  "info": {
+    "name": "Order Processing Tests",
+    "description": "Collection de testes para o endpoint de processamento de pedidos",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Process Order - READY_TO_SHIP",
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:5000/orders/process",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"ordersn\": \"2501080NKAMXA8\",\n    \"status\": \"READY_TO_SHIP\",\n    \"update_time\": 1736323997,\n    \"shop_id\": 341431138\n}"
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Process Order - UNPAID (Should Not Process)",
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:5000/orders/process",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"ordersn\": \"2501080NKAMXA9\",\n    \"status\": \"UNPAID\",\n    \"update_time\": 1736323998,\n    \"shop_id\": 341431138\n}"
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Process Order - Missing OrderSn",
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:5000/orders/process",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"ordersn\": \"\",\n    \"status\": \"READY_TO_SHIP\",\n    \"update_time\": 1736323997,\n    \"shop_id\": 341431138\n}"
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Process Order - Invalid ShopId",
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:5000/orders/process",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"ordersn\": \"2501080NKAMXA8\",\n    \"status\": \"READY_TO_SHIP\",\n    \"update_time\": 1736323997,\n    \"shop_id\": 0\n}"
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Process Order - Multiple Items",
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:5000/orders/process",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"ordersn\": \"2501080NKAMXB0\",\n    \"status\": \"READY_TO_SHIP\",\n    \"update_time\": 1736324000,\n    \"shop_id\": 226477144\n}"
+        },
+        "description": "Teste com múltiplos itens no pedido"
+      },
+      "response": []
+    }
+  ]
+}
+
