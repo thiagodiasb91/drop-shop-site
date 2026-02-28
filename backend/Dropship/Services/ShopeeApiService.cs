@@ -17,7 +17,6 @@ public class ShopeeApiService
     private readonly ICacheService _cacheService;
     private readonly string _partnerId;
     private readonly string _partnerKey;
-
     // Configurações da Shopee - Sandbox Environment
     private const string SandboxApiHost = "https://openplatform.sandbox.test-stable.shopee.sg";
     private const string ProductionApiHost = "https://openplatform.shopee.com.br";
@@ -83,10 +82,9 @@ public class ShopeeApiService
                 
             _logger.LogDebug("HMAC Sign generated: {Sign}", sign);
                 
-            var sandboxHost = "https://openplatform.sandbox.test-stable.shopee.sg";
-            var url = $"{sandboxHost}{path}?partner_id={_partnerId}&redirect={Uri.EscapeDataString(redirectUrl)}&timestamp={timest}&sign={sign}";
+            var url = $"{urlHost}{path}?partner_id={_partnerId}&redirect={Uri.EscapeDataString(redirectUrl)}&timestamp={timest}&sign={sign}";
                 
-            _logger.LogInformation("Auth URL generated successfully - Host: {Host}, PartnerId: {PartnerId}, Timestamp: {Timestamp}, Sign: {Sign}", sandboxHost, _partnerId, timest, sign);
+            _logger.LogInformation("Auth URL generated successfully - Host: {Host}, PartnerId: {PartnerId}, Timestamp: {Timestamp}, Sign: {Sign}", urlHost, _partnerId, timest, sign);
             return url;
         }
         catch (Exception ex)
@@ -1524,6 +1522,159 @@ public class ShopeeApiService
     #region Logistics Methods
 
     /// <summary>
+    /// Obtém o número de rastreio de um pedido.
+    /// Endpoint: GET /api/v2/logistics/get_tracking_number
+    /// Ref: https://open.shopee.com/documents/v2/v2.logistics.get_tracking_number
+    ///
+    /// Retorna o tracking_number e a URL de rastreio do pedido.
+    /// O número de rastreio pode ser usado para acompanhar a entrega do pedido.
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="orderSn">Número do pedido</param>
+    /// <param name="packageNumber">Número do pacote (opcional — usar quando o pedido tem split de pacotes)</param>
+    /// <returns>JSON response com tracking_number e pltnm</returns>
+    public async Task<JsonDocument> GetTrackingNumberAsync(long shopId, string orderSn, string? packageNumber = null)
+    {
+        _logger.LogInformation("GetTrackingNumber - ShopId: {ShopId}, OrderSn: {OrderSn}", shopId, orderSn);
+
+        try
+        {
+            var accessToken = await GetCachedAccessTokenAsync(shopId);
+            var timestamp = ShopeeApiHelper.GetCurrentTimestamp();
+            const string path = "/api/v2/logistics/get_tracking_number";
+            var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
+
+            var url = $"{urlHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}&order_sn={orderSn}";
+
+            if (!string.IsNullOrWhiteSpace(packageNumber))
+                url += $"&package_number={packageNumber}";
+
+            _logger.LogDebug("GetTrackingNumber URL - ShopId: {ShopId}, OrderSn: {OrderSn}", shopId, orderSn);
+
+            var response = await _httpClient.GetAsync(url);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            _logger.LogDebug("GetTrackingNumber Response - StatusCode: {StatusCode}, Content: {Content}",
+                response.StatusCode, responseContent);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Failed to get tracking number: {response.StatusCode} - {responseContent}");
+            }
+
+            return JsonDocument.Parse(responseContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting tracking number - ShopId: {ShopId}, OrderSn: {OrderSn}", shopId, orderSn);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Obtém os parâmetros necessários para geração do documento de envio (etiqueta).
+    /// Endpoint: POST /api/v2/logistics/get_shipping_document_parameter
+    /// Ref: https://open.shopee.com/documents/v2/v2.logistics.get_shipping_document_parameter
+    ///
+    /// Retorna informações como tipos de documento disponíveis, required fields e
+    /// configurações necessárias antes de chamar create_shipping_document.
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="orderList">
+    /// Lista de pedidos. Cada item deve conter order_sn e opcionalmente package_number.
+    /// Exemplo: [{ "order_sn": "201201E81SYYKE", "package_number": "60489687088750" }, { "order_sn": "201201V81SYYDG" }]
+    /// </param>
+    /// <returns>JSON response com parâmetros disponíveis para o documento de envio</returns>
+    public async Task<JsonDocument> GetShippingDocumentParameterAsync(long shopId, IEnumerable<object> orderList)
+    {
+        _logger.LogInformation("GetShippingDocumentParameter - ShopId: {ShopId}", shopId);
+
+        try
+        {
+            var accessToken = await GetCachedAccessTokenAsync(shopId);
+            var timestamp = ShopeeApiHelper.GetCurrentTimestamp();
+            const string path = "/api/v2/logistics/get_shipping_document_parameter";
+            var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
+
+            var url = $"{urlHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}";
+
+            var body = new { order_list = orderList };
+            var jsonToPost = JsonSerializer.Serialize(body, new JsonSerializerOptions { WriteIndented = false });
+            _logger.LogInformation("GetShippingDocumentParameter Body: {Body}", jsonToPost);
+
+            var content = new StringContent(jsonToPost, Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync(url, content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            _logger.LogDebug("GetShippingDocumentParameter Response - StatusCode: {StatusCode}, Content: {Content}",
+                response.StatusCode, responseContent);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Failed to get shipping document parameter: {response.StatusCode} - {responseContent}");
+            }
+
+            return JsonDocument.Parse(responseContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting shipping document parameter - ShopId: {ShopId}", shopId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Obtém os parâmetros de logística necessários para realizar o envio de um pedido.
+    /// Endpoint: GET /api/v2/logistics/get_shipping_parameter
+    /// Ref: https://open.shopee.com/documents/v2/v2.logistics.get_shipping_parameter
+    ///
+    /// Retorna informações como endereço de coleta, time slots disponíveis,
+    /// número de rastreio, transportadora e outros dados exigidos antes de confirmar o envio.
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="orderSn">Número do pedido</param>
+    /// <param name="packageNumber">Número do pacote (opcional - usado quando o pedido tem split de pacotes)</param>
+    /// <returns>JSON response com os parâmetros de logística do pedido</returns>
+    public async Task<JsonDocument> GetShippingParameterAsync(long shopId, string orderSn, string? packageNumber = null)
+    {
+        _logger.LogInformation("GetShippingParameter - ShopId: {ShopId}, OrderSn: {OrderSn}", shopId, orderSn);
+
+        try
+        {
+            var accessToken = await GetCachedAccessTokenAsync(shopId);
+            var timestamp = ShopeeApiHelper.GetCurrentTimestamp();
+            const string path = "/api/v2/logistics/get_shipping_parameter";
+            var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
+
+            var url = $"{urlHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}&order_sn={orderSn}";
+
+            if (!string.IsNullOrWhiteSpace(packageNumber))
+                url += $"&package_number={packageNumber}";
+
+            _logger.LogInformation("GetShippingParameter URL - ShopId: {ShopId}, OrderSn: {OrderSn}", shopId, orderSn);
+
+            var response = await _httpClient.GetAsync(url);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            _logger.LogDebug("GetShippingParameter Response - StatusCode: {StatusCode}, Content: {Content}",
+                response.StatusCode, responseContent);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Failed to get shipping parameter: {response.StatusCode} - {responseContent}");
+            }
+
+            return JsonDocument.Parse(responseContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting shipping parameter - ShopId: {ShopId}, OrderSn: {OrderSn}", shopId, orderSn);
+            throw;
+        }
+    }
+
+    /// <summary>
     /// Cria o documento de envio para um ou mais pedidos
     /// Endpoint: POST /api/v2/logistics/create_shipping_document
     /// Ref: https://open.shopee.com/documents/v2/v2.logistics.create_shipping_document
@@ -1645,7 +1796,7 @@ public class ShopeeApiService
     /// <param name="orderList">Lista de pedidos com order_sn</param>
     /// <param name="shippingDocumentType">Tipo do documento: THERMAL_AIR_WAYBILL, A4_AIR_WAYBILL, OFFICIAL_AIR_WAYBILL</param>
     /// <returns>JSON response com URL temporária do PDF da etiqueta</returns>
-    public async Task<JsonDocument> DownloadShippingDocumentAsync(
+    public async Task<(byte[] Content, string ContentType)> DownloadShippingDocumentAsync(
         long shopId,
         IEnumerable<object> orderList,
         string shippingDocumentType = "THERMAL_AIR_WAYBILL")
@@ -1674,17 +1825,27 @@ public class ShopeeApiService
             var content = new StringContent(jsonToPost, Encoding.UTF8, "application/json");
 
             var response = await _httpClient.PostAsync(url, content);
-            var responseContent = await response.Content.ReadAsStringAsync();
+            var responseBytes = await response.Content.ReadAsByteArrayAsync();
+            var contentType = response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
 
-            _logger.LogDebug("DownloadShippingDocument Response - StatusCode: {StatusCode}, Content: {Content}",
-                response.StatusCode, responseContent);
+            _logger.LogDebug("DownloadShippingDocument Response - StatusCode: {StatusCode}, ContentType: {ContentType}, Bytes: {Bytes}",
+                response.StatusCode, contentType, responseBytes.Length);
 
             if (!response.IsSuccessStatusCode)
             {
-                throw new InvalidOperationException($"Failed to download shipping document: {response.StatusCode} - {responseContent}");
+                var errorText = Encoding.UTF8.GetString(responseBytes);
+                throw new InvalidOperationException($"Failed to download shipping document: {response.StatusCode} - {errorText}");
             }
 
-            return JsonDocument.Parse(responseContent);
+            // Se a Shopee retornar JSON (exrro de negócio com status 200), lança exceção
+            if (contentType.Contains("application/json", StringComparison.OrdinalIgnoreCase))
+            {
+                var errorText = Encoding.UTF8.GetString(responseBytes);
+                _logger.LogWarning("DownloadShippingDocument returned JSON instead of file: {Error}", errorText);
+                throw new InvalidOperationException($"Shopee returned error: {errorText}");
+            }
+
+            return (responseBytes, contentType);
         }
         catch (Exception ex)
         {

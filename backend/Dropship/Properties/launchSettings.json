@@ -11,6 +11,20 @@
         "WEBHOOK_INFINITYPAY_URL": "http://localhost:5178/webhook/infinitypay"
       }
     },
+    "live-local-runner": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": false,
+      "applicationUrl": "http://localhost:5178",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Production",
+        "WEBHOOK_INFINITYPAY_URL": "http://localhost:5178/webhook/infinitypay",
+        "SHOPEE_PARTNER_ID": "2015763",
+        "SHOPEE_PARTNER_KEY": "shpk47716c416356796e524245536649424655505759527a4473454e71497569",
+        "AWS_ACCESS_KEY_ID": "AKIAXOJZRZNQRSHZ3FMM",
+        "AWS_SECRET_ACCESS_KEY": "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"
+      }
+    },
     "https": {
       "commandName": "Project",
       "dotnetRunMessages": true,
