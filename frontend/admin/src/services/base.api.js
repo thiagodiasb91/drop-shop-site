@@ -53,12 +53,10 @@ class BaseApi {
       if (!handleUnauthorized(res)) {
         return { ok: false, status: 401 };
       }
-
-      res.ok = res.status >= 200 && res.status < 300;
       
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw { 
+        return { 
           ok: false, 
           message: res.statusText, 
           status: res.status, 
@@ -87,7 +85,11 @@ class BaseApi {
 
     } catch (error) {
       logger.error(`API Error [${endpoint}]:`, error);
-      throw error;
+      return {
+          ok: false,
+          status: 500,
+          response: null
+        };
     }
   };
 }
