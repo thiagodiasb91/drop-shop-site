@@ -1,12 +1,33 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Redirecting to Drop Shop Wiki</title>
-  <meta http-equiv="refresh" content="0; url=./Home.html">
-  <link rel="canonical" href="./Home.html">
+  <meta charset="UTF-8">
+  <title>Drop Shop - Documentação</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+  <meta name="description" content="Documentação da Plataforma Drop Shop">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+  <!-- Tema do Docsify -->
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
 </head>
 <body>
-  <p>If you are not redirected automatically, follow this <a href="./Home.html">link to the wiki</a>.</p>
+  <!-- Onde o Docsify irá renderizar a aplicação -->
+  <div id="app">Carregando...</div>
+
+  <script>
+    // Configuração do Docsify
+    window.$docsify = {
+      name: 'Drop Shop',
+      repo: 'thiagodiasb91/drop-shop-site', // Opcional: link para o repositório
+      loadSidebar: true,     // Carrega o _Sidebar.md
+      subMaxLevel: 2,        // Níveis de subtítulo a exibir no menu
+      homepage: 'Home.md',   // Define a página inicial
+      alias: {
+        '/.*/_sidebar.md': '/_sidebar.md' // Garante que o sidebar seja encontrado
+      }
+    }
+  </script>
+  
+  <!-- Scripts do Docsify -->
+  <script src="//cdn.jsdelivr.net/npm/docsify@4"></script>
 </body>
 </html>
