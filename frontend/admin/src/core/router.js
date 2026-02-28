@@ -42,7 +42,6 @@ export async function navigate(path) {
   isRedirecting = false;
   await render();
 
-  window.dispatchEvent(new Event("popstate"));
   logger.local("router.navigate.completed");
 }
 

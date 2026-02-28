@@ -12,7 +12,7 @@ export function commons() {
     async init() {
       logger.local("bootstrap.commons.init.called");
       
-      this.logged = await stateHelper.refresh();
+      this.logged = await stateHelper.user;
       if (this.logged)
         this.logged.roleName = roleName(this.logged.role);
       logger.local("bootstrap.commons.init.logged", this.logged);

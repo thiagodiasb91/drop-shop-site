@@ -38,7 +38,7 @@ const registerFunctions = (AlpineInstance, modName, modRef) => {
 
 document.addEventListener("alpine:init", () => {
   Alpine.store("auth", {
-    user: null,    
+    user: null,
     async refresh() {
       this.user = await AuthService.me(true); 
       return this.user;
