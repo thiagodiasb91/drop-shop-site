@@ -1,57 +1,27 @@
-# Projeto Drop Shop Admin - Readme
+# 🛍️ Drop Shop Platform
 
-## Arquitetura
-Admin SPA (React/Vite)
-  └─ CloudFront + S3
-        ↓
-Cognito User Pool
-        ↓ (JWT)
-API Gateway (Authorizer Cognito)
-        ↓
-Lambda (Python)
+Bem-vindo à plataforma Drop Shop! Este é um sistema de gerenciamento de dropshipping projetado para integrar com a Shopee, facilitando a administração de produtos, fornecedores e vendedores.
 
 ---
 
-Front só consome userPoolId, clientId, domain
+## 🏛️ Arquitetura do Projeto
 
+A plataforma é composta por múltiplos componentes que trabalham em conjunto para fornecer uma solução completa e robusta:
 
-## Primeira entrega - Shopee
-- Admin
-  - Gestão de usuários
-    - GET /users
-    - POST /users/{user_id}
-  - Criação de produtos
-    - GET /products
-      - Retorna os produtos com a informação dos skus
-    - POST /products/{product_id}
-      - Atualiza informação de produtos e dos SKUs
+*   **Backend (.NET):** O núcleo da aplicação, construído com .NET. É uma API RESTful que gerencia toda a lógica de negócios, desde a comunicação com o banco de dados até a integração com serviços externos como a Shopee.
+*   **Frontend (Admin Panel):** Uma interface de administração web, construída com Vite e Tailwind CSS. Permite que os administradores gerenciem a plataforma de forma intuitiva.
+*   **Infraestrutura (IaC):** Toda a infraestrutura na nuvem (AWS) é gerenciada como código, utilizando Terraform. Isso garante consistência, versionamento e automação no deploy dos recursos.
+*   **Funções Serverless (Lambda):** Funções AWS Lambda para tarefas específicas e desacopladas, como gerenciamento de sessões de usuário e coleta de telemetria.
 
-- Fornecedor
-  - Tela de vínculo de produtos
-    - GET /suppliers/{supplier_id}/products
-      - Obtém todos os produtos
-      - Retornar informação de quais produtos estão vinculados com o fornecedor
-    - POST /suppliers/{supplier_id}/products
-      - Serviço que atualiza os vinculos, além de SKUs e Preços de custo
-  - Atualização de estoques
-    - Produtos pré-cadastrados
-      - GET /suppliers/{supplier_id}/products
-        - Os produtos que estão vinculados com o fornecedor
-      - POST /suppliers/{supplier_id}/products/{product_id}/stock
-        - Serviço que atualiza o preço de custo do produto do fornecedor
-  - Listagem de pedidos para envio
-    - GET /suppliers/{supplier_id}/orders
-      - Listagem de pedidos para envio
+---
 
-- Vendedor
-  - Tela de vínculo de produtos
-    - GET /sellers/{seller_id}/products/available
-      - Produtos que possuem vínculo com algum fornecedor
-      - Retornar informação de quais produtos estão vinculados com o vendedor
-  - Visualização de estoque
-    - GET /sellers/{seller_id}/products/stock
-      - Retornar informação do estoque do vendedor
-  - Listagem de pagamentos por fornecedor
-    - GET /sellers/{seller_id}/payments
-      - Retorna listagem de pagamentos do vendedor
+## 📚 Hub de Documentação
 
+Este repositório é organizado em módulos, e cada um possui sua própria documentação detalhada. Use os links abaixo para navegar para a documentação específica de cada componente.
+
+| Componente                                                                   | Descrição                                                                      |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| 📄 **[Documentação Geral do Backend](./backend/docs/README.md)**               | Visão geral da arquitetura do backend, guias de desenvolvimento e documentação da API. |
+| 🖥️ **[Painel de Administração (Frontend)](./frontend/admin/README.md)**      | Instruções de instalação, scripts e detalhes técnicos sobre o painel de administração.   |
+| lambda **[BFF Get User Session](./backend/lambda-bff-get-user-session/README.md)** | Detalhes sobre a função Lambda responsável pelo gerenciamento de sessão de usuário. |
+| 📡 **[Telemetry Frontend Logs](./backend/lambda-telemetry-frontend-logs/README.md)** | Informações sobre a função Lambda que coleta logs do frontend.                 |
