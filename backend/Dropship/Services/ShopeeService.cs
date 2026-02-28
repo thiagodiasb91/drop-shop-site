@@ -1,6 +1,7 @@
 using Amazon.SQS;
 using Amazon.SQS.Model;
-using System.Text.Json;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Dropship.Repository;
 using Dropship.Domain;
 using Dropship.Requests;
@@ -135,7 +136,7 @@ public class ShopeeService(
                 shop_id = shopId
             };
 
-            var messageBody = JsonSerializer.Serialize(message);
+            var messageBody = JsonConvert.SerializeObject(message);
             var messageGroupId = $"{shopId}-{orderSn}";
 
             var sendMessageRequest = new SendMessageRequest
@@ -218,9 +219,8 @@ public class ShopeeService(
             logger.LogDebug("Creating product on Shopee - ProductId: {ProductId}", productSeller.ProductId);
             var productApiResponse = await shopeeApiService.AddItemAsync(productSeller.StoreId, request);
 
-            var itemId = productApiResponse.RootElement.GetProperty("response")
-                                           .GetProperty("item_id")
-                                           .GetInt64();
+            var productApiJson = JObject.Parse(productApiResponse.RootElement.GetRawText());
+            var itemId = productApiJson["response"]!["item_id"]!.Value<long>();
 
             productSeller.MarketplaceItemId = itemId;
             
@@ -280,58 +280,50 @@ public class ShopeeService(
             
             var responseInitSkus = await shopeeApiService.InitTierVariationAsync(productSeller.StoreId, itemId, standardiseTierVariation, models);
             
-            logger.LogDebug("Initializing tier variations - ItemId: {ItemId}, ColorCount: {ColorCount}, SizeCount: {SizeCount}",
-                itemId, colors.Count, sizes.Count);
-            
-            // Processar resposta e atualizar model_id dos SKUs
-            if (responseInitSkus.RootElement.TryGetProperty("response", out var responseElement))
+            logger.LogDebug("Processing tier variation response - ItemId: {ItemId}", itemId);
+
+            var initSkusJson = JObject.Parse(responseInitSkus.RootElement.GetRawText());
+            var modelsArray = initSkusJson["response"]?["model"] as JArray;
+
+            if (modelsArray != null)
             {
-                if (responseElement.TryGetProperty("model", out var modelsElement))
+                logger.LogDebug("Processing {Count} models from Shopee response", modelsArray.Count);
+
+                // Mapear model_sku → model_id a partir da resposta
+                var modelIdMap = modelsArray
+                    .Where(m => m["model_sku"] != null && m["model_id"] != null)
+                    .ToDictionary(
+                        m => m["model_sku"]!.Value<string>()!,
+                        m => m["model_id"]!.Value<long>()
+                    );
+
+                foreach (var kvp in modelIdMap)
+                    logger.LogDebug("Mapped SKU to ModelId - SKU: {Sku}, ModelId: {ModelId}", kvp.Key, kvp.Value);
+
+                // Atualizar cada ProductSkuSeller com seu model_id
+                foreach (var productSkuSeller in productsSkuSellers)
                 {
-                    var modelsArray = modelsElement.EnumerateArray().ToList();
-                    
-                    logger.LogDebug("Processing {Count} models from Shopee response", modelsArray.Count);
-
-                    // Mapear model_sku para model_id a partir da resposta
-                    var modelIdMap = new Dictionary<string, long>();
-                    foreach (var model in modelsArray)
+                    if (modelIdMap.TryGetValue(productSkuSeller.Sku, out var modelId))
                     {
-                        if (model.TryGetProperty("model_sku", out var skuElement) &&
-                            model.TryGetProperty("model_id", out var modelIdElement))
-                        {
-                            var sku = skuElement.GetString();
-                            var modelId = modelIdElement.GetInt64();
-                            modelIdMap[sku] = modelId;
+                        productSkuSeller.MarketplaceModelId = modelId.ToString();
+                        productSkuSeller.MarketplaceItemId  = itemId.ToString();
 
-                            logger.LogDebug("Mapped SKU to ModelId - SKU: {Sku}, ModelId: {ModelId}", sku, modelId);
-                        }
+                        await productSellerRepository.UpdateMarketplaceModelIdAsync(
+                            productSeller.ProductId,
+                            productSkuSeller.Sku,
+                            productSeller.SellerId,
+                            "shopee",
+                            modelId.ToString(),
+                            itemId.ToString()
+                        );
+
+                        logger.LogInformation("Updated SKU with ModelId - SKU: {Sku}, ModelId: {ModelId}, ProductId: {ProductId}",
+                            productSkuSeller.Sku, modelId, productSeller.ProductId);
                     }
-
-                    // Atualizar cada ProductSkuSeller com seu model_id
-                    foreach (var productSkuSeller in productsSkuSellers)
+                    else
                     {
-                        if (modelIdMap.TryGetValue(productSkuSeller.Sku, out var modelId))
-                        {
-                            productSkuSeller.MarketplaceModelId = modelId.ToString();
-                            productSkuSeller.MarketplaceItemId = itemId.ToString();
-                            
-                            await productSellerRepository.UpdateMarketplaceModelIdAsync(
-                                productSeller.ProductId,
-                                productSkuSeller.Sku,
-                                productSeller.SellerId,
-                                "shopee",
-                                modelId.ToString(),
-                                itemId.ToString()
-                            );
-
-                            logger.LogInformation("Updated SKU with ModelId - SKU: {Sku}, ModelId: {ModelId}, ProductId: {ProductId}",
-                                productSkuSeller.Sku, modelId, productSeller.ProductId);
-                        }
-                        else
-                        {
-                            logger.LogWarning("SKU not found in Shopee response - SKU: {Sku}, ProductId: {ProductId}",
-                                productSkuSeller.Sku, productSeller.ProductId);
-                        }
+                        logger.LogWarning("SKU not found in Shopee response - SKU: {Sku}, ProductId: {ProductId}",
+                            productSkuSeller.Sku, productSeller.ProductId);
                     }
                 }
             }

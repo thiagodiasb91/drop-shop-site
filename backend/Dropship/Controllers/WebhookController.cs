@@ -166,6 +166,17 @@ public class WebhookController(
                     });
                 }
 
+                
+                if (request.Data.Status != "READY_TO_SHIP")
+                {
+                    logger.LogWarning("Order status is not READY_TO_SHIP - OrderSn: {OrderSn}, Status: {Status}", request.Data.OrderSn, request.Data.Status);
+                    
+                    return StatusCode(400,new
+                    {
+                        message = $"Order status {request.Data.Status} is not READY_TO_SHIP, skipping processing" 
+                    });
+                }
+                
                 // Processar ordem
                 await shopeeService.ProcessOrderReceivedAsync(
                     request.ShopId,
