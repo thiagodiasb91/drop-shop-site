@@ -31,13 +31,14 @@ const logger = {
             errorMessage: errorObject?.message,
             environment: import.meta.env.MODE,
             userAgent: navigator.userAgent,
+            context: "BUSINESS_ERROR",
             timestamp: new Date().toISOString()
         };
 
         console.error(`[SESSION:${payload.sessionId}]`, message, errorObject);
 
         try {
-            // if (!import.meta.env.DEV)
+            if (!import.meta.env.DEV)
                 LoggerService.send(payload);
         } catch (e) {
             console.error(`logger.error: ${e.message}`);

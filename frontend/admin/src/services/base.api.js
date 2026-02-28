@@ -54,9 +54,16 @@ class BaseApi {
         return { ok: false, status: 401 };
       }
 
+      res.ok = res.status >= 200 && res.status < 300;
+      
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw { status: res.status, ...errorData };
+        throw { 
+          ok: false, 
+          message: res.statusText, 
+          status: res.status, 
+          ...errorData 
+        };
       }
 
       try{
