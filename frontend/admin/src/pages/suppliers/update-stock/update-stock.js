@@ -65,7 +65,7 @@ export function getData() {
             response.push({
               id: p.productId,
               name: p.productName,
-              imageUrl: p.productImage || `https://picsum.photos/${Math.floor(Math.random() * 500)}?text=Produto+${p.productId}`,
+              imageUrl: p.imageUrl,
               open: false, // Começa fechado para melhor visualização
               stock: productSkus.reduce((acc, cur) => acc + cur.stock, 0),
               skus: productSkus

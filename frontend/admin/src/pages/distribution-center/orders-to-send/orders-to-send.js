@@ -29,7 +29,7 @@ export function getData() {
     },
     toggleOrder(orderId) {
       this.orders = this.orders.map(o => {
-        if (o.id === orderId) o.expanded = !o.expanded;
+        if (o.orderId === orderId) o.expanded = !o.expanded;
         return o;
       });
     },

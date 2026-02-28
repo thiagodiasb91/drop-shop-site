@@ -99,28 +99,21 @@
   </div>
 
   <div x-show="!loading" class="mb-10">
-    <h2 class="flex items-center gap-2 mb-4 ">
-      <i class="ph ph-clock-counter-clockwise"></i>
-      <span class="text-lg font-black uppercase text-amber-500">Fila de Repasses</span>
-      <span class="text-sm text-slate-500 font-bold ml-2">Selecione as ordens que deseja pagar</span>
-    </h2>
-
     <div x-show="notPaidOrders.length === 0"
       class="text-center bg-slate-800 rounded-2xl p-4 border-x border border-slate-700">
       <i class="ph ph-check-circle text-emerald-500 text-4xl mb-4"></i>
       <p class="text-lg font-bold">Nenhuma ordem pendente de pagamento</p>
       <p class="text-sm mt-2">
-        Todas as ordens foram processadas ou estão aguardando repasse. Verifique o histórico de pagos para mais
+        Todas as ordens foram processadas ou o filtro está incorreto. Verifique o histórico de pagos para mais
         detalhes.
       </p>
     </div>
 
     <div x-show="notPaidOrders.length > 0"
       class="flex items-center gap-3 px-5 py-3 bg-slate-900/50 rounded-t-2xl border-x border-t border-slate-700">
-      <input type="checkbox" @change="toggleSelectAll()"
-        :checked="selectedOrders.length === pendingOrders.length && pendingOrders.length > 0"
-        class="h-5 w-5 rounded border-slate-600 bg-slate-900 text-indigo-600">
-      <span class="text-[10px] uppercase font-black text-slate-400">Selecionar Todas as Ordens Pendentes</span>
+      <i class="ph ph-clock-counter-clockwise"></i>
+      <span class="text-lg font-black uppercase text-amber-500">Fila de Repasses</span>
+      <span class="text-sm text-slate-500 font-bold ml-2">Selecione as ordens que deseja pagar</span>
     </div>
 
     <div class="space-y-0.5">
@@ -139,7 +132,8 @@
                 <div class="min-w-0">
                   <div class="flex items-center gap-2">
                     <span class="font-mono font-bold text-indigo-400 text-sm truncate" x-text="order.orderSn"></span>
-                    <span x-text="order.createdAt?.substring(0, 19)" class="text-[9px] text-slate-500 font-bold uppercase tracking-tighter"></span>
+                    <span x-text="order.createdAt?.substring(0, 19)"
+                      class="text-[9px] text-slate-500 font-bold uppercase tracking-tighter"></span>
                     <span :class="statusLabel(order.status).color"
                       class="text-[9px] font-black uppercase px-2 py-1 rounded-full"
                       x-text="statusLabel(order.status).text"></span>
@@ -211,6 +205,14 @@
           </div>
         </div>
       </template>
+    </div>
+  </div>
+
+  <div x-show="!loading" class="mb-6">
+    <div class="relative w-full md:w-96">
+      <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+      <input type="text" x-model="searchPaid" placeholder="Buscar no histórico..."
+        class="w-full bg-slate-800 border-slate-700 rounded-xl pl-10 py-2.5 text-sm focus:ring-indigo-500">
     </div>
   </div>
 
@@ -308,11 +310,4 @@
     </div>
   </div>
 
-  <div x-show="!loading" class="mb-6">
-    <div class="relative w-full md:w-96">
-      <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
-      <input type="text" x-model="search" placeholder="Buscar no histórico..."
-        class="w-full bg-slate-800 border-slate-700 rounded-xl pl-10 py-2.5 text-sm focus:ring-indigo-500">
-    </div>
-  </div>
 </div>

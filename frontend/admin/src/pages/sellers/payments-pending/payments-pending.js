@@ -9,7 +9,8 @@ export function getData() {
     allOrders: [],
     selectedOrders: [],
     search: "",
-    sortConfig: "status",
+    searchPaid: "",
+    sortConfig: "date",
     stats: {},
     currentPage: 1,
     pageSize: 5,
@@ -47,7 +48,12 @@ export function getData() {
     },
 
     get notPaidOrders() {
-      let orders = this.allOrders.filter(o => ["pending", "waiting-payment"].includes(o.status));
+      const q = this.search.toLowerCase();
+
+      let orders = this.allOrders.filter(o => 
+        ["pending", "waiting-payment"].includes(o.status) &&
+        (o.paymentId.toLowerCase().includes(q) || o.orderSn.toLowerCase().includes(q))
+      );
 
       return orders.sort((a, b) => {
         switch (this.sortConfig) {
@@ -66,16 +72,13 @@ export function getData() {
         }
       });
     },
-    get pendingOrders() {
-      return this.allOrders.filter(o => ["pending"].includes(o.status));
-    },
 
     get paidOrders() {
-      const q = this.search.toLowerCase();
+      const q = this.searchPaid.toLowerCase();
       return this.allOrders.filter(o =>
         o.status === "paid" &&
         (o.orderSn.toLowerCase().includes(q) || o.paymentId.toLowerCase().includes(q))
-      );
+      ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     },
 
     // Paginação do Histórico

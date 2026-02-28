@@ -9,9 +9,9 @@
         <h1 class="text-2xl font-semibold">Pedidos para envio</h1>
         <p class="text-sm text-slate-400">Gerencie as etiquetas de postagem</p>
       </div>
-      <button @click="printAllPending()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-xl font-bold text-sm shadow-lg transition-all">
+      <!-- <button @click="printAllPending()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-xl font-bold text-sm shadow-lg transition-all">
         Imprimir todas as etiquetas
-      </button>
+      </button> -->
     </header>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-800 p-4 rounded-2xl border border-slate-700">
@@ -25,24 +25,24 @@
       <template x-for="order in filteredOrders" :key="order.orderId">
         <div class="bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden hover:border-slate-500 transition-colors">
           
-          <div @click="toggleOrder(order.id)" class="p-4 cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div @click="toggleOrder(order.orderId)" class="p-4 cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div class="flex items-center gap-4">
               <div class="bg-indigo-500/10 p-3 rounded-xl text-indigo-400">
                 <i class="ph-bold ph-package text-xl"></i>
               </div>
               <div>
                 <div class="flex items-center gap-2">
-                  <span class="font-mono font-black text-lg text-slate-100" x-text="order.code"></span>
+                  <span class="font-mono font-black text-lg text-slate-100" x-text="order.orderId"></span>
                   <span class="text-[10px] bg-emerald-500/20 text-emerald-500 px-2 py-0.5 rounded-full font-black uppercase" x-text="order.items.length + ' itens'"></span>
                 </div>
-                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-tight" x-text="order.seller"></p>
+                <p class="text-[11px] text-slate-500 font-bold uppercase tracking-tight" x-text="order.sellerName"></p>
               </div>
             </div>
 
             <div class="flex items-center justify-between md:gap-12">
               <div class="text-left md:text-right">
-                <p class="text-xs font-bold text-slate-300" x-text="order.customer.name"></p>
-                <p class="text-[12px] text-slate-500 truncate max-w-[250px]" x-text="order.customer.address"></p>
+                <p class="text-xs font-bold text-slate-300" x-text="order.customerName"></p>
+                <p class="text-[12px] text-slate-500 truncate max-w-[250px]" x-text="order.customerAddress"></p>
               </div>
               
               <div class="flex items-center gap-4">
@@ -65,7 +65,8 @@
                       <p class="text-sm font-bold text-slate-200" x-text="item.productName"></p>
                       <div class="flex gap-2 mt-1">
                         <span class="text-[9px] font-mono text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded" x-text="item.skuId"></span>
-                        <span class="text-[9px] font-black text-slate-500 uppercase" x-text="item.skuLabel"></span>
+                        <span class="text-[9px] text-emerald-500 uppercase" x-text="'Tam: ' + item.size"></span>
+                        <span class="text-[9px] text-slate-300 uppercase" x-text="'Cor: ' + item.color"></span>                        
                       </div>
                     </div>
                   </div>

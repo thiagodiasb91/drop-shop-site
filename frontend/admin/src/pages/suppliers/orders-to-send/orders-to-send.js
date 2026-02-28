@@ -48,7 +48,7 @@ export function getData() {
       this.orders = await this.getOrdersToSend();
       this.loading = false;
     },
-    async getOrdersToSend(){
+    async getOrdersToSend() {
       const res = await SupplierOrdersService.getOrdersToSend();
 
       if (!res.ok) {
@@ -57,7 +57,18 @@ export function getData() {
         return [];
       }
 
-      return res.response;
+      return res.response.map(o => ({
+        ...o,
+        orderId: o.orderId + o.date,
+        customerName: o.customerName || "Nome do cliente não retorna",
+        customerAddress: o.customerAddress || "Endereço do cliente não retorna",
+        items: o.items.map(i => ({
+          ...i,
+          productName: i.productName || "Nome não retorna",
+          size: i.size || "Tamanho não retorna",
+          color: i.color || "Cor não retorna",
+        }))
+      }));
     },
     get filteredOrders() {
       const search = this.search.toLowerCase();
@@ -74,7 +85,7 @@ export function getData() {
     },
     toggleOrder(orderId) {
       this.orders = this.orders.map(o => {
-        if (o.id === orderId) o.expanded = !o.expanded;
+        if (o.orderId === orderId) o.expanded = !o.expanded;
         return o;
       });
     },
@@ -84,8 +95,8 @@ export function getData() {
     },
 
     printLabel(order) {
-      logger.local("Imprimir etiqueta do pedido:", order.id);
-      alert(`Imprimindo etiqueta do pedido ${order.code}`);
+      logger.local("Imprimir etiqueta do pedido:", order.orderId);
+      alert(`Imprimindo etiqueta do pedido ${order.orderId}`);
     },
     labelStatus(status) {
       const map = {
