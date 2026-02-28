@@ -1,9 +1,10 @@
+using Amazon.DynamoDBv2.Model;
+using Dropship.Helpers;
+
 namespace Dropship.Domain;
 
 using System.Globalization;
 using Newtonsoft.Json;
-
-// ...existing code...
 
 /// <summary>
 /// Domínio para representar um Pedido
@@ -74,45 +75,39 @@ public class OrderItemDomain
 /// </summary>
 public static class OrderMapper
 {
-    public static OrderDomain ToDomain(this Dictionary<string, Amazon.DynamoDBv2.Model.AttributeValue> item)
+    public static OrderDomain ToDomain(this Dictionary<string, AttributeValue> item)
     {
-        var createdAtString = item.ContainsKey("created_at") ? item["created_at"].S : DateTime.UtcNow.ToString("O");
-        DateTime.TryParse(createdAtString, null, DateTimeStyles.RoundtripKind, out var createdAt);
-
-        var updatedAtString = item.ContainsKey("updated_at") ? item["updated_at"].S : null;
-        DateTime.TryParse(updatedAtString, null, DateTimeStyles.RoundtripKind, out var updatedAt);
-
-        var pk = item.ContainsKey("PK") ? item["PK"].S : "";
-        var sk = item.ContainsKey("SK") ? item["SK"].S : "";
-
-        // Desserializar itens do JSON armazenado
-        var itemsJson = item.ContainsKey("items") ? item["items"].S : null;
-        var items = string.IsNullOrEmpty(itemsJson)
-            ? new List<OrderItemDomain>()
-            : JsonConvert.DeserializeObject<List<OrderItemDomain>>(itemsJson) ?? new List<OrderItemDomain>();
+        var itemsJson = item.GetSNullable("items");
+        List<OrderItemDomain>? orderItems = null;
+        
+        if (!string.IsNullOrEmpty(itemsJson))
+        {
+            try { orderItems = JsonConvert.DeserializeObject<List<OrderItemDomain>>(itemsJson); }
+            catch { orderItems = null; }
+        }
 
         return new OrderDomain
         {
-            Pk = pk,
-            Sk = sk,
-            OrderSn = sk,
-            EntityType = item.ContainsKey("entity_type") ? item["entity_type"].S : "order",
-            ShopId = item.ContainsKey("shop_id") ? long.Parse(item["shop_id"].N) : 0,
-            SellerId = item.ContainsKey("seller_id") ? item["seller_id"].S : "",
-            Status = item.ContainsKey("status") ? item["status"].S : "",
-            TotalAmount = item.ContainsKey("total_amount") ? decimal.Parse(item["total_amount"].N, CultureInfo.InvariantCulture) : 0,
-            TotalItems = item.ContainsKey("total_items") ? int.Parse(item["total_items"].N) : 0,
-            RecipientName = item.ContainsKey("recipient_name") ? item["recipient_name"].S : "",
-            RecipientPhone = item.ContainsKey("recipient_phone") ? item["recipient_phone"].S : "",
-            DeliveryAddress = item.ContainsKey("delivery_address") ? item["delivery_address"].S : "",
-            DeliveryCity = item.ContainsKey("delivery_city") ? item["delivery_city"].S : "",
-            DeliveryState = item.ContainsKey("delivery_state") ? item["delivery_state"].S : "",
-            DeliveryZipcode = item.ContainsKey("delivery_zipcode") ? item["delivery_zipcode"].S : "",
-            InvoiceNumber = item.ContainsKey("invoice_number") ? item["invoice_number"].S : "",
-            InvoiceStatus = item.ContainsKey("invoice_status") ? item["invoice_status"].S : "",
-            Items = items,
-            CreatedAt = createdAt,
-            UpdatedAt = updatedAtString != null ? updatedAt : null
+            Pk              = item.GetS("PK"),
+            Sk              = item.GetS("SK"),
+            OrderSn         = item.GetS("order_sn"),
+            EntityType      = item.GetS("entity_type", "order"),
+            ShopId          = item.GetN<long>("shop_id"),
+            SellerId        = item.GetS("seller_id"),
+            Status          = item.GetS("status"),
+            TotalAmount     = item.GetDecimal("total_amount"),
+            TotalItems      = item.GetN<int>("total_items"),
+            RecipientName   = item.GetS("recipient_name"),
+            RecipientPhone  = item.GetS("recipient_phone"),
+            DeliveryAddress = item.GetS("delivery_address"),
+            DeliveryCity    = item.GetS("delivery_city"),
+            DeliveryState   = item.GetS("delivery_state"),
+            DeliveryZipcode = item.GetS("delivery_zipcode"),
+            InvoiceNumber   = item.GetS("invoice_number"),
+            InvoiceStatus   = item.GetS("invoice_status"),
+            CreatedAt       = item.GetDateTimeS("created_at"),
+            UpdatedAt       = item.GetDateTimeSNullable("updated_at"),
+            Items           = orderItems,
         };
     }
 
@@ -121,35 +116,34 @@ public static class OrderMapper
     /// PK = Orders#{sellerId} | SK = {orderSn}
     /// Os itens são serializados como JSON no campo "items"
     /// </summary>
-    public static Dictionary<string, Amazon.DynamoDBv2.Model.AttributeValue> ToDynamoDb(this OrderDomain domain)
+    public static Dictionary<string, AttributeValue> ToDynamoDb(this OrderDomain domain)
     {
-        var item = new Dictionary<string, Amazon.DynamoDBv2.Model.AttributeValue>
+        var item = new Dictionary<string, AttributeValue>
         {
-            { "PK", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.Pk } },
-            { "SK", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.Sk } },
-            { "order_sn", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.OrderSn } },
-            { "entity_type", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.EntityType } },
-            { "shop_id", new Amazon.DynamoDBv2.Model.AttributeValue { N = domain.ShopId.ToString() } },
-            { "seller_id", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.SellerId } },
-            { "status", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.Status } },
-            { "total_amount", new Amazon.DynamoDBv2.Model.AttributeValue { N = domain.TotalAmount.ToString(CultureInfo.InvariantCulture) } },
-            { "total_items", new Amazon.DynamoDBv2.Model.AttributeValue { N = domain.TotalItems.ToString() } },
-            { "recipient_name", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.RecipientName } },
-            { "recipient_phone", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.RecipientPhone } },
-            { "delivery_address", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.DeliveryAddress } },
-            { "delivery_city", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.DeliveryCity } },
-            { "delivery_state", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.DeliveryState } },
-            { "delivery_zipcode", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.DeliveryZipcode } },
-            { "invoice_number", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.InvoiceNumber } },
-            { "invoice_status", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.InvoiceStatus } },
-            { "items", new Amazon.DynamoDBv2.Model.AttributeValue { S = JsonConvert.SerializeObject(domain.Items) } },
-            { "created_at", new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.CreatedAt.ToString("O") } }
+            { "PK", new AttributeValue { S = domain.Pk } },
+            { "SK", new AttributeValue { S = domain.Sk } },
+            { "order_sn", new AttributeValue { S = domain.OrderSn } },
+            { "entity_type", new AttributeValue { S = domain.EntityType } },
+            { "shop_id", new AttributeValue { N = domain.ShopId.ToString() } },
+            { "seller_id", new AttributeValue { S = domain.SellerId } },
+            { "status", new AttributeValue { S = domain.Status } },
+            { "total_amount", new AttributeValue { N = domain.TotalAmount.ToString(CultureInfo.InvariantCulture) } },
+            { "total_items", new AttributeValue { N = domain.TotalItems.ToString() } },
+            { "recipient_name", new AttributeValue { S = domain.RecipientName } },
+            { "recipient_phone", new AttributeValue { S = domain.RecipientPhone } },
+            { "delivery_address", new AttributeValue { S = domain.DeliveryAddress } },
+            { "delivery_city", new AttributeValue { S = domain.DeliveryCity } },
+            { "delivery_state", new AttributeValue { S = domain.DeliveryState } },
+            { "delivery_zipcode", new AttributeValue { S = domain.DeliveryZipcode } },
+            { "invoice_number", new AttributeValue { S = domain.InvoiceNumber } },
+            { "invoice_status", new AttributeValue { S = domain.InvoiceStatus } },
+            { "items", new AttributeValue { S = JsonConvert.SerializeObject(domain.Items) } },
+            { "created_at", new AttributeValue { S = domain.CreatedAt.ToString("O") } }
         };
 
         if (domain.UpdatedAt.HasValue)
-            item["updated_at"] = new Amazon.DynamoDBv2.Model.AttributeValue { S = domain.UpdatedAt.Value.ToString("O") };
+            item["updated_at"] = new AttributeValue { S = domain.UpdatedAt.Value.ToString("O") };
 
         return item;
     }
 }
-

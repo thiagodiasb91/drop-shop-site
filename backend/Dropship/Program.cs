@@ -39,9 +39,8 @@ builder.Logging.ClearProviders();
 // Register custom formatter options
 builder.Services.Configure<CorrelationIdFormatterOptions>(options =>
 {
-    options.TimestampFormat = "yyyy-MM-dd HH:mm:ss.fff";
-    options.IncludeScopes = true;
-    options.UseUtcTimestamp = false;
+    options.UseUtcTimestamp = true;
+    options.ServiceName = Environment.GetEnvironmentVariable("SERVICE_NAME") ?? "dropship-api";
 });
 
 // Register custom console formatter

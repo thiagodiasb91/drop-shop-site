@@ -1,3 +1,6 @@
+using Amazon.DynamoDBv2.Model;
+using Dropship.Helpers;
+
 namespace Dropship.Domain;
 
 /// <summary>
@@ -44,22 +47,19 @@ public static class ProductSkuSupplierBuilder
 /// </summary>
 public static class ProductSkuSupplierMapper
 {
-    public static ProductSkuSupplierDomain ToDomain(this Dictionary<string, Amazon.DynamoDBv2.Model.AttributeValue> item)
+    public static ProductSkuSupplierDomain ToDomain(this Dictionary<string, AttributeValue> item)
     {
         return new ProductSkuSupplierDomain
         {
-            Pk = item.ContainsKey("PK") ? item["PK"].S : "",
-            Sk = item.ContainsKey("SK") ? item["SK"].S : "",
-
-            EntityType = item.ContainsKey("entity_type") ? item["entity_type"].S : "product_sku_supplier",
-            ProductId = item.ContainsKey("product_id") ? item["product_id"].S : "",
-            Sku = item.ContainsKey("sku") ? item["sku"].S : "",
-            SupplierId = item.ContainsKey("supplier_id") ? item["supplier_id"].S : "",
-            SkuSupplier = item.ContainsKey("sku_supplier") ? item["sku_supplier"].S : "",
-            
-            Price = item.ContainsKey("price") && decimal.TryParse(item["price"].N, System.Globalization.CultureInfo.InvariantCulture, out var price) ? price : 0,
-            Quantity = item.ContainsKey("quantity") && long.TryParse(item["quantity"].N, out var qty) ? qty : 0
+            Pk          = item.GetS("PK"),
+            Sk          = item.GetS("SK"),
+            EntityType  = item.GetS("entity_type", "product_sku_supplier"),
+            ProductId   = item.GetS("product_id"),
+            Sku         = item.GetS("sku"),
+            SupplierId  = item.GetS("supplier_id"),
+            SkuSupplier = item.GetS("sku_supplier"),
+            Price       = item.GetDecimal("price"),
+            Quantity    = item.GetN<long>("quantity"),
         };
     }
 }
-

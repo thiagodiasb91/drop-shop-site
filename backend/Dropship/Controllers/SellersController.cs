@@ -4,6 +4,7 @@ using Dropship.Responses;
 using Dropship.Domain;
 using Dropship.Services;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json.Linq;
 
 namespace Dropship.Controllers;
 
@@ -18,7 +19,8 @@ public class SellersController(ILogger<SellersController> logger,
                             ProductSellerRepository productSellerRepository,
                             ProductSupplierRepository productSupplierRepository,
                             InfinityPayLinkRepository linkRepository,
-                            PaymentService paymentService
+                            PaymentService paymentService,
+                            OrderRepository orderRepository
 
      ) : ControllerBase 
 {
@@ -686,6 +688,120 @@ public class SellersController(ILogger<SellersController> logger,
         {
             logger.LogError(ex, "Error getting InfinityPay link - LinkId: {LinkId}", linkId);
             return StatusCode(500, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Gera e retorna a etiqueta de envio de um pedido em PDF para download.
+    ///
+    /// Fluxo interno:
+    /// 1. Busca o pedido no banco de dados pelo orderId (= orderSn)
+    /// 2. Usa o shopId do pedido para autenticar na Shopee
+    /// 3. Chama create_shipping_document na Shopee
+    /// 4. Aguarda o documento ficar READY via get_shipping_document_result (polling)
+    /// 5. Faz o download e retorna o PDF diretamente
+    /// </summary>
+    /// <param name="orderId">Número do pedido (orderSn)</param>
+    /// <param name="documentType">Tipo da etiqueta: THERMAL_AIR_WAYBILL (default), A4_AIR_WAYBILL, OFFICIAL_AIR_WAYBILL</param>
+    [HttpGet("orders/{orderId}/print")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> PrintShippingLabel(
+        string orderId,
+        [FromQuery] string documentType = "THERMAL_AIR_WAYBILL")
+    {
+        var sellerId = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "resourceId")?.Value;
+        logger.LogInformation("PrintShippingLabel - OrderId: {OrderId}, SellerId: {SellerId}, DocumentType: {DocumentType}",
+            orderId, sellerId, documentType);
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(sellerId))
+                return BadRequest(new { error = "Seller ID not found in authentication claims" });
+
+            if (string.IsNullOrWhiteSpace(orderId))
+                return BadRequest(new { error = "orderId is required" });
+
+            // 1. Buscar pedido no banco para obter o shopId
+            var order = await orderRepository.GetOrderBySnAsync(sellerId, orderId);
+            if (order == null)
+            {
+                logger.LogWarning("Order not found - OrderId: {OrderId}, SellerId: {SellerId}", orderId, sellerId);
+                return NotFound(new { error = "Order not found" });
+            }
+
+            var shopId = order.ShopId;
+            var orderList = new[] { new { order_sn = orderId } };
+
+            logger.LogInformation("Creating shipping document - OrderId: {OrderId}, ShopId: {ShopId}", orderId, shopId);
+
+            // 2. Criar o documento de envio na Shopee
+            await shopeeApiService.CreateShippingDocumentAsync(shopId, orderList);
+
+            // 3. Polling até o documento ficar READY (máx 10 tentativas com 2s de intervalo)
+            const int maxRetries = 10;
+            const int delayMs = 2000;
+            bool isReady = false;
+
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
+            {
+                logger.LogInformation("Checking document status - Attempt: {Attempt}/{Max}, OrderId: {OrderId}",
+                    attempt, maxRetries, orderId);
+
+                var resultDoc = await shopeeApiService.GetShippingDocumentResultAsync(shopId, orderList, documentType);
+
+                var resultJson = JObject.Parse(resultDoc.RootElement.GetRawText());
+                var resultList = resultJson["response"]?["result_list"] as JArray;
+
+                if (resultList?.Count > 0)
+                {
+                    var first = resultList[0];
+                    var status = first["status"]?.Value<string>();
+
+                    logger.LogInformation("Document status: {Status} - OrderId: {OrderId}", status, orderId);
+
+                    if (status == "READY")
+                    {
+                        isReady = true;
+                        break;
+                    }
+
+                    if (status == "FAILED")
+                    {
+                        var failMsg = first["fail_message"]?.Value<string>() ?? "Unknown error";
+                        logger.LogWarning("Document generation failed - OrderId: {OrderId}, Message: {Msg}", orderId, failMsg);
+                        return StatusCode(StatusCodes.Status502BadGateway, new { error = $"Shopee failed to generate document: {failMsg}" });
+                    }
+                }
+
+                if (attempt < maxRetries)
+                    await Task.Delay(delayMs);
+            }
+
+            if (!isReady)
+            {
+                logger.LogWarning("Document not ready after {MaxRetries} attempts - OrderId: {OrderId}", maxRetries, orderId);
+                return StatusCode(StatusCodes.Status504GatewayTimeout,
+                    new { error = "Shipping document not ready. Please try again in a few seconds." });
+            }
+
+            // 4. Download da etiqueta
+            logger.LogInformation("Downloading shipping label - OrderId: {OrderId}, ShopId: {ShopId}", orderId, shopId);
+            var (fileBytes, contentType) = await shopeeApiService.DownloadShippingDocumentAsync(shopId, orderList, documentType);
+
+            var fileName = $"etiqueta_{orderId}_{DateTime.UtcNow:yyyyMMddHHmmss}.pdf";
+
+            logger.LogInformation("Shipping label ready for download - OrderId: {OrderId}, Bytes: {Bytes}, FileName: {FileName}",
+                orderId, fileBytes.Length, fileName);
+
+            return File(fileBytes, contentType, fileName);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error printing shipping label - OrderId: {OrderId}, SellerId: {SellerId}", orderId, sellerId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
         }
     }
 }

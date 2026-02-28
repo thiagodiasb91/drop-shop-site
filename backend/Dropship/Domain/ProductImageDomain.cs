@@ -1,3 +1,6 @@
+using Amazon.DynamoDBv2.Model;
+using Dropship.Helpers;
+
 namespace Dropship.Domain;
 
 /// <summary>
@@ -56,36 +59,22 @@ public static class ProductImageFactory
 /// </summary>
 public static class ProductImageMapper
 {
-    public static ProductImageDomain ToDomain(this Dictionary<string, Amazon.DynamoDBv2.Model.AttributeValue> item)
+    public static ProductImageDomain ToDomain(this Dictionary<string, AttributeValue> item)
     {
-        // Parsear CreatedAt
-        var createdAtString = item.ContainsKey("created_at") ? item["created_at"].S : DateTime.UtcNow.ToString("O");
-        DateTime.TryParse(createdAtString, null, System.Globalization.DateTimeStyles.RoundtripKind, out var createdAt);
-
         return new ProductImageDomain
         {
-            // Chaves
-            Pk = item.ContainsKey("PK") ? item["PK"].S : "",
-            Sk = item.ContainsKey("SK") ? item["SK"].S : "",
-
-            // Identificadores
-            EntityType = item.ContainsKey("entity_type") ? item["entity_type"].S : "product_image",
-            ProductId = item.ContainsKey("product_id") ? item["product_id"].S : "",
-            ImageId = item.ContainsKey("image") ? item["image"].S : "",
-
-            // Atributos
-            Color = item.ContainsKey("color") ? item["color"].S : "",
-            ImageUrl = item.ContainsKey("image") ? item["image"].S : "",
-            BrUrl = item.ContainsKey("br_url") ? item["br_url"].S : "",
-
-            // Metadata
-            CreatedAt = createdAt
+            Pk         = item.GetS("PK"),
+            Sk         = item.GetS("SK"),
+            EntityType = item.GetS("entity_type", "product_image"),
+            ProductId  = item.GetS("product_id"),
+            ImageId    = item.GetS("image"),
+            Color      = item.GetS("color"),
+            ImageUrl   = item.GetS("image"),
+            BrUrl      = item.GetS("br_url"),
+            CreatedAt  = item.GetDateTimeS("created_at"),
         };
     }
 
-    public static List<ProductImageDomain> ToDomainList(this List<Dictionary<string, Amazon.DynamoDBv2.Model.AttributeValue>> items)
-    {
-        return items.Select(ToDomain).ToList();
-    }
+    public static List<ProductImageDomain> ToDomainList(this List<Dictionary<string, AttributeValue>> items)
+        => items.Select(ToDomain).ToList();
 }
-

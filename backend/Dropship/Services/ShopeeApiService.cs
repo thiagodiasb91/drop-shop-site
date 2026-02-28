@@ -1522,6 +1522,55 @@ public class ShopeeApiService
     #region Logistics Methods
 
     /// <summary>
+    /// Obtém as informações de rastreio detalhadas de um pedido (histórico de movimentações).
+    /// Endpoint: GET /api/v2/logistics/get_tracking_info
+    /// Ref: https://open.shopee.com/documents/v2/v2.logistics.get_tracking_info
+    ///
+    /// Retorna o histórico completo de rastreio com datas, descrições e status de cada etapa.
+    /// </summary>
+    /// <param name="shopId">ID da loja</param>
+    /// <param name="orderSn">Número do pedido</param>
+    /// <param name="packageNumber">Número do pacote (opcional — usar quando o pedido tem split de pacotes)</param>
+    /// <returns>JSON response com histórico de rastreio do pedido</returns>
+    public async Task<JsonDocument> GetTrackingInfoAsync(long shopId, string orderSn, string? packageNumber = null)
+    {
+        _logger.LogInformation("GetTrackingInfo - ShopId: {ShopId}, OrderSn: {OrderSn}", shopId, orderSn);
+
+        try
+        {
+            var accessToken = await GetCachedAccessTokenAsync(shopId);
+            var timestamp = ShopeeApiHelper.GetCurrentTimestamp();
+            const string path = "/api/v2/logistics/get_tracking_info";
+            var sign = ShopeeApiHelper.GenerateSignWithShop(_partnerId, _partnerKey, path, timestamp, accessToken, shopId);
+
+            var url = $"{urlHost}{path}?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopId}&sign={sign}&order_sn={orderSn}";
+
+            if (!string.IsNullOrWhiteSpace(packageNumber))
+                url += $"&package_number={packageNumber}";
+
+            _logger.LogDebug("GetTrackingInfo URL - ShopId: {ShopId}, OrderSn: {OrderSn}", shopId, orderSn);
+
+            var response = await _httpClient.GetAsync(url);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            _logger.LogDebug("GetTrackingInfo Response - StatusCode: {StatusCode}, Content: {Content}",
+                response.StatusCode, responseContent);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Failed to get tracking info: {response.StatusCode} - {responseContent}");
+            }
+
+            return JsonDocument.Parse(responseContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting tracking info - ShopId: {ShopId}, OrderSn: {OrderSn}", shopId, orderSn);
+            throw;
+        }
+    }
+
+    /// <summary>
     /// Obtém o número de rastreio de um pedido.
     /// Endpoint: GET /api/v2/logistics/get_tracking_number
     /// Ref: https://open.shopee.com/documents/v2/v2.logistics.get_tracking_number

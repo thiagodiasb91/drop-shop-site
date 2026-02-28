@@ -1,6 +1,7 @@
 using Amazon.DynamoDBv2.Model;
 using System.Globalization;
 using Newtonsoft.Json;
+using Dropship.Helpers;
 
 namespace Dropship.Domain;
 
@@ -107,46 +108,42 @@ public static class SupplierShipmentMapper
     {
         return new SupplierShipmentDomain
         {
-            Pk = item.ContainsKey("PK") ? item["PK"].S : "",
-            Sk = item.ContainsKey("SK") ? item["SK"].S : "",
-            ShipmentId = item.ContainsKey("shipment_id") ? item["shipment_id"].S : "",
-            PaymentId = item.ContainsKey("payment_id") ? item["payment_id"].S : "",
-            SupplierId = item.ContainsKey("supplier_id") ? item["supplier_id"].S : "",
-            SellerId = item.ContainsKey("seller_id") ? item["seller_id"].S : "",
-            OrderSn = item.ContainsKey("ordersn") ? item["ordersn"].S : "",
-            Amount = item.ContainsKey("amount") ? decimal.Parse(item["amount"].N, CultureInfo.InvariantCulture) : 0,
-            PaidAmount = item.ContainsKey("paid_amount") ? decimal.Parse(item["paid_amount"].N, CultureInfo.InvariantCulture) : 0,
-            Installments = item.ContainsKey("installments") ? int.Parse(item["installments"].N) : 0,
-            TransactionNsu = item.ContainsKey("transaction_nsu") ? item["transaction_nsu"].S : "",
-            CaptureMethod = item.ContainsKey("capture_method") ? item["capture_method"].S : "",
-            ReceiptUrl = item.ContainsKey("receipt_url") ? item["receipt_url"].S : "",
-            Status = item.ContainsKey("status") ? item["status"].S : "paid",
-            EntityType = item.ContainsKey("entity_type") ? item["entity_type"].S : "supplier_shipment",
-            CreatedAt = item.ContainsKey("created_at") ? item["created_at"].S : DateTime.UtcNow.ToString("O"),
-            ShippedAt = item.ContainsKey("shipped_at") ? item["shipped_at"].S : null,
-            TotalItems = item.ContainsKey("total_items") ? int.Parse(item["total_items"].N) : 0,
-
-            // Endereço de entrega
-            RecipientName = item.ContainsKey("recipient_name") ? item["recipient_name"].S : "",
-            RecipientPhone = item.ContainsKey("recipient_phone") ? item["recipient_phone"].S : "",
-            DeliveryAddress = item.ContainsKey("delivery_address") ? item["delivery_address"].S : "",
-            DeliveryCity = item.ContainsKey("delivery_city") ? item["delivery_city"].S : "",
-            DeliveryState = item.ContainsKey("delivery_state") ? item["delivery_state"].S : "",
-            DeliveryZipcode = item.ContainsKey("delivery_zipcode") ? item["delivery_zipcode"].S : "",
-
-            Items = item.ContainsKey("items") && item["items"].L != null
-                ? item["items"].L.Select(p => new PaymentProduct
+            Pk              = item.GetS("PK"),
+            Sk              = item.GetS("SK"),
+            ShipmentId      = item.GetS("shipment_id"),
+            PaymentId       = item.GetS("payment_id"),
+            SupplierId      = item.GetS("supplier_id"),
+            SellerId        = item.GetS("seller_id"),
+            OrderSn         = item.GetS("ordersn"),
+            Amount          = item.GetDecimal("amount"),
+            PaidAmount      = item.GetDecimal("paid_amount"),
+            Installments    = item.GetN<int>("installments"),
+            TransactionNsu  = item.GetS("transaction_nsu"),
+            CaptureMethod   = item.GetS("capture_method"),
+            ReceiptUrl      = item.GetS("receipt_url"),
+            Status          = item.GetS("status", "paid"),
+            EntityType      = item.GetS("entity_type", "supplier_shipment"),
+            CreatedAt       = item.GetS("created_at", DateTime.UtcNow.ToString("O")),
+            ShippedAt       = item.GetSNullable("shipped_at"),
+            TotalItems      = item.GetN<int>("total_items"),
+            RecipientName   = item.GetS("recipient_name"),
+            RecipientPhone  = item.GetS("recipient_phone"),
+            DeliveryAddress = item.GetS("delivery_address"),
+            DeliveryCity    = item.GetS("delivery_city"),
+            DeliveryState   = item.GetS("delivery_state"),
+            DeliveryZipcode = item.GetS("delivery_zipcode"),
+            Items = item.GetList("items")
+                .Select(p => new PaymentProduct
                 {
-                    ProductId = p.M.ContainsKey("product_id") ? p.M["product_id"].S : "",
-                    Sku = p.M.ContainsKey("sku") ? p.M["sku"].S : "",
-                    Name = p.M.ContainsKey("name") ? p.M["name"].S : "",
-                    Quantity = p.M.ContainsKey("quantity") ? int.Parse(p.M["quantity"].N) : 0,
-                    UnitPrice = p.M.ContainsKey("unit_price") ? decimal.Parse(p.M["unit_price"].N, CultureInfo.InvariantCulture) : 0,
-                    Image = p.M.ContainsKey("image") ? p.M["image"].S : "",
-                    Color = p.M.ContainsKey("color") ? p.M["color"].S : "",
-                    Size = p.M.ContainsKey("size") ? p.M["size"].S : ""
+                    ProductId = p.M.GetS("product_id"),
+                    Sku       = p.M.GetS("sku"),
+                    Name      = p.M.GetS("name"),
+                    Quantity  = p.M.GetN<int>("quantity"),
+                    UnitPrice = p.M.GetDecimal("unit_price"),
+                    Image     = p.M.GetS("image"),
+                    Color     = p.M.GetS("color"),
+                    Size      = p.M.GetS("size"),
                 }).ToList()
-                : new List<PaymentProduct>()
         };
     }
 

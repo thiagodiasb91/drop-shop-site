@@ -1,4 +1,5 @@
 using Amazon.DynamoDBv2.Model;
+using Dropship.Helpers;
 
 namespace Dropship.Domain;
 
@@ -68,23 +69,21 @@ public static class InfinityPayLinkMapper
     {
         return new InfinityPayLinkDomain
         {
-            Pk = item.ContainsKey("PK") ? item["PK"].S : "",
-            Sk = item.ContainsKey("SK") ? item["SK"].S : "",
-            LinkId = item.ContainsKey("link_id") ? item["link_id"].S : "",
-            SellerId = item.ContainsKey("seller_id") ? item["seller_id"].S : "",
-            PaymentIds = item.ContainsKey("payment_ids") && item["payment_ids"].L != null
-                ? item["payment_ids"].L
-                    .Where(p => p.S != null)
-                    .Select(p => p.S)
-                    .ToList()
-                : new List<string>(),
-            Amount = item.ContainsKey("amount") ? decimal.Parse(item["amount"].N) : 0,
-            PaymentCount = item.ContainsKey("payment_count") ? int.Parse(item["payment_count"].N) : 0,
-            Status = item.ContainsKey("status") ? item["status"].S : "pending",
-            EntityType = item.ContainsKey("entity_type") ? item["entity_type"].S : "infinitypay",
-            CreatedAt = item.ContainsKey("created_at") ? item["created_at"].S : DateTime.UtcNow.ToString("O"),
-            CompletedAt = item.ContainsKey("completed_at") ? item["completed_at"].S : null,
-            Url =  item.ContainsKey("url") ? item["url"].S : null
+            Pk           = item.GetS("PK"),
+            Sk           = item.GetS("SK"),
+            LinkId       = item.GetS("link_id"),
+            SellerId     = item.GetS("seller_id"),
+            Amount       = item.GetDecimal("amount"),
+            PaymentCount = item.GetN<int>("payment_count"),
+            Status       = item.GetS("status", "pending"),
+            EntityType   = item.GetS("entity_type", "infinitypay"),
+            CreatedAt    = item.GetS("created_at", DateTime.UtcNow.ToString("O")),
+            CompletedAt  = item.GetSNullable("completed_at"),
+            Url          = item.GetS("url"),
+            PaymentIds   = item.GetList("payment_ids")
+                              .Where(p => p.S != null)
+                              .Select(p => p.S!)
+                              .ToList()
         };
     }
 
@@ -126,4 +125,3 @@ public static class InfinityPayLinkMapper
         return item;
     }
 }
-
